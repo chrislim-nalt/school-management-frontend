@@ -578,13 +578,13 @@ export default function Login() {
           </button>
         </div>
 
-        <p className="text-xs text-center mt-4">
+        {/* <p className="text-xs text-center mt-4">
           No account?{" "}
           <Link to="/register" className="text-blue-600 hover:text-blue-800 transition-colors duration-300 relative inline-block group">
             Register
             <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-blue-600 transition-all duration-300 group-hover:w-full"></span>
           </Link>
-        </p>
+        </p> */}
       </div>
 
       <style>{`
