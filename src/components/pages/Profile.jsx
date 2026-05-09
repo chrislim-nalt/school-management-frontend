@@ -8,15 +8,32 @@ export default function Profile() {
   const [editing, setEditing] = useState(false);
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
+  const [showSecurityModal, setShowSecurityModal] = useState(false);
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
     name: "",
     email: "",
+    phone: "",
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
   });
+
+  const [securityForm, setSecurityForm] = useState({
+    securityQuestion: "",
+    securityAnswer: "",
+  });
+
+  const securityQuestions = [
+    "What is your mother's maiden name?",
+    "What was your first pet's name?",
+    "What city were you born in?",
+    "What is your favorite book?",
+    "What was your first school?",
+    "What is your favorite teacher's name?",
+    "What is the name of your best friend?",
+  ];
 
   // Fetch user profile
   const fetchProfile = async () => {
@@ -25,11 +42,16 @@ export default function Profile() {
       const response = await API.get("/auth/profile");
       setUser(response.data);
       setForm({
-        name: response.data.name,
-        email: response.data.email,
+        name: response.data.name || "",
+        email: response.data.email || "",
+        phone: response.data.phone || "",
         currentPassword: "",
         newPassword: "",
         confirmPassword: "",
+      });
+      setSecurityForm({
+        securityQuestion: response.data.securityQuestion || "",
+        securityAnswer: "",
       });
     } catch (error) {
       console.error("Error fetching profile:", error);
@@ -55,6 +77,7 @@ export default function Profile() {
       await API.put("/auth/profile", {
         name: form.name,
         email: form.email,
+        phone: form.phone,
       });
       setSuccess("Profile updated successfully!");
       fetchProfile();
@@ -99,6 +122,33 @@ export default function Profile() {
       setTimeout(() => setSuccess(""), 3000);
     } catch (error) {
       setError(error.response?.data?.message || "Failed to change password");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSecuritySetup = async (e) => {
+    e.preventDefault();
+    if (!securityForm.securityQuestion || !securityForm.securityAnswer) {
+      setError("Please select a question and provide an answer");
+      return;
+    }
+    
+    setLoading(true);
+    setError("");
+    setSuccess("");
+    
+    try {
+      await API.post("/auth/setup-security", {
+        securityQuestion: securityForm.securityQuestion,
+        securityAnswer: securityForm.securityAnswer,
+      });
+      setSuccess("Security questions saved successfully! You can now recover your account without email.");
+      setShowSecurityModal(false);
+      fetchProfile();
+      setTimeout(() => setSuccess(""), 5000);
+    } catch (error) {
+      setError(error.response?.data?.message || "Failed to save security questions");
     } finally {
       setLoading(false);
     }
@@ -191,6 +241,18 @@ export default function Profile() {
               <div className="flex items-center gap-3 text-slate-600">
                 <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-400">Phone</p>
+                  <p className="text-sm font-medium text-slate-700">{user?.phone || "Not set"}</p>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-3 text-slate-600">
+                <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
@@ -214,6 +276,27 @@ export default function Profile() {
                     Active
                   </span>
                 </div>
+              </div>
+              
+              {/* Security Status */}
+              <div className="flex items-center gap-3 text-slate-600 pt-2 border-t border-slate-100">
+                <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
+                  <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-slate-400">Security Questions</p>
+                  <p className="text-sm font-medium text-slate-700">
+                    {user?.securityQuestion ? "✓ Set up" : "Not set"}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowSecurityModal(true)}
+                  className="text-indigo-600 text-xs hover:text-indigo-700"
+                >
+                  {user?.securityQuestion ? "Update" : "Set Up"}
+                </button>
               </div>
             </div>
           </div>
@@ -266,6 +349,17 @@ export default function Profile() {
                       required
                     />
                   </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Phone Number</label>
+                    <input
+                      type="tel"
+                      value={form.phone}
+                      onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all outline-none"
+                      placeholder="Enter your phone number"
+                    />
+                    <p className="text-xs text-slate-400 mt-1">Optional but recommended for account recovery</p>
+                  </div>
                   <div className="flex gap-3">
                     <button
                       type="submit"
@@ -278,7 +372,7 @@ export default function Profile() {
                       type="button"
                       onClick={() => {
                         setEditing(false);
-                        setForm({ ...form, name: user.name, email: user.email });
+                        setForm({ ...form, name: user.name, email: user.email, phone: user.phone || "" });
                       }}
                       className="bg-slate-100 text-slate-700 px-4 py-2 rounded-lg font-semibold hover:bg-slate-200 transition-all text-sm"
                     >
@@ -295,6 +389,10 @@ export default function Profile() {
                   <div className="flex flex-col sm:flex-row py-2 border-b border-slate-100">
                     <div className="sm:w-32 text-xs font-semibold text-slate-500">Email</div>
                     <div className="flex-1 text-sm text-slate-800">{user?.email}</div>
+                  </div>
+                  <div className="flex flex-col sm:flex-row py-2 border-b border-slate-100">
+                    <div className="sm:w-32 text-xs font-semibold text-slate-500">Phone</div>
+                    <div className="flex-1 text-sm text-slate-800">{user?.phone || "Not set"}</div>
                   </div>
                   <div className="flex flex-col sm:flex-row py-2 border-b border-slate-100">
                     <div className="sm:w-32 text-xs font-semibold text-slate-500">Role</div>
@@ -371,6 +469,66 @@ export default function Profile() {
           </div>
         </div>
       </div>
+
+      {/* Security Questions Modal */}
+      {showSecurityModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6">
+            <div className="text-center mb-4">
+              <div className="bg-amber-100 rounded-full p-3 w-16 h-16 mx-auto flex items-center justify-center">
+                <span className="text-3xl">🔐</span>
+              </div>
+              <h2 className="text-xl font-bold text-gray-900 mt-3">Security Questions</h2>
+              <p className="text-sm text-gray-500">Set up security questions to recover your account without email</p>
+            </div>
+            
+            <form onSubmit={handleSecuritySetup} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Security Question</label>
+                <select
+                  value={securityForm.securityQuestion}
+                  onChange={(e) => setSecurityForm({ ...securityForm, securityQuestion: e.target.value })}
+                  className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500"
+                  required
+                >
+                  <option value="">Select a security question</option>
+                  {securityQuestions.map((q, idx) => (
+                    <option key={idx} value={q}>{q}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Your Answer</label>
+                <input
+                  type="text"
+                  value={securityForm.securityAnswer}
+                  onChange={(e) => setSecurityForm({ ...securityForm, securityAnswer: e.target.value })}
+                  className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500"
+                  placeholder="Your answer (case insensitive)"
+                  required
+                />
+                <p className="text-xs text-amber-600 mt-1">⚠️ Save this answer somewhere safe! You'll need it to recover your account.</p>
+              </div>
+              <div className="flex gap-3 mt-6">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="flex-1 bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700"
+                >
+                  {loading ? "Saving..." : "Save Security Questions"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowSecurityModal(false)}
+                  className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       <style>{`
         @keyframes slide-in {

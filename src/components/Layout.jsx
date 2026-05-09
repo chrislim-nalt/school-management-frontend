@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import API from "./services/api";
 
@@ -8,8 +8,10 @@ export default function Layout({ children }) {
   const [isMobile, setIsMobile] = useState(false);
   const [schoolInfo, setSchoolInfo] = useState({ name: "Loading...", code: "" });
   const [userName, setUserName] = useState("");
+  const [tooltip, setTooltip] = useState({ show: false, text: "", x: 0, y: 0 });
   const location = useLocation();
   const navigate = useNavigate();
+  const tooltipTimeoutRef = useRef(null);
 
   // Handle responsive
   useEffect(() => {
@@ -27,6 +29,13 @@ export default function Layout({ children }) {
     window.addEventListener('resize', checkScreenSize);
     return () => window.removeEventListener('resize', checkScreenSize);
   }, []);
+
+  // Close mobile menu when route changes
+  useEffect(() => {
+    if (isMobile) {
+      setIsMobileMenuOpen(false);
+    }
+  }, [location.pathname, isMobile]);
 
   // Fetch user and school info
   useEffect(() => {
@@ -75,48 +84,85 @@ export default function Layout({ children }) {
     if (isMobile) setIsMobileMenuOpen(false);
   };
 
-  // Organized menu items by logical groups
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
+  };
+
+  // Show tooltip on hover (only when sidebar is collapsed)
+  const showTooltip = (e, itemName, itemDesc) => {
+    if (!isSidebarOpen && !isMobile) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      setTooltip({
+        show: true,
+        text: `${itemName} - ${itemDesc}`,
+        x: rect.right + 12,
+        y: rect.top + rect.height / 2
+      });
+      
+      // Clear any pending hide
+      if (tooltipTimeoutRef.current) {
+        clearTimeout(tooltipTimeoutRef.current);
+      }
+    }
+  };
+
+  // Hide tooltip with delay
+  const hideTooltip = () => {
+    tooltipTimeoutRef.current = setTimeout(() => {
+      setTooltip({ show: false, text: "", x: 0, y: 0 });
+    }, 150);
+  };
+
+  // Clear tooltip on mouse leave from tooltip area
+  const clearTooltip = () => {
+    if (tooltipTimeoutRef.current) {
+      clearTimeout(tooltipTimeoutRef.current);
+    }
+    setTooltip({ show: false, text: "", x: 0, y: 0 });
+  };
+
+  // Menu items with groups
   const menuGroups = [
     {
       title: "Overview",
       items: [
-        { path: "/dashboard", name: "Dashboard", icon: "📊", description: "View inventory summary and statistics" },
-        { path: "/profile", name: "My Profile", icon: "👤", description: "Manage your account information" },
+        { path: "/dashboard", name: "Dashboard", icon: "📊", description: "View inventory summary" },
+        { path: "/profile", name: "My Profile", icon: "👤", description: "Manage your account" },
       ]
     },
     {
       title: "Inventory Setup",
       items: [
-        { path: "/categories", name: "Categories", icon: "📂", description: "Organize items by categories" },
-        { path: "/items", name: "Items", icon: "🛒", description: "Manage all inventory items" },
+        { path: "/categories", name: "Categories", icon: "📂", description: "Organize items" },
+        { path: "/items", name: "Items", icon: "🛒", description: "Manage inventory" },
       ]
     },
     {
       title: "Stock Operations",
       items: [
-        { path: "/stock", name: "Stock Management", icon: "📦", description: "Track IN, OUT, BORROW, RETURN" },
-        { path: "/borrowed", name: "Borrowed Items", icon: "📋", description: "View and manage borrowed items" },
+        { path: "/stock", name: "Stock Management", icon: "📦", description: "Track movements" },
+        { path: "/borrowed", name: "Borrowed Items", icon: "📋", description: "Manage borrows" },
       ]
     },
     {
       title: "Asset Management",
       items: [
-        { path: "/assets", name: "Assets", icon: "🏗️", description: "Manage school assets and equipment" },
-        { path: "/tracked-assets", name: "Asset Tracking", icon: "💻", description: "Track computers and electronics" },
+        { path: "/assets", name: "Assets", icon: "🏗️", description: "School assets" },
+        { path: "/tracked-assets", name: "Asset Tracking", icon: "💻", description: "Track electronics" },
       ]
     },
     {
       title: "School Feeding",
       items: [
-        { path: "/feeding", name: "Feeding Records", icon: "🍽️", description: "Record food receipts and usage" },
+        { path: "/feeding", name: "Feeding Records", icon: "🍽️", description: "Food management" },
       ]
     },
     {
       title: "Facility Management",
       items: [
-        { path: "/laboratory", name: "Laboratory", icon: "🔬", description: "Manage lab equipment and chemicals" },
-        { path: "/library", name: "Library", icon: "📚", description: "Manage library books collection" },
-        { path: "/cleaning-supplies", name: "Cleaning Supplies", icon: "🧹", description: "Track cleaning inventory" },
+        { path: "/laboratory", name: "Laboratory", icon: "🔬", description: "Lab equipment" },
+        { path: "/library", name: "Library", icon: "📚", description: "Books collection" },
+        { path: "/cleaning-supplies", name: "Cleaning Supplies", icon: "🧹", description: "Cleaning inventory" },
       ]
     }
   ];
@@ -124,147 +170,151 @@ export default function Layout({ children }) {
   return (
     <div className="flex h-screen bg-gray-100 overflow-hidden">
       
+      {/* Tooltip */}
+      {tooltip.show && (
+        <div
+          style={{
+            position: 'fixed',
+            left: tooltip.x,
+            top: tooltip.y,
+            transform: 'translateY(-50%)',
+            zIndex: 9999,
+            backgroundColor: '#1f2937',
+            color: 'white',
+            padding: '6px 12px',
+            borderRadius: '6px',
+            fontSize: '12px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+            whiteSpace: 'nowrap',
+            pointerEvents: 'none',
+            fontFamily: 'sans-serif'
+          }}
+        >
+          {tooltip.text}
+          <div
+            style={{
+              position: 'absolute',
+              left: '-5px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              width: 0,
+              height: 0,
+              borderTop: '5px solid transparent',
+              borderBottom: '5px solid transparent',
+              borderRight: '5px solid #1f2937'
+            }}
+          />
+        </div>
+      )}
+
       {/* Mobile Menu Button */}
       {isMobile && (
         <button
           onClick={() => setIsMobileMenuOpen(true)}
           className="fixed top-4 left-4 z-20 p-2 bg-gray-900 rounded-lg text-white shadow-lg md:hidden"
-          aria-label="Open menu"
         >
-          ☰
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
         </button>
       )}
 
       {/* Sidebar */}
       <div className={`
-        ${!isMobile && (isSidebarOpen ? "w-64" : "w-20")}
+        ${!isMobile && (isSidebarOpen ? "w-64" : "w-16")}
         ${isMobile && (isMobileMenuOpen ? "translate-x-0" : "-translate-x-full")}
-        bg-gray-900 text-white transition-all duration-300 flex flex-col
-        fixed md:relative z-30 h-full shadow-xl
+        bg-gray-900 text-white transition-all duration-300 ease-in-out flex flex-col
+        fixed md:relative z-30 h-full shadow-2xl
         ${isMobile ? "w-64" : ""}
       `}>
-        {/* Logo with Dynamic School Name */}
+        {/* Logo */}
         <div className="p-4 border-b border-gray-700">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">🏫</span>
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-2xl flex-shrink-0">🏫</span>
               {isSidebarOpen && (
-                <div>
-                  <span className="font-bold text-lg block truncate max-w-[140px]">
+                <div className="overflow-hidden">
+                  <span className="font-bold text-lg block truncate">
                     {schoolInfo.name !== "Loading..." ? schoolInfo.name.split(' ').slice(0, 2).join(' ') : "G.S AGATEKO"}
                   </span>
                   {schoolInfo.code && (
-                    <span className="text-xs text-gray-400 block">Code: {schoolInfo.code}</span>
+                    <span className="text-xs text-gray-400 block truncate">Code: {schoolInfo.code}</span>
                   )}
                   {userName && (
-                    <span className="text-xs text-gray-500 block mt-1">👤 {userName.split(' ')[0]}</span>
+                    <span className="text-xs text-gray-500 block truncate">👤 {userName.split(' ')[0]}</span>
                   )}
                 </div>
               )}
             </div>
             {!isMobile && (
               <button 
-                onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
-                className="text-gray-400 hover:text-white transition-colors p-1 rounded hover:bg-gray-800"
-                aria-label={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+                onClick={toggleSidebar} 
+                className="text-gray-400 hover:text-white p-1 rounded hover:bg-gray-800 transition-all duration-200"
               >
                 {isSidebarOpen ? "◀" : "▶"}
               </button>
             )}
             {isMobile && (
-              <button 
-                onClick={() => setIsMobileMenuOpen(false)} 
-                className="text-gray-400 hover:text-white"
-                aria-label="Close menu"
-              >
+              <button onClick={() => setIsMobileMenuOpen(false)} className="text-gray-400 hover:text-white p-1">
                 ✕
               </button>
             )}
           </div>
-          
-          {/* Hint for collapsed sidebar */}
-          {!isSidebarOpen && !isMobile && (
-            <div className="mt-3 text-center bg-gray-800 rounded-lg py-1.5">
-              <p className="text-xs text-gray-400">💡 Hover over icons</p>
-            </div>
-          )}
         </div>
 
-        {/* Welcome User Section (when sidebar is open) */}
+        {/* Welcome Section */}
         {isSidebarOpen && userName && (
-          <div className="px-4 py-3 border-b border-gray-700 bg-gray-800/50">
+          <div className="px-4 py-2 border-b border-gray-700 bg-gray-800/50">
             <p className="text-xs text-gray-400">Welcome back,</p>
             <p className="text-sm font-semibold text-white truncate">{userName}</p>
           </div>
         )}
 
-        {/* Navigation with Groups */}
-        <nav className="flex-1 mt-4 overflow-y-auto">
+        {/* Navigation */}
+        <nav className="flex-1 mt-2 overflow-y-auto">
           {menuGroups.map((group, groupIdx) => (
-            <div key={groupIdx} className="mb-6">
+            <div key={groupIdx} className="mb-4">
               {isSidebarOpen && group.title && (
-                <div className="px-4 mb-2">
+                <div className="px-4 mb-1">
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                     {group.title}
                   </p>
                 </div>
               )}
               {group.items.map((item) => (
-                <div
+                <Link
                   key={item.path}
-                  className="relative"
+                  to={item.path}
+                  onClick={closeMenu}
+                  onMouseEnter={(e) => showTooltip(e, item.name, item.description)}
+                  onMouseLeave={hideTooltip}
+                  className={`flex items-center gap-3 px-4 py-2.5 mx-2 rounded-lg transition-all duration-200 ${
+                    location.pathname === item.path
+                      ? "bg-gray-800 text-white shadow-lg"
+                      : "text-gray-300 hover:bg-gray-800 hover:text-white"
+                  } ${!isSidebarOpen && "justify-center"}`}
                 >
-                  <Link
-                    to={item.path}
-                    onClick={closeMenu}
-                    className={`flex items-center gap-3 px-4 py-3 mx-2 rounded-lg transition-colors ${
-                      location.pathname === item.path
-                        ? "bg-gray-800 text-white"
-                        : "text-gray-300 hover:bg-gray-800 hover:text-white"
-                    }`}
-                  >
-                    <span className="text-xl min-w-[28px]" aria-label={item.name}>{item.icon}</span>
-                    {isSidebarOpen ? (
-                      <div className="flex-1 min-w-0">
-                        <span className="block text-sm font-medium truncate">{item.name}</span>
-                        <span className="text-xs text-gray-500 truncate block">{item.description}</span>
-                      </div>
-                    ) : null}
-                  </Link>
-                  
-                  {/* Tooltip for collapsed sidebar - positioned absolutely */}
-                  {!isSidebarOpen && !isMobile && (
-                    <div className="absolute left-full top-1/2 transform -translate-y-1/2 ml-2 px-3 py-2 bg-gray-800 text-white text-sm rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 pointer-events-none min-w-[180px]">
-                      <div className="flex flex-col">
-                        <div className="flex items-center gap-2">
-                          <span className="text-base">{item.icon}</span>
-                          <span className="font-semibold text-sm">{item.name}</span>
-                        </div>
-                        <span className="text-xs text-gray-300 mt-1">{item.description}</span>
-                      </div>
-                      <div className="absolute left-0 top-1/2 transform -translate-x-1 -translate-y-1/2 w-2 h-2 bg-gray-800 rotate-45"></div>
+                  <span className={`text-xl flex-shrink-0 ${!isSidebarOpen && "text-2xl"}`}>{item.icon}</span>
+                  {isSidebarOpen && (
+                    <div className="flex-1 min-w-0">
+                      <span className="block text-sm font-medium truncate">{item.name}</span>
+                      <span className="text-xs text-gray-500 truncate">{item.description}</span>
                     </div>
                   )}
-                </div>
+                </Link>
               ))}
             </div>
           ))}
         </nav>
 
-        {/* School Info Footer (when sidebar is open) */}
+        {/* School Info Footer */}
         {isSidebarOpen && schoolInfo.code && (
-          <div className="p-3 border-t border-gray-700 bg-gray-800/30">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex-1 min-w-0">
-                <p className="text-xs text-gray-400 truncate">{schoolInfo.name}</p>
-                <code className="text-xs font-mono text-gray-500">ID: {schoolInfo.code}</code>
-              </div>
+          <div className="p-2 border-t border-gray-700 bg-gray-800/30">
+            <div className="flex items-center justify-between gap-1">
+              <p className="text-xs text-gray-400 truncate">{schoolInfo.name}</p>
               <button
-                onClick={() => {
-                  navigator.clipboard.writeText(schoolInfo.code);
-                  alert("School code copied!");
-                }}
-                className="text-gray-500 hover:text-gray-300 transition-colors p-1 rounded hover:bg-gray-700"
+                onClick={() => navigator.clipboard.writeText(schoolInfo.code)}
+                className="text-gray-500 hover:text-gray-300 text-xs p-1 rounded hover:bg-gray-700 transition-colors"
                 title="Copy school code"
               >
                 📋
@@ -274,12 +324,14 @@ export default function Layout({ children }) {
         )}
 
         {/* Logout */}
-        <div className="p-4 border-t border-gray-700">
+        <div className="p-3 border-t border-gray-700">
           <button
             onClick={handleLogout}
-            className="flex items-center gap-3 px-4 py-3 w-full rounded-lg text-gray-300 hover:bg-red-600 hover:text-white transition-colors"
+            className={`flex items-center gap-3 px-3 py-2 w-full rounded-lg text-gray-300 hover:bg-red-600 hover:text-white transition-all duration-200 ${
+              !isSidebarOpen ? "justify-center" : ""
+            }`}
           >
-            <span className="text-xl min-w-[28px]">🚪</span>
+            <span className="text-xl flex-shrink-0">🚪</span>
             {isSidebarOpen && <span>Logout</span>}
           </button>
         </div>
@@ -288,53 +340,34 @@ export default function Layout({ children }) {
       {/* Mobile Overlay */}
       {isMobile && isMobileMenuOpen && (
         <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-20"
+          className="fixed inset-0 bg-black bg-opacity-50 z-20 transition-opacity duration-300"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
 
       {/* Main Content */}
       <div className="flex-1 overflow-auto">
-        {/* Mobile Header with School Name */}
         {isMobile && (
-          <div className="bg-white shadow-sm px-4 py-3 sticky top-0 z-10">
+          <div className="bg-white shadow-sm px-3 py-2 sticky top-0 z-10">
             <div className="flex flex-col items-center">
-              <div className="flex items-center justify-center gap-2">
+              <div className="flex items-center gap-2">
                 <span className="text-xl">🏫</span>
-                <span className="font-bold text-gray-800">{schoolInfo.name !== "Loading..." ? schoolInfo.name.split(' ').slice(0, 2).join(' ') : "G.S AGATEKO"}</span>
+                <span className="font-bold text-gray-800 text-sm">
+                  {schoolInfo.name !== "Loading..." ? schoolInfo.name.split(' ').slice(0, 2).join(' ') : "G.S AGATEKO"}
+                </span>
               </div>
               {schoolInfo.code && (
-                <span className="text-xs text-gray-500 mt-0.5">Code: {schoolInfo.code}</span>
+                <span className="text-xs text-gray-500">Code: {schoolInfo.code}</span>
               )}
             </div>
           </div>
         )}
-        <div className="p-4 md:p-6">{children}</div>
-      </div>
-
-      <style>{`
-        /* Custom scrollbar */
-        ::-webkit-scrollbar {
-          width: 6px;
-          height: 6px;
-        }
-        ::-webkit-scrollbar-track {
-          background: #1f2937;
-        }
-        ::-webkit-scrollbar-thumb {
-          background: #4b5563;
-          border-radius: 3px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-          background: #6b7280;
-        }
         
-        /* Ensure group-hover works */
-        .group-hover\\:opacity-100:hover {
-          opacity: 1 !important;
-          visibility: visible !important;
-        }
-      `}</style>
+        {/* Page Content */}
+        <div className="p-4 md:p-6">
+          {children}
+        </div>
+      </div>
     </div>
   );
 }
