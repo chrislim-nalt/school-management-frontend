@@ -349,10 +349,12 @@ export default function Items() {
             <div className="flex gap-2">
               <DownloadButton
                 data={exportData}
+                items={items}
                 columns={exportColumns}
                 title="G.S AGATEKO - Complete Items Report"
                 filename="all_items_export"
                 variant="primary"
+                useItemsPDF={true}
               />
               
               <div className="relative group">

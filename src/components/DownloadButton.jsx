@@ -1,93 +1,187 @@
-import { useState } from "react";
-import { exportToPDF, exportToExcel, exportToCSV } from "./services/exportService";
+import { useState, useRef, useEffect } from "react";
 
-export default function DownloadButton({ data, columns, title, filename, variant = "primary" }) {
-  const [showMenu, setShowMenu] = useState(false);
-  const [loading, setLoading] = useState(false);
+/**
+ * DownloadButton
+ *
+ * Props:
+ *  - data        {Array}   — flat array of row objects (used for Excel/CSV and generic PDF)
+ *  - items       {Array}   — raw item objects from the DB (used for the rich Items PDF)
+ *  - columns     {Array}   — [{ key, label }]
+ *  - title       {string}  — PDF report title
+ *  - filename    {string}  — base filename (no extension)
+ *  - variant     {string}  — "primary" | "secondary"
+ *  - useItemsPDF {bool}    — if true, call exportItemsToPDF instead of generic exportToPDF
+ */
+export default function DownloadButton({
+  data = [],
+  items = [],
+  columns = [],
+  title = "Report",
+  filename = "export",
+  variant = "primary",
+  useItemsPDF = false,
+}) {
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(null); // "pdf" | "excel" | "csv" | null
+  const ref = useRef(null);
 
-  const handleExport = async (format) => {
-    setLoading(true);
+  // Close on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const handle = async (type) => {
+    setLoading(type);
+    setOpen(false);
     try {
-      switch (format) {
-        case "pdf":
+      if (type === "pdf") {
+        if (useItemsPDF) {
+          const { exportItemsToPDF } = await import("./services/exportService");
+          exportItemsToPDF(items.length ? items : data);
+        } else {
+          const { exportToPDF } = await import("./services/exportService");
           exportToPDF(data, columns, title, filename);
-          break;
-        case "excel":
-          exportToExcel(data, columns, filename);
-          break;
-        case "csv":
-          exportToCSV(data, columns, filename);
-          break;
-        default:
-          break;
+        }
+      } else if (type === "excel") {
+        const { exportToExcel } = await import("./services/exportService");
+        exportToExcel(data, columns, filename);
+      } else if (type === "csv") {
+        const { exportToCSV } = await import("./services/exportService");
+        exportToCSV(data, columns, filename);
       }
-    } catch (error) {
-      console.error("Export error:", error);
+    } catch (err) {
+      console.error("Export failed:", err);
     } finally {
-      setLoading(false);
-      setShowMenu(false);
+      setLoading(null);
     }
   };
 
-  const buttonStyles = {
-    primary: "bg-blue-600 hover:bg-blue-700",
-    secondary: "bg-gray-600 hover:bg-gray-700",
-    success: "bg-green-600 hover:bg-green-700",
-  };
+  const btnBase =
+    variant === "primary"
+      ? "bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white"
+      : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50";
+
+  const formats = [
+    {
+      id: "pdf",
+      label: "Export as PDF",
+      sub: "Formatted report with categories",
+      icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+            d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+        </svg>
+      ),
+      color: "text-rose-500 bg-rose-50",
+      badge: "Recommended",
+    },
+    {
+      id: "excel",
+      label: "Export as Excel",
+      sub: "Spreadsheet (.xlsx)",
+      icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+            d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414A1 1 0 0121 9.414V19a2 2 0 01-2 2z" />
+        </svg>
+      ),
+      color: "text-emerald-600 bg-emerald-50",
+    },
+    {
+      id: "csv",
+      label: "Export as CSV",
+      sub: "Plain text, comma-separated",
+      icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+            d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+        </svg>
+      ),
+      color: "text-slate-500 bg-slate-100",
+    },
+  ];
 
   return (
-    <div className="relative">
+    <div className="relative" ref={ref}>
+      {/* Trigger button */}
       <button
-        onClick={() => setShowMenu(!showMenu)}
-        disabled={loading}
-        className={`${buttonStyles[variant]} text-white px-4 py-2 rounded-lg transition-all duration-300 flex items-center gap-2 shadow-md hover:shadow-lg disabled:opacity-50`}
+        onClick={() => setOpen((o) => !o)}
+        disabled={!!loading}
+        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg font-semibold text-sm transition-all shadow-sm hover:shadow-md disabled:opacity-60 ${btnBase}`}
       >
         {loading ? (
           <>
-            <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
             </svg>
-            Exporting...
+            <span>Exporting…</span>
           </>
         ) : (
           <>
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
-            Download
-            <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <span>Download</span>
+            <svg
+              className={`w-3.5 h-3.5 transition-transform ${open ? "rotate-180" : ""}`}
+              fill="none" stroke="currentColor" viewBox="0 0 24 24"
+            >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
           </>
         )}
       </button>
 
-      {showMenu && !loading && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)}></div>
-          <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl z-20 border overflow-hidden">
-            <button
-              onClick={() => handleExport("pdf")}
-              className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 transition-colors"
-            >
-              <span className="text-red-500">📄</span> PDF Document
-            </button>
-            <button
-              onClick={() => handleExport("excel")}
-              className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 transition-colors"
-            >
-              <span className="text-green-600">📊</span> Excel (.xlsx)
-            </button>
-            <button
-              onClick={() => handleExport("csv")}
-              className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 transition-colors border-t"
-            >
-              <span className="text-blue-500">📋</span> CSV (.csv)
-            </button>
+      {/* Dropdown */}
+      {open && (
+        <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-2xl z-50 border border-slate-100 overflow-hidden animate-in">
+          <div className="px-3 py-2 border-b border-slate-100 bg-slate-50">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Choose format</p>
           </div>
-        </>
+          {formats.map((f) => (
+            <button
+              key={f.id}
+              onClick={() => handle(f.id)}
+              className="w-full flex items-start gap-3 px-3 py-2.5 hover:bg-slate-50 transition-colors text-left group"
+            >
+              <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center mt-0.5 ${f.color}`}>
+                {f.icon}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-slate-800">{f.label}</span>
+                  {f.badge && (
+                    <span className="text-[10px] font-bold bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded-full">
+                      {f.badge}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">{f.sub}</p>
+              </div>
+              <svg
+                className="w-4 h-4 text-slate-300 group-hover:text-slate-500 transition-colors mt-2 flex-shrink-0"
+                fill="none" stroke="currentColor" viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          ))}
+        </div>
       )}
+
+      <style>{`
+        @keyframes animate-in {
+          from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+          to   { opacity: 1; transform: translateY(0)   scale(1);    }
+        }
+        .animate-in { animation: animate-in 0.15s ease-out; }
+      `}</style>
     </div>
   );
 }
