@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { getCategories } from "../services/categoryService";
 import { getItems, createItem, updateItem, deleteItem } from "../services/itemService";
-import DownloadButton from "../DownloadButton";
+import DownloadButton from "../components/DownloadButton";
 
 export default function Items() {
   const [items, setItems] = useState([]);
@@ -34,12 +34,12 @@ export default function Items() {
 
   const units = ["kgs", "liters", "l", "pcs", "cartons", "pairs", "jerrycan", "bottles", "packs", "boxes", "sets", "grams", "ml"];
   const assetTypes = [
-    { value: "CONSUMABLE", label: "Consumable", icon: "", color: "from-emerald-400 to-emerald-500" },
-    { value: "NON_CONSUMABLE", label: "Non-Consumable", icon: "", color: "from-blue-400 to-blue-500" },
-    { value: "FIXED_ASSET", label: "Fixed Asset", icon: "", color: "from-purple-400 to-purple-500" },
-    { value: "LIVESTOCK", label: "Livestock", icon: "", color: "from-amber-400 to-amber-500" },
-    { value: "CHEMICAL", label: "Chemical", icon: "", color: "from-rose-400 to-rose-500" },
-    { value: "BOOK", label: "Book", icon: "", color: "from-indigo-400 to-indigo-500" }
+    { value: "CONSUMABLE", label: "Consumable", icon: "📦", color: "from-emerald-400 to-emerald-500" },
+    { value: "NON_CONSUMABLE", label: "Non-Consumable", icon: "🔧", color: "from-blue-400 to-blue-500" },
+    { value: "FIXED_ASSET", label: "Fixed Asset", icon: "🏗️", color: "from-purple-400 to-purple-500" },
+    { value: "LIVESTOCK", label: "Livestock", icon: "🐄", color: "from-amber-400 to-amber-500" },
+    { value: "CHEMICAL", label: "Chemical", icon: "⚗️", color: "from-rose-400 to-rose-500" },
+    { value: "BOOK", label: "Book", icon: "📚", color: "from-indigo-400 to-indigo-500" }
   ];
   const conditions = ["Good condition", "Damaged", "Defective", "Anormal", "Non longer working", "Under repair", "New"];
   const locations = [
@@ -101,6 +101,7 @@ export default function Items() {
       setError("");
     } catch (error) {
       setError("Failed to load data");
+      console.error("Fetch error:", error);
     } finally {
       setLoading(false);
     }
@@ -210,13 +211,13 @@ export default function Items() {
   const stats = {
     total: items.length,
     totalValue: items.reduce((sum, i) => sum + ((i.unitPrice || 0) * (i.currentQuantity || 0)), 0),
-    lowStock: items.filter(i => (i.currentQuantity || 0) <= (i.minStockLevel || 0)).length,
+    lowStock: items.filter(i => (i.currentQuantity || 0) <= (i.minStockLevel || 0) && i.minStockLevel > 0).length,
     categories: categories.length
   };
 
-  // Prepare data for export
+  // Prepare data for export - FIXED: Ensure all values are properly formatted
   const exportData = items.map(item => ({
-    name: item.name,
+    name: item.name || "-",
     category: item.category?.name || "-",
     type: item.assetType?.replace(/_/g, ' ') || "-",
     quantity: item.currentQuantity || 0,
@@ -238,6 +239,39 @@ export default function Items() {
     { key: "unitPrice", label: "Unit Price" },
     { key: "totalValue", label: "Total Value" }
   ];
+
+  // Handle category export - FIXED: Proper async function
+  const handleCategoryExport = async (catName, categoryItems) => {
+    try {
+      const catData = categoryItems.map(item => ({
+        name: item.name || "-",
+        type: item.assetType?.replace(/_/g, ' ') || "-",
+        quantity: item.currentQuantity || 0,
+        unit: item.unit || "-",
+        condition: item.condition || "-",
+        location: item.location || "-",
+        unitPrice: item.unitPrice ? `${item.unitPrice.toLocaleString()} RWF` : "-",
+        totalValue: item.unitPrice && item.currentQuantity ? `${(item.unitPrice * item.currentQuantity).toLocaleString()} RWF` : "-"
+      }));
+      
+      const categoryExportColumns = [
+        { key: "name", label: "Item Name" },
+        { key: "type", label: "Asset Type" },
+        { key: "quantity", label: "Quantity" },
+        { key: "unit", label: "Unit" },
+        { key: "condition", label: "Condition" },
+        { key: "location", label: "Location" },
+        { key: "unitPrice", label: "Unit Price" },
+        { key: "totalValue", label: "Total Value" }
+      ];
+      
+      const { exportToExcel } = await import("../services/exportService");
+      exportToExcel(catData, categoryExportColumns, `${catName.toLowerCase().replace(/ /g, '_')}_items`);
+    } catch (err) {
+      console.error("Category export failed:", err);
+      alert("Failed to export category. Please try again.");
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -346,7 +380,7 @@ export default function Items() {
                 <span>📥</span> Export Items
               </h3>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <DownloadButton
                 data={exportData}
                 items={items}
@@ -370,20 +404,7 @@ export default function Items() {
                     return (
                       <button
                         key={catName}
-                        onClick={async () => {
-                          const catData = categoryItems.map(item => ({
-                            name: item.name,
-                            type: item.assetType?.replace(/_/g, ' ') || "-",
-                            quantity: item.currentQuantity || 0,
-                            unit: item.unit || "-",
-                            condition: item.condition || "-",
-                            location: item.location || "-",
-                            unitPrice: item.unitPrice ? `${item.unitPrice.toLocaleString()} RWF` : "-",
-                            totalValue: item.unitPrice && item.currentQuantity ? `${(item.unitPrice * item.currentQuantity).toLocaleString()} RWF` : "-"
-                          }));
-                          const { exportToExcel } = await import("../services/exportService");
-                          exportToExcel(catData, exportColumns.slice(1), `${catName.toLowerCase().replace(/ /g, '_')}_items`);
-                        }}
+                        onClick={() => handleCategoryExport(catName, categoryItems)}
                         className="w-full px-3 py-2 text-left text-sm hover:bg-slate-50 flex items-center justify-between"
                       >
                         <span>{catName}</span>
@@ -459,7 +480,7 @@ export default function Items() {
                       {paginatedItems.map((item) => {
                         const assetStyle = getAssetTypeStyle(item.assetType);
                         const totalValue = (item.unitPrice || 0) * (item.currentQuantity || 0);
-                        const isLowStock = (item.currentQuantity || 0) <= (item.minStockLevel || 0);
+                        const isLowStock = (item.currentQuantity || 0) <= (item.minStockLevel || 0) && item.minStockLevel > 0;
                         
                         return (
                           <tr key={item._id} className="hover:bg-slate-50 transition-colors">
@@ -483,31 +504,31 @@ export default function Items() {
                               {item.minStockLevel > 0 && (
                                 <div className="text-xs text-slate-400">Min: {item.minStockLevel}</div>
                               )}
-                             </td>
+                            </td>
                             <td className="px-3 py-2 whitespace-nowrap text-slate-600 text-sm">{item.unit}</td>
                             <td className="px-3 py-2 whitespace-nowrap">
                               <span className={`px-1.5 py-0.5 rounded-full text-xs font-medium ${getConditionStyle(item.condition)}`}>
                                 {item.condition}
                               </span>
-                             </td>
+                            </td>
                             <td className="px-3 py-2 whitespace-nowrap text-slate-600 text-sm">{item.location}</td>
                             <td className="px-3 py-2 whitespace-nowrap text-right text-sm text-slate-700">
                               {item.unitPrice?.toLocaleString() || 0} RWF
-                             </td>
+                            </td>
                             <td className="px-3 py-2 whitespace-nowrap text-right font-semibold text-emerald-600 text-sm">
                               {totalValue.toLocaleString()} RWF
-                             </td>
+                            </td>
                             <td className="px-3 py-2 whitespace-nowrap text-center">
                               <div className="flex items-center justify-center gap-1">
                                 <button onClick={() => handleEdit(item)} className="p-1 rounded hover:bg-indigo-50 text-indigo-600 text-sm" title="Edit">✏️</button>
                                 <button onClick={() => handleDelete(item._id)} className="p-1 rounded hover:bg-rose-50 text-rose-500 text-sm" title="Delete">🗑️</button>
                               </div>
-                             </td>
-                           </tr>
+                            </td>
+                          </tr>
                         );
                       })}
                     </tbody>
-                   </table>
+                  </table>
                 </div>
                 
                 {/* Pagination for Category - Compact */}
