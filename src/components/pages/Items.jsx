@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { getCategories } from "../services/categoryService";
 import { getItems, createItem, updateItem, deleteItem } from "../services/itemService";
-import DownloadButton from "../components/DownloadButton";
+import DownloadButton from "../DownloadButton";
 
 export default function Items() {
   const [items, setItems] = useState([]);
