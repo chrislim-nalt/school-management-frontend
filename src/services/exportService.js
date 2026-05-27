@@ -1,6 +1,6 @@
 // jspdf@2.5.1 + jspdf-autotable@3.8.2
 import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
+import "jspdf-autotable"; // Side-effect import - this patches jsPDF prototype
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 
@@ -39,10 +39,11 @@ export const exportToPDF = (data, columns, title, filename) => {
   doc.setTextColor(200, 200, 200);
   doc.text(fmtDate(), pageW - 14, 12, { align: "right" });
 
-  // Table
+  // Table data
   const tableBody = data.map(row => columns.map(col => safe(row[col.key])));
   
-  autoTable(doc, {
+  // Use doc.autoTable (patched by the side-effect import)
+  doc.autoTable({
     head: [columns.map(col => col.label)],
     body: tableBody,
     startY: 25,
@@ -77,7 +78,7 @@ export const exportItemsToPDF = (items) => {
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
 
-  // Simple header
+  // Header
   doc.setFillColor(15, 23, 42);
   doc.rect(0, 0, pageW, 20, "F");
   doc.setFontSize(14);
@@ -101,8 +102,8 @@ export const exportItemsToPDF = (items) => {
     item.unitPrice && item.currentQuantity ? `${(item.unitPrice * item.currentQuantity).toLocaleString()}` : "0"
   ]);
 
-  // Add table
-  autoTable(doc, {
+  // Add table using doc.autoTable
+  doc.autoTable({
     head: [["#", "Item Name", "Category", "Type", "Qty", "Unit", "Condition", "Location", "Unit Price", "Total Value"]],
     body: tableBody,
     startY: 25,
