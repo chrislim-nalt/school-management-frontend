@@ -22,6 +22,8 @@ export default function Stock() {
   const [filterCategory, setFilterCategory] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(25);
+  const [selectedTransaction, setSelectedTransaction] = useState(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
   
   // For category-based item selection
   const [selectedCategory, setSelectedCategory] = useState("");
@@ -59,9 +61,10 @@ export default function Stock() {
         transactionsData = transactionsData.filter(t => t.type === filterType);
       }
       if (filterCategory) {
-        // Filter transactions by category
         transactionsData = transactionsData.filter(t => t.item?.category?._id === filterCategory);
       }
+      // Sort by date descending (newest first)
+      transactionsData.sort((a, b) => new Date(b.date) - new Date(a.date));
       setTransactions(transactionsData);
       setError("");
     } catch (error) {
@@ -80,7 +83,6 @@ export default function Stock() {
     } else {
       setFilteredItemsByCategory([]);
     }
-    // Reset selected item when category changes
     setForm(prev => ({ ...prev, item: "" }));
   }, [selectedCategory, items]);
 
@@ -88,7 +90,6 @@ export default function Stock() {
     fetchData();
   }, [filterItem, filterType, filterCategory]);
 
-  // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [filterItem, filterType, filterCategory]);
@@ -218,6 +219,11 @@ export default function Stock() {
     }
   };
 
+  const handleViewDetails = (transaction) => {
+    setSelectedTransaction(transaction);
+    setShowDetailsModal(true);
+  };
+
   const getCurrentStock = (itemId) => {
     const item = items.find(i => i._id === itemId);
     return item?.currentQuantity || 0;
@@ -271,6 +277,42 @@ export default function Stock() {
     }
   };
 
+  const getTransactionDescription = (transaction) => {
+    const itemName = transaction.item?.name || "Unknown item";
+    const quantity = transaction.quantity;
+    const unit = transaction.item?.unit || "units";
+    
+    switch(transaction.type) {
+      case "IN":
+        return `Added ${quantity} ${unit} of ${itemName} to inventory`;
+      case "OUT":
+        return `Removed ${quantity} ${unit} of ${itemName} from inventory`;
+      case "BORROW":
+        return `Borrowed ${quantity} ${unit} of ${itemName} - Due for return`;
+      case "RETURN":
+        return `Returned ${quantity} ${unit} of ${itemName} to inventory`;
+      default:
+        return `Transaction for ${itemName}`;
+    }
+  };
+
+  const getStatusBadge = (transaction) => {
+    if (transaction.type !== "BORROW") return null;
+    
+    const expectedDate = new Date(transaction.expectedReturnDate);
+    const today = new Date();
+    const isOverdue = expectedDate < today;
+    
+    if (isOverdue) {
+      return { text: "OVERDUE", color: "bg-rose-600 text-white" };
+    }
+    const daysLeft = Math.ceil((expectedDate - today) / (1000 * 60 * 60 * 24));
+    if (daysLeft <= 3) {
+      return { text: `Due in ${daysLeft} days`, color: "bg-amber-500 text-white" };
+    }
+    return { text: `Due in ${daysLeft} days`, color: "bg-emerald-500 text-white" };
+  };
+
   const getPageNumbers = () => {
     const pages = [];
     const maxVisible = 5;
@@ -321,7 +363,7 @@ export default function Stock() {
                 📦 Stock Management
               </h1>
               <p className="text-slate-300 text-sm">
-                Track inventory: IN, OUT, BORROW, RETURN
+                Track inventory movements: Stock IN, Stock OUT, Borrow, and Return
               </p>
             </div>
             <button
@@ -336,30 +378,35 @@ export default function Stock() {
           {/* Stats Cards */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mt-6">
             <div className="bg-white/5 backdrop-blur rounded-xl p-3 border border-white/10 hover:bg-white/10 transition-all">
-              <p className="text-slate-300 text-xs">📥 Stock IN</p>
+              <p className="text-slate-300 text-xs flex items-center gap-1">📥 Stock IN</p>
               <p className="text-2xl md:text-3xl font-bold text-emerald-400 mt-1">{stats.totalIn}</p>
+              <p className="text-xs text-slate-400 mt-1">items added</p>
             </div>
             <div className="bg-white/5 backdrop-blur rounded-xl p-3 border border-white/10 hover:bg-white/10 transition-all">
-              <p className="text-slate-300 text-xs">📤 Stock OUT</p>
+              <p className="text-slate-300 text-xs flex items-center gap-1">📤 Stock OUT</p>
               <p className="text-2xl md:text-3xl font-bold text-rose-400 mt-1">{stats.totalOut}</p>
+              <p className="text-xs text-slate-400 mt-1">items removed</p>
             </div>
             <div className="bg-white/5 backdrop-blur rounded-xl p-3 border border-white/10 hover:bg-white/10 transition-all">
-              <p className="text-slate-300 text-xs">📋 Borrowed</p>
+              <p className="text-slate-300 text-xs flex items-center gap-1">📋 Borrowed</p>
               <p className="text-2xl md:text-3xl font-bold text-amber-400 mt-1">{stats.totalBorrow}</p>
+              <p className="text-xs text-slate-400 mt-1">currently out</p>
             </div>
             <div className="bg-white/5 backdrop-blur rounded-xl p-3 border border-white/10 hover:bg-white/10 transition-all">
-              <p className="text-slate-300 text-xs">🔄 Returned</p>
+              <p className="text-slate-300 text-xs flex items-center gap-1">🔄 Returned</p>
               <p className="text-2xl md:text-3xl font-bold text-blue-400 mt-1">{stats.totalReturn}</p>
+              <p className="text-xs text-slate-400 mt-1">items back</p>
             </div>
             <div className="bg-white/5 backdrop-blur rounded-xl p-3 border border-white/10 hover:bg-white/10 transition-all">
-              <p className="text-slate-300 text-xs">⚖️ Net Balance</p>
+              <p className="text-slate-300 text-xs flex items-center gap-1">⚖️ Net Balance</p>
               <p className="text-2xl md:text-3xl font-bold text-purple-400 mt-1">{stats.balance}</p>
+              <p className="text-xs text-slate-400 mt-1">current stock</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Filters - Updated with Category Filter */}
+      {/* Filters */}
       <div className="bg-white rounded-xl shadow-lg p-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div>
@@ -408,10 +455,10 @@ export default function Stock() {
               className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all outline-none"
             >
               <option value="ALL">📋 All Types</option>
-              <option value="IN">📥 Stock IN</option>
-              <option value="OUT">📤 Stock OUT</option>
-              <option value="BORROW">📋 Borrow</option>
-              <option value="RETURN">🔄 Return</option>
+              <option value="IN">📥 Stock IN - Received items</option>
+              <option value="OUT">📤 Stock OUT - Used items</option>
+              <option value="BORROW">📋 Borrow - Items taken out</option>
+              <option value="RETURN">🔄 Return - Items brought back</option>
             </select>
           </div>
         </div>
@@ -432,7 +479,7 @@ export default function Stock() {
       {transactions.length > 0 && (
         <div className="bg-white rounded-xl shadow-lg p-3">
           <p className="text-xs text-slate-500">
-            Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, transactions.length)} of {transactions.length} transactions
+            Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, transactions.length)} of {transactions.length} transaction{transactions.length !== 1 ? 's' : ''}
           </p>
         </div>
       )}
@@ -455,7 +502,7 @@ export default function Stock() {
           </button>
         </div>
       ) : (
-        /* Transactions Table */
+        /* Transactions Table - Professional Design */
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-slate-200 text-sm">
@@ -465,59 +512,132 @@ export default function Stock() {
                   <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">📁 Category</th>
                   <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">📦 Item</th>
                   <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">🏷️ Type</th>
-                  <th className="px-3 py-2 text-right text-xs font-semibold text-slate-600">🔢 Qty</th>
+                  <th className="px-3 py-2 text-center text-xs font-semibold text-slate-600">🔢 Quantity</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">📝 Description</th>
                   <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">👤 Borrower</th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">🎯 Purpose</th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">📄 Reference</th>
                   <th className="px-3 py-2 text-center text-xs font-semibold text-slate-600">⚙️ Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {currentItems.map((t) => (
-                  <tr key={t._id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-3 py-2 whitespace-nowrap text-slate-600 text-xs">
-                      📅 {new Date(t.date).toLocaleDateString()}
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      <span className="inline-flex items-center gap-1 text-xs">
-                        {t.item?.category?.icon || "📦"} {t.item?.category?.name || "-"}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      <div className="flex flex-col">
-                        <span className="font-medium text-slate-800 text-sm">{t.item?.name}</span>
-                        <span className="text-xs text-slate-400">{t.item?.location} • {t.item?.unit}</span>
-                      </div>
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-xs font-medium ${getTransactionColor(t.type)}`}>
-                        {getTransactionIcon(t.type)} {t.type}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap text-right font-semibold text-slate-700">
-                      {t.quantity}
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap text-slate-600 text-xs">
-                      {t.borrowerName || "-"}
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      {t.purpose ? (
-                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-xs font-medium bg-slate-100 text-slate-600">
-                          🎯 {t.purpose}
+                {currentItems.map((t) => {
+                  const statusBadge = getStatusBadge(t);
+                  return (
+                    <tr key={t._id} className="hover:bg-slate-50 transition-colors group">
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        <div className="flex flex-col">
+                          <span className="text-slate-700 text-sm">
+                            {new Date(t.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                          </span>
+                          <span className="text-xs text-slate-400">
+                            {new Date(t.date).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        <div className="flex items-center gap-1">
+                          <span className="text-base">{t.item?.category?.icon || "📦"}</span>
+                          <span className="text-sm text-slate-600">{t.item?.category?.name || "-"}</span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-slate-800 text-sm">{t.item?.name}</span>
+                          <div className="flex items-center gap-2 text-xs text-slate-400">
+                            <span>📍 {t.item?.location || "-"}</span>
+                            <span>📏 {t.item?.unit || "-"}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold ${getTransactionColor(t.type)}`}>
+                          {getTransactionIcon(t.type)} {t.type === "IN" ? "Stock IN" : t.type === "OUT" ? "Stock OUT" : t.type === "BORROW" ? "Borrowed" : "Returned"}
                         </span>
-                      ) : "-"}
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap text-slate-400 text-xs">
-                      {t.reference || "-"}
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        <button onClick={() => handleEdit(t)} className="p-1 rounded hover:bg-indigo-50 text-indigo-600 text-sm transition-all" title="Edit">✏️</button>
-                        <button onClick={() => handleDelete(t._id)} className="p-1 rounded hover:bg-rose-50 text-rose-500 text-sm transition-all" title="Delete">🗑️</button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                        {statusBadge && (
+                          <div className={`mt-1 text-center px-1.5 py-0.5 rounded text-[10px] font-bold ${statusBadge.color}`}>
+                            {statusBadge.text}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap text-center">
+                        <div className="flex flex-col items-center">
+                          <span className={`text-lg font-bold ${
+                            t.type === "IN" ? "text-emerald-600" : 
+                            t.type === "OUT" ? "text-rose-600" : 
+                            t.type === "BORROW" ? "text-amber-600" : "text-blue-600"
+                          }`}>
+                            {t.quantity}
+                          </span>
+                          <span className="text-xs text-slate-400">{t.item?.unit}</span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="max-w-xs">
+                          <p className="text-sm text-slate-600 line-clamp-2">
+                            {getTransactionDescription(t)}
+                          </p>
+                          {t.purpose && (
+                            <div className="mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[10px]">
+                              🎯 {t.purpose}
+                            </div>
+                          )}
+                          {t.reference && (
+                            <div className="mt-1 text-[10px] text-slate-400">
+                              Ref: {t.reference}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-3 py-2">
+                        {t.type === "BORROW" ? (
+                          <div className="flex flex-col">
+                            <div className="flex items-center gap-1">
+                              <span className="text-sm">👤</span>
+                              <span className="text-sm font-medium text-slate-700">{t.borrowerName || "-"}</span>
+                            </div>
+                            {t.borrowerDepartment && (
+                              <span className="text-xs text-slate-400 mt-0.5">🏢 {t.borrowerDepartment}</span>
+                            )}
+                            {t.expectedReturnDate && (
+                              <div className="flex items-center gap-1 mt-1 text-[10px]">
+                                <span>📅</span>
+                                <span className="text-slate-500">
+                                  Return by: {new Date(t.expectedReturnDate).toLocaleDateString()}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-sm text-slate-400">—</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          <button 
+                            onClick={() => handleViewDetails(t)} 
+                            className="p-1.5 rounded-lg hover:bg-indigo-50 text-indigo-600 transition-all group-hover:scale-105"
+                            title="View Details"
+                          >
+                            👁️
+                          </button>
+                          <button 
+                            onClick={() => handleEdit(t)} 
+                            className="p-1.5 rounded-lg hover:bg-indigo-50 text-indigo-600 transition-all group-hover:scale-105"
+                            title="Edit"
+                          >
+                            ✏️
+                          </button>
+                          <button 
+                            onClick={() => handleDelete(t._id)} 
+                            className="p-1.5 rounded-lg hover:bg-rose-50 text-rose-500 transition-all group-hover:scale-105"
+                            title="Delete"
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -579,7 +699,161 @@ export default function Stock() {
         </div>
       )}
 
-      {/* Transaction Form Modal - UPDATED with Category-First Selection */}
+      {/* Transaction Details Modal */}
+      {showDetailsModal && selectedTransaction && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowDetailsModal(false)}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto animate-scale-in" onClick={(e) => e.stopPropagation()}>
+            <div className={`sticky top-0 bg-gradient-to-r ${getTransactionGradient(selectedTransaction.type)} px-5 py-3 flex justify-between items-center text-white rounded-t-xl`}>
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">{getTransactionIcon(selectedTransaction.type)}</span>
+                <h2 className="text-base font-bold">
+                  {selectedTransaction.type === "IN" ? "Stock IN Details" : 
+                   selectedTransaction.type === "OUT" ? "Stock OUT Details" : 
+                   selectedTransaction.type === "BORROW" ? "Borrow Details" : "Return Details"}
+                </h2>
+              </div>
+              <button onClick={() => setShowDetailsModal(false)} className="text-white hover:text-gray-200 text-2xl leading-none">&times;</button>
+            </div>
+            
+            <div className="p-5 space-y-4">
+              {/* Transaction Summary Card */}
+              <div className="bg-slate-50 rounded-lg p-3">
+                <p className="text-xs font-semibold text-slate-500 uppercase mb-2">Transaction Summary</p>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-500 text-sm">📅 Date & Time</span>
+                    <span className="text-slate-700 font-medium text-sm">
+                      {new Date(selectedTransaction.date).toLocaleString('en-GB', { 
+                        day: '2-digit', month: 'short', year: 'numeric', 
+                        hour: '2-digit', minute: '2-digit' 
+                      })}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-500 text-sm">🏷️ Transaction Type</span>
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold ${getTransactionColor(selectedTransaction.type)}`}>
+                      {getTransactionIcon(selectedTransaction.type)} {selectedTransaction.type}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-500 text-sm">📦 Quantity</span>
+                    <span className={`text-lg font-bold ${
+                      selectedTransaction.type === "IN" ? "text-emerald-600" : 
+                      selectedTransaction.type === "OUT" ? "text-rose-600" : 
+                      selectedTransaction.type === "BORROW" ? "text-amber-600" : "text-blue-600"
+                    }`}>
+                      {selectedTransaction.quantity} {selectedTransaction.item?.unit}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Item Details */}
+              <div className="bg-slate-50 rounded-lg p-3">
+                <p className="text-xs font-semibold text-slate-500 uppercase mb-2">Item Information</p>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-500 text-sm">📦 Item Name</span>
+                    <span className="text-slate-700 font-medium text-sm">{selectedTransaction.item?.name}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-500 text-sm">📁 Category</span>
+                    <span className="text-slate-700 text-sm">
+                      {selectedTransaction.item?.category?.icon} {selectedTransaction.item?.category?.name}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-500 text-sm">📍 Location</span>
+                    <span className="text-slate-700 text-sm">{selectedTransaction.item?.location || "-"}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-500 text-sm">🏷️ Asset Type</span>
+                    <span className="text-slate-700 text-sm">{selectedTransaction.item?.assetType?.replace(/_/g, ' ') || "-"}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-500 text-sm">⚖️ Current Stock</span>
+                    <span className="text-emerald-600 font-bold text-sm">{getCurrentStock(selectedTransaction.item?._id)} {selectedTransaction.item?.unit}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Borrow Specific Details */}
+              {selectedTransaction.type === "BORROW" && (
+                <div className="bg-amber-50 rounded-lg p-3 border-l-4 border-amber-500">
+                  <p className="text-xs font-semibold text-amber-700 uppercase mb-2">Borrow Information</p>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-amber-600 text-sm">👤 Borrower Name</span>
+                      <span className="text-amber-800 font-medium text-sm">{selectedTransaction.borrowerName || "-"}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-amber-600 text-sm">🏢 Department</span>
+                      <span className="text-amber-800 text-sm">{selectedTransaction.borrowerDepartment || "-"}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-amber-600 text-sm">📅 Borrowed Date</span>
+                      <span className="text-amber-800 text-sm">{new Date(selectedTransaction.date).toLocaleDateString()}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-amber-600 text-sm">⏰ Expected Return</span>
+                      <span className={`text-sm font-semibold ${
+                        new Date(selectedTransaction.expectedReturnDate) < new Date() 
+                          ? "text-rose-600" 
+                          : "text-amber-800"
+                      }`}>
+                        {selectedTransaction.expectedReturnDate ? new Date(selectedTransaction.expectedReturnDate).toLocaleDateString() : "-"}
+                        {new Date(selectedTransaction.expectedReturnDate) < new Date() && " (OVERDUE)"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Additional Information */}
+              {(selectedTransaction.purpose || selectedTransaction.reference || selectedTransaction.notes) && (
+                <div className="bg-slate-50 rounded-lg p-3">
+                  <p className="text-xs font-semibold text-slate-500 uppercase mb-2">Additional Information</p>
+                  <div className="space-y-2">
+                    {selectedTransaction.purpose && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-500 text-sm">🎯 Purpose</span>
+                        <span className="text-slate-700 text-sm">{selectedTransaction.purpose}</span>
+                      </div>
+                    )}
+                    {selectedTransaction.reference && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-500 text-sm">📄 Reference</span>
+                        <span className="text-slate-700 text-sm font-mono">{selectedTransaction.reference}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => {
+                    setShowDetailsModal(false);
+                    handleEdit(selectedTransaction);
+                  }}
+                  className="flex-1 bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-3 py-2 rounded-lg font-semibold hover:shadow-lg transition-all text-sm flex items-center justify-center gap-2"
+                >
+                  ✏️ Edit Transaction
+                </button>
+                <button
+                  onClick={() => setShowDetailsModal(false)}
+                  className="flex-1 bg-slate-100 text-slate-700 px-3 py-2 rounded-lg font-semibold hover:bg-slate-200 transition-all text-sm"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Transaction Form Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto" onClick={() => setShowForm(false)}>
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md my-8" onClick={(e) => e.stopPropagation()}>
@@ -693,7 +967,7 @@ export default function Stock() {
                         : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                     }`}
                   >
-                    📥 IN
+                    📥 Stock IN
                   </button>
                   <button
                     type="button"
@@ -704,7 +978,7 @@ export default function Stock() {
                         : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                     }`}
                   >
-                    📤 OUT
+                    📤 Stock OUT
                   </button>
                   <button
                     type="button"
@@ -715,7 +989,7 @@ export default function Stock() {
                         : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                     }`}
                   >
-                    📋 BORROW
+                    📋 Borrow
                   </button>
                 </div>
               </div>
@@ -883,8 +1157,19 @@ export default function Stock() {
           0%, 100% { transform: translateY(0px); }
           50% { transform: translateY(-5px); }
         }
+        @keyframes scale-in {
+          from { transform: scale(0.95); opacity: 0; }
+          to { transform: scale(1); opacity: 1; }
+        }
         .animate-slide-in { animation: slide-in 0.3s ease-out; }
         .animate-float { animation: float 3s ease-in-out infinite; }
+        .animate-scale-in { animation: scale-in 0.2s ease-out; }
+        .line-clamp-2 {
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
       `}</style>
     </div>
   );
