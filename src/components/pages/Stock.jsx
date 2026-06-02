@@ -461,7 +461,7 @@ export default function Stock() {
             <DownloadButton
               data={exportData}
               columns={exportColumns}
-              title="G.S AGATEKO - Stock Transactions Report"
+              title="School Inventory - Stock Transactions Report"
               filename={`stock_transactions_${new Date().toISOString().slice(0, 10)}`}
               variant="primary"
             />
