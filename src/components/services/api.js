@@ -1,6 +1,7 @@
 import axios from "axios";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+// Add /api to the baseURL
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 const API = axios.create({
   baseURL: API_URL,
@@ -9,17 +10,13 @@ const API = axios.create({
   },
 });
 
-// Request interceptor - IMPORTANT: This adds the token to every request
+// Request interceptor
 API.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
     if (token) {
-      // Ensure token is properly formatted with Bearer prefix
       const formattedToken = token.startsWith("Bearer ") ? token : `Bearer ${token}`;
       config.headers.Authorization = formattedToken;
-      console.log(`📤 ${config.method?.toUpperCase()} ${config.url} - Token attached`);
-    } else {
-      console.log(`📤 ${config.method?.toUpperCase()} ${config.url} - No token`);
     }
     return config;
   },
@@ -29,7 +26,7 @@ API.interceptors.request.use(
   }
 );
 
-// Response interceptor for handling auth errors
+// Response interceptor
 API.interceptors.response.use(
   (response) => {
     return response;
@@ -44,7 +41,6 @@ API.interceptors.response.use(
       localStorage.removeItem("schoolCode");
       localStorage.removeItem("schoolName");
       
-      // Redirect to login if not already there
       const currentPath = window.location.pathname;
       if (!currentPath.includes("/admin-login") && currentPath !== "/" && !currentPath.includes("/setup")) {
         window.location.href = "/";
