@@ -1,181 +1,280 @@
-// jspdf@2.5.1 + jspdf-autotable@3.8.2
 import jsPDF from "jspdf";
-import "jspdf-autotable"; // Side-effect import - this patches jsPDF prototype
+import "jspdf-autotable";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 
-// Safe text handler
-const safe = (v) => {
-  if (v === null || v === undefined) return "-";
-  let str = String(v);
-  // Remove emojis only, keep basic text
-  str = str.replace(/[\u{1F000}-\u{1FFFF}]/gu, "");
-  return str.trim() || "-";
+// Get school name from localStorage
+const getSchoolName = () => {
+  return localStorage.getItem("schoolName") || "School Management System";
 };
 
-const fmtDate = () => {
-  const d = new Date();
-  return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
-};
-
-// Generic PDF Export (for any data)
-export const exportToPDF = (data, columns, title, filename) => {
-  if (!data || data.length === 0) {
-    alert("No data to export");
-    return;
-  }
-
-  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
-  const pageW = doc.internal.pageSize.getWidth();
-  const pageH = doc.internal.pageSize.getHeight();
-
-  // Header
-  doc.setFillColor(15, 23, 42);
-  doc.rect(0, 0, pageW, 20, "F");
-  doc.setFontSize(14);
-  doc.setTextColor(255, 255, 255);
-  doc.text(safe(title), 14, 12);
-  doc.setFontSize(8);
-  doc.setTextColor(200, 200, 200);
-  doc.text(fmtDate(), pageW - 14, 12, { align: "right" });
-
-  // Table data
-  const tableBody = data.map(row => columns.map(col => safe(row[col.key])));
-  
-  // Use doc.autoTable (patched by the side-effect import)
-  doc.autoTable({
-    head: [columns.map(col => col.label)],
-    body: tableBody,
-    startY: 25,
-    margin: { left: 10, right: 10 },
-    theme: "striped",
-    headStyles: { fillColor: [79, 70, 229], textColor: [255, 255, 255], fontSize: 8, fontStyle: "bold" },
-    bodyStyles: { fontSize: 7 },
-    alternateRowStyles: { fillColor: [241, 245, 249] }
+// Export to PDF with dynamic school name
+export const exportToPDF = async (data, columns, title, filename, subtitle = "") => {
+  return new Promise((resolve, reject) => {
+    try {
+      const schoolName = getSchoolName();
+      
+      if (!data || data.length === 0) {
+        reject(new Error("No data to export"));
+        return;
+      }
+      
+      const doc = new jsPDF({
+        orientation: data.length > 20 ? "landscape" : "portrait",
+        unit: "mm",
+        format: "a4"
+      });
+      
+      const pageWidth = doc.internal.pageSize.getWidth();
+      
+      // Add Header with school name
+      doc.setFillColor(41, 128, 185);
+      doc.rect(0, 0, pageWidth, 40, "F");
+      
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(18);
+      doc.setFont("helvetica", "bold");
+      doc.text(schoolName, pageWidth / 2, 18, { align: "center" });
+      
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "normal");
+      doc.text(title || "Report", pageWidth / 2, 28, { align: "center" });
+      
+      // Reset text color for body
+      doc.setTextColor(33, 33, 33);
+      
+      // Add metadata
+      doc.setFontSize(9);
+      doc.setTextColor(100, 100, 100);
+      doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 50);
+      doc.text(`Total Records: ${data.length}`, 14, 57);
+      
+      if (subtitle) {
+        doc.text(subtitle, 14, 64);
+      }
+      
+      // Prepare table data
+      const tableColumnHeaders = columns.map(col => col.label);
+      const tableBody = data.map(row => 
+        columns.map(col => {
+          let value = row[col.key];
+          if (value === undefined || value === null) return "-";
+          if (typeof value === "object") return JSON.stringify(value);
+          return String(value);
+        })
+      );
+      
+      // Add table
+      doc.autoTable({
+        head: [tableColumnHeaders],
+        body: tableBody,
+        startY: subtitle ? 70 : 65,
+        theme: "grid",
+        headStyles: {
+          fillColor: [41, 128, 185],
+          textColor: [255, 255, 255],
+          fontSize: 9,
+          fontStyle: "bold",
+          halign: "center"
+        },
+        bodyStyles: {
+          fontSize: 8,
+          cellPadding: 3
+        },
+        alternateRowStyles: {
+          fillColor: [245, 250, 255]
+        },
+        margin: { top: subtitle ? 70 : 65, left: 10, right: 10 },
+        didDrawPage: (data) => {
+          const pageCount = doc.internal.getNumberOfPages();
+          doc.setFontSize(8);
+          doc.setTextColor(150, 150, 150);
+          doc.text(
+            `Page ${data.pageNumber} of ${pageCount}`,
+            pageWidth / 2,
+            doc.internal.pageSize.getHeight() - 8,
+            { align: "center" }
+          );
+          doc.setDrawColor(200, 200, 200);
+          doc.line(10, doc.internal.pageSize.getHeight() - 12, pageWidth - 10, doc.internal.pageSize.getHeight() - 12);
+        }
+      });
+      
+      doc.save(`${filename}.pdf`);
+      resolve(true);
+    } catch (error) {
+      console.error("PDF export error:", error);
+      reject(error);
+    }
   });
-
-  // Footer
-  const pageCount = doc.internal.getNumberOfPages();
-  for (let i = 1; i <= pageCount; i++) {
-    doc.setPage(i);
-    doc.setFontSize(7);
-    doc.setTextColor(100, 116, 139);
-    doc.text(`Page ${i} of ${pageCount}`, pageW - 14, pageH - 8, { align: "right" });
-    doc.text("Confidential - School Inventory", 14, pageH - 8);
-  }
-
-  doc.save(`${filename}.pdf`);
 };
 
-// Items PDF Export (rich report with categories)
-export const exportItemsToPDF = (items) => {
-  if (!items || items.length === 0) {
-    alert("No items to export");
-    return;
-  }
-
-  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
-  const pageW = doc.internal.pageSize.getWidth();
-  const pageH = doc.internal.pageSize.getHeight();
-
-  // Header
-  doc.setFillColor(15, 23, 42);
-  doc.rect(0, 0, pageW, 20, "F");
-  doc.setFontSize(14);
-  doc.setTextColor(255, 255, 255);
-  doc.text("School Inventory - Items Report", 14, 12);
-  doc.setFontSize(8);
-  doc.setTextColor(200, 200, 200);
-  doc.text(fmtDate(), pageW - 14, 12, { align: "right" });
-
-  // Prepare table data
-  const tableBody = items.map((item, idx) => [
-    idx + 1,
-    safe(item.name),
-    safe(item.category?.name || "-"),
-    safe(item.assetType?.replace(/_/g, " ") || "-"),
-    item.currentQuantity || 0,
-    safe(item.unit || "-"),
-    safe(item.condition || "-"),
-    safe(item.location || "-"),
-    item.unitPrice ? `${item.unitPrice.toLocaleString()}` : "0",
-    item.unitPrice && item.currentQuantity ? `${(item.unitPrice * item.currentQuantity).toLocaleString()}` : "0"
-  ]);
-
-  // Add table using doc.autoTable
-  doc.autoTable({
-    head: [["#", "Item Name", "Category", "Type", "Qty", "Unit", "Condition", "Location", "Unit Price", "Total Value"]],
-    body: tableBody,
-    startY: 25,
-    margin: { left: 10, right: 10 },
-    theme: "striped",
-    headStyles: { fillColor: [79, 70, 229], textColor: [255, 255, 255], fontSize: 8, fontStyle: "bold" },
-    bodyStyles: { fontSize: 7 },
-    alternateRowStyles: { fillColor: [241, 245, 249] }
-  });
-
-  // Footer
-  const pageCount = doc.internal.getNumberOfPages();
-  for (let i = 1; i <= pageCount; i++) {
-    doc.setPage(i);
-    doc.setFontSize(7);
-    doc.setTextColor(100, 116, 139);
-    doc.text(`Page ${i} of ${pageCount}`, pageW - 14, pageH - 8, { align: "right" });
-    doc.text("Confidential - School Inventory", 14, pageH - 8);
-  }
-
-  doc.save(`Items_Report_${new Date().toISOString().slice(0, 10)}.pdf`);
-};
-
-// Export to Excel
+// Export to Excel with dynamic school name
 export const exportToExcel = (data, columns, filename) => {
-  if (!data || data.length === 0) {
-    alert("No data to export");
-    return;
-  }
-
-  const worksheetData = [
-    columns.map(col => col.label),
-    ...data.map(row => columns.map(col => row[col.key] !== undefined && row[col.key] !== null ? row[col.key] : "-"))
-  ];
-  
-  const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, "Data");
-  
-  // Auto-size columns
-  const maxWidth = columns.map((_, idx) => {
-    let max = columns[idx].label.length;
-    data.forEach((row) => {
-      const val = String(row[columns[idx].key] || "-").length;
-      if (val > max) max = val;
-    });
-    return { wch: Math.min(max + 2, 30) };
+  return new Promise((resolve, reject) => {
+    try {
+      const schoolName = getSchoolName();
+      
+      if (!data || data.length === 0) {
+        reject(new Error("No data to export"));
+        return;
+      }
+      
+      const worksheetData = [
+        [`${schoolName}`],
+        [`Report Generated: ${new Date().toLocaleString()}`],
+        [`Total Records: ${data.length}`],
+        [],
+        columns.map(col => col.label),
+        ...data.map(row => columns.map(col => {
+          let value = row[col.key];
+          if (value === undefined || value === null) return "-";
+          if (typeof value === "object") return JSON.stringify(value);
+          return value;
+        }))
+      ];
+      
+      const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, filename.substring(0, 31));
+      
+      // Merge title cells
+      if (!worksheet['!merges']) worksheet['!merges'] = [];
+      const lastCol = columns.length - 1;
+      worksheet['!merges'].push({ s: { r: 0, c: 0 }, e: { r: 0, c: lastCol } });
+      worksheet['!merges'].push({ s: { r: 1, c: 0 }, e: { r: 1, c: lastCol } });
+      worksheet['!merges'].push({ s: { r: 2, c: 0 }, e: { r: 2, c: lastCol } });
+      
+      // Style header row
+      const headerRange = XLSX.utils.decode_range(worksheet['!ref']);
+      for (let C = headerRange.s.c; C <= headerRange.e.c; ++C) {
+        const address = XLSX.utils.encode_col(C) + "5";
+        if (!worksheet[address]) continue;
+        worksheet[address].s = {
+          font: { bold: true, color: { rgb: "FFFFFF" } },
+          fill: { fgColor: { rgb: "2980B9" } },
+          alignment: { horizontal: "center", vertical: "center" }
+        };
+      }
+      
+      // Auto-size columns
+      const maxWidth = columns.map((_, idx) => {
+        let max = (columns[idx].label || "").length;
+        data.forEach(row => {
+          const val = String(row[columns[idx].key] || "-").length;
+          if (val > max) max = val;
+        });
+        return { wch: Math.min(max + 3, 40) };
+      });
+      worksheet["!cols"] = maxWidth;
+      
+      XLSX.writeFile(workbook, `${filename}.xlsx`);
+      resolve(true);
+    } catch (error) {
+      console.error("Excel export error:", error);
+      reject(error);
+    }
   });
-  worksheet["!cols"] = maxWidth;
-  
-  XLSX.writeFile(workbook, `${filename}.xlsx`);
 };
 
 // Export to CSV
 export const exportToCSV = (data, columns, filename) => {
-  if (!data || data.length === 0) {
-    alert("No data to export");
-    return;
-  }
+  return new Promise((resolve, reject) => {
+    try {
+      const headers = columns.map(col => `"${col.label}"`).join(",");
+      const rows = data.map(row => 
+        columns.map(col => {
+          let value = row[col.key] || "-";
+          if (typeof value === "string" && (value.includes(",") || value.includes('"'))) {
+            value = `"${value.replace(/"/g, '""')}"`;
+          }
+          return value;
+        }).join(",")
+      );
+      
+      const csvContent = [headers, ...rows].join("\n");
+      const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+      saveAs(blob, `${filename}.csv`);
+      resolve(true);
+    } catch (error) {
+      console.error("CSV export error:", error);
+      reject(error);
+    }
+  });
+};
 
-  const headers = columns.map(col => `"${col.label}"`).join(",");
-  const rows = data.map(row => 
-    columns.map(col => {
-      let val = row[col.key] !== undefined && row[col.key] !== null ? row[col.key] : "-";
-      val = String(val);
-      if (val.includes(",") || val.includes('"')) {
-        val = `"${val.replace(/"/g, '""')}"`;
+// Export items to PDF
+export const exportItemsToPDF = (items) => {
+  return new Promise((resolve, reject) => {
+    try {
+      const schoolName = getSchoolName();
+      
+      if (!items || items.length === 0) {
+        reject(new Error("No items to export"));
+        return;
       }
-      return val;
-    }).join(",")
-  );
-  
-  const blob = new Blob(["\uFEFF" + [headers, ...rows].join("\n")], { type: "text/csv;charset=utf-8;" });
-  saveAs(blob, `${filename}.csv`);
+      
+      const doc = new jsPDF({
+        orientation: "landscape",
+        unit: "mm",
+        format: "a4"
+      });
+      
+      const pageWidth = doc.internal.pageSize.getWidth();
+      
+      doc.setFillColor(41, 128, 185);
+      doc.rect(0, 0, pageWidth, 35, "F");
+      
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(16);
+      doc.setFont("helvetica", "bold");
+      doc.text(schoolName, pageWidth / 2, 18, { align: "center" });
+      
+      doc.setFontSize(11);
+      doc.text("Inventory Items Report", pageWidth / 2, 28, { align: "center" });
+      
+      doc.setTextColor(33, 33, 33);
+      
+      const columns = [
+        { label: "Item Name", key: "name" },
+        { label: "Category", key: "category" },
+        { label: "Quantity", key: "quantity" },
+        { label: "Unit", key: "unit" },
+        { label: "Location", key: "location" }
+      ];
+      
+      const tableData = items.map(item => ({
+        name: item.name,
+        category: item.category?.name || "-",
+        quantity: item.quantity,
+        unit: item.unit || "pcs",
+        location: item.location || "-"
+      }));
+      
+      const tableBody = tableData.map(row => 
+        columns.map(col => String(row[col.key] || "-"))
+      );
+      
+      doc.autoTable({
+        head: [columns.map(c => c.label)],
+        body: tableBody,
+        startY: 45,
+        theme: "striped",
+        headStyles: {
+          fillColor: [41, 128, 185],
+          textColor: [255, 255, 255],
+          fontSize: 9,
+          fontStyle: "bold"
+        },
+        bodyStyles: { fontSize: 8 },
+        margin: { top: 45, left: 10, right: 10 }
+      });
+      
+      doc.save(`inventory_items_${new Date().toISOString().slice(0, 10)}.pdf`);
+      resolve(true);
+    } catch (error) {
+      console.error("Items PDF export error:", error);
+      reject(error);
+    }
+  });
 };

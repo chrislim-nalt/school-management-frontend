@@ -56,7 +56,7 @@ export default function AdminDashboard() {
                 </div>
             </div>
 
-            {/* Stats Cards - Compact Grid */}
+            {/* Stats Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div className="bg-white rounded-xl shadow-md p-3 hover:shadow-lg transition-all">
                     <div className="flex items-center justify-between">
@@ -85,11 +85,11 @@ export default function AdminDashboard() {
                 <div className="bg-white rounded-xl shadow-md p-3 hover:shadow-lg transition-all">
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-slate-400">Pending Approval</p>
-                            <p className="text-2xl font-bold text-amber-600">{stats?.schools?.pending || 0}</p>
+                            <p className="text-xs text-slate-400">Suspended</p>
+                            <p className="text-2xl font-bold text-amber-600">{stats?.schools?.suspended || 0}</p>
                         </div>
                         <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
-                            <span className="text-xl">⏳</span>
+                            <span className="text-xl">⏸️</span>
                         </div>
                     </div>
                 </div>
@@ -107,11 +107,56 @@ export default function AdminDashboard() {
                 </div>
             </div>
 
-            {/* Quick Actions & Subscription */}
+            {/* User Type Distribution */}
+            <div className="bg-white rounded-xl shadow-md overflow-hidden">
+                <div className="px-4 py-3 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-slate-100">
+                    <div className="flex items-center gap-2">
+                        <span className="text-lg">👥</span>
+                        <h2 className="text-sm font-semibold text-slate-800">User Type Distribution</h2>
+                    </div>
+                </div>
+                <div className="p-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div className="text-center">
+                            <p className="text-xs text-slate-500">👑 Super Admin</p>
+                            <p className="text-xl font-bold text-indigo-600">{stats?.users?.byUserType?.superadmin || 0}</p>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-xs text-slate-500">🏫 School Admin</p>
+                            <p className="text-xl font-bold text-blue-600">{stats?.users?.byUserType?.school_admin || 0}</p>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-xs text-slate-500">👨‍🏫 Teachers</p>
+                            <p className="text-xl font-bold text-emerald-600">{stats?.users?.byUserType?.teacher || 0}</p>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-xs text-slate-500">💰 Bursars</p>
+                            <p className="text-xl font-bold text-amber-600">{stats?.users?.byUserType?.bursar || 0}</p>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-xs text-slate-500">📦 Stock Keepers</p>
+                            <p className="text-xl font-bold text-purple-600">{stats?.users?.byUserType?.stock_keeper || 0}</p>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-xs text-slate-500">🤝 Customer Care</p>
+                            <p className="text-xl font-bold text-rose-600">{stats?.users?.byUserType?.customer_care || 0}</p>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-xs text-slate-500">👤 Staff</p>
+                            <p className="text-xl font-bold text-slate-600">{stats?.users?.byUserType?.staff || 0}</p>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-xs text-slate-500">👁️ Viewers</p>
+                            <p className="text-xl font-bold text-cyan-600">{stats?.users?.byUserType?.viewer || 0}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Quick Actions */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Quick Actions */}
                 <div className="bg-white rounded-xl shadow-md overflow-hidden">
-                    <div className="px-4 py-3 border-b border-slate-100">
+                    <div className="px-4 py-3 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-slate-100">
                         <div className="flex items-center gap-2">
                             <span className="text-lg">⚡</span>
                             <h2 className="text-sm font-semibold text-slate-800">Quick Actions</h2>
@@ -143,7 +188,7 @@ export default function AdminDashboard() {
                 
                 {/* Subscription Overview */}
                 <div className="bg-white rounded-xl shadow-md overflow-hidden">
-                    <div className="px-4 py-3 border-b border-slate-100">
+                    <div className="px-4 py-3 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-slate-100">
                         <div className="flex items-center gap-2">
                             <span className="text-lg">💳</span>
                             <h2 className="text-sm font-semibold text-slate-800">Subscription Overview</h2>
@@ -155,9 +200,15 @@ export default function AdminDashboard() {
                                 {stats.subscriptions.map((sub) => (
                                     <div key={sub._id} className="flex justify-between items-center py-2 border-b border-slate-100 last:border-0">
                                         <div className="flex items-center gap-2">
-                                            <span className="text-sm">{sub._id === "free_trial" ? "📦" : "💎"}</span>
+                                            <span className="text-sm">
+                                                {sub._id === "free_trial" ? "📦" : 
+                                                 sub._id === "monthly" ? "📅" : 
+                                                 sub._id === "yearly" ? "🌟" : "💎"}
+                                            </span>
                                             <span className="text-sm font-medium text-slate-700 capitalize">
-                                                {sub._id === "free_trial" ? "Free Trial" : sub._id}
+                                                {sub._id === "free_trial" ? "Free Trial" : 
+                                                 sub._id === "monthly" ? "Monthly" : 
+                                                 sub._id === "yearly" ? "Yearly" : "Lifetime"}
                                             </span>
                                         </div>
                                         <span className="text-sm font-semibold text-slate-800">{sub.count}</span>
@@ -176,7 +227,7 @@ export default function AdminDashboard() {
 
             {/* Recent Schools Table */}
             <div className="bg-white rounded-xl shadow-md overflow-hidden">
-                <div className="px-4 py-3 border-b border-slate-100">
+                <div className="px-4 py-3 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-slate-100">
                     <div className="flex items-center gap-2">
                         <span className="text-lg">🆕</span>
                         <h2 className="text-sm font-semibold text-slate-800">Recent School Registrations</h2>
@@ -212,7 +263,7 @@ export default function AdminDashboard() {
                                             "bg-rose-100 text-rose-700"
                                         }`}>
                                             {school.status === "active" ? "✅ Active" : 
-                                             school.status === "pending" ? "⏳ Pending" : "❌ Inactive"}
+                                             school.status === "pending" ? "⏳ Pending" : "❌ Suspended"}
                                         </span>
                                     </td>
                                     <td className="px-4 py-2.5 text-xs text-slate-500">
@@ -226,7 +277,7 @@ export default function AdminDashboard() {
                                             View →
                                         </Link>
                                     </td>
-                                 </tr>
+                                </tr>
                             ))}
                             {(!stats?.recentSchools || stats.recentSchools.length === 0) && (
                                 <tr>
@@ -240,15 +291,47 @@ export default function AdminDashboard() {
                 </div>
             </div>
 
-            <style>{`
-                @keyframes fade-in {
-                    from { opacity: 0; transform: translateY(10px); }
-                    to { opacity: 1; transform: translateY(0); }
-                }
-                .animate-fade-in {
-                    animation: fade-in 0.3s ease-out forwards;
-                }
-            `}</style>
+            {/* Recent Users */}
+            {stats?.recentUsers && stats.recentUsers.length > 0 && (
+                <div className="bg-white rounded-xl shadow-md overflow-hidden">
+                    <div className="px-4 py-3 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-slate-100">
+                        <div className="flex items-center gap-2">
+                            <span className="text-lg">👤</span>
+                            <h2 className="text-sm font-semibold text-slate-800">Recent User Registrations</h2>
+                        </div>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-slate-200 text-sm">
+                            <thead className="bg-slate-50">
+                                <tr>
+                                    <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">Name</th>
+                                    <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">Email</th>
+                                    <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">School</th>
+                                    <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">Role</th>
+                                    <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">Created</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {stats.recentUsers.map((user) => (
+                                    <tr key={user._id} className="hover:bg-slate-50 transition-colors">
+                                        <td className="px-4 py-2.5 text-sm font-medium text-slate-800">{user.name}</td>
+                                        <td className="px-4 py-2.5 text-xs text-slate-600">{user.email}</td>
+                                        <td className="px-4 py-2.5 text-xs text-slate-600">{user.school?.name || "-"}</td>
+                                        <td className="px-4 py-2.5">
+                                            <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+                                                {user.userType || user.role}
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-2.5 text-xs text-slate-500">
+                                            {new Date(user.createdAt).toLocaleDateString()}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

@@ -19,8 +19,17 @@ export default function AdminSchools() {
         adminName: "",
         adminEmail: "",
         adminPassword: "",
+        adminUserType: "school_admin",
         plan: "free_trial",
     });
+
+    const userTypes = [
+        { value: "school_admin", label: "School Administrator", icon: "👑" },
+        { value: "teacher", label: "Teacher", icon: "👨‍🏫" },
+        { value: "bursar", label: "Bursar", icon: "💰" },
+        { value: "stock_keeper", label: "Stock Keeper", icon: "📦" },
+        { value: "customer_care", label: "Customer Care", icon: "🤝" },
+    ];
 
     const subscriptionPlans = [
         { value: "free_trial", label: "Free Trial", price: "Free", duration: "14 days", icon: "🎁", color: "slate" },
@@ -61,6 +70,7 @@ export default function AdminSchools() {
             adminName: "",
             adminEmail: "",
             adminPassword: "",
+            adminUserType: "school_admin",
             plan: "free_trial",
         });
     };
@@ -73,7 +83,7 @@ export default function AdminSchools() {
         e.preventDefault();
         setLoading(true);
         try {
-            const response = await API.post("/admin/schools/register", form);
+            const response = await API.post("/admin/schools", form);
             setNewCredentials(response.data.credentials);
             setShowCredentialsModal(true);
             setMessage({ type: "success", text: `School "${form.name}" registered!` });
@@ -92,7 +102,7 @@ export default function AdminSchools() {
         setIsSharing(true);
         try {
             const schoolDetail = await API.get(`/admin/schools/${schoolId}`);
-            const adminUser = schoolDetail.data.users.find(user => user.role === "admin");
+            const adminUser = schoolDetail.data.users.find(user => user.role === "admin" || user.userType === "school_admin");
             
             if (!adminUser) {
                 setMessage({ type: "error", text: "No admin user found" });
@@ -146,6 +156,21 @@ export default function AdminSchools() {
             setTimeout(() => setMessage({ type: "", text: "" }), 3000);
         } catch (error) {
             setMessage({ type: "error", text: "Failed to suspend" });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleActivate = async (id) => {
+        if (!window.confirm("Activate this school? All users will be reactivated.")) return;
+        setLoading(true);
+        try {
+            await API.put(`/admin/schools/${id}/activate`);
+            setMessage({ type: "success", text: "School activated!" });
+            fetchSchools();
+            setTimeout(() => setMessage({ type: "", text: "" }), 3000);
+        } catch (error) {
+            setMessage({ type: "error", text: "Failed to activate" });
         } finally {
             setLoading(false);
         }
@@ -322,6 +347,7 @@ export default function AdminSchools() {
                         </div>
                         
                         <form onSubmit={handleAddSchool} className="p-5 space-y-4">
+                            {/* School Information */}
                             <div>
                                 <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">🏛️ School Information</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -344,6 +370,7 @@ export default function AdminSchools() {
                                 </div>
                             </div>
 
+                            {/* Administrator Account */}
                             <div>
                                 <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">👤 Administrator Account</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -359,9 +386,22 @@ export default function AdminSchools() {
                                         <label className="block text-xs font-semibold text-slate-600 mb-1">Admin Password</label>
                                         <input type="text" value={form.adminPassword} onChange={(e) => setForm({ ...form, adminPassword: e.target.value })} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all outline-none" placeholder="Auto-generate if empty" />
                                     </div>
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-600 mb-1">Admin User Type</label>
+                                        <select
+                                            value={form.adminUserType}
+                                            onChange={(e) => setForm({ ...form, adminUserType: e.target.value })}
+                                            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all outline-none"
+                                        >
+                                            {userTypes.map(type => (
+                                                <option key={type.value} value={type.value}>{type.icon} {type.label}</option>
+                                            ))}
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
 
+                            {/* Subscription Plan */}
                             <div>
                                 <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">💰 Subscription Plan</h3>
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
@@ -480,6 +520,7 @@ export default function AdminSchools() {
                                         <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">Plan</th>
                                         <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">Status</th>
                                         <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">Registered</th>
+                                        <th className="px-4 py-2 text-center text-xs font-semibold text-slate-600">Users</th>
                                         <th className="px-4 py-2 text-center text-xs font-semibold text-slate-600">Actions</th>
                                     </tr>
                                 </thead>
@@ -510,13 +551,21 @@ export default function AdminSchools() {
                                                 <td className="px-4 py-2.5 text-xs text-slate-500">
                                                     {new Date(school.createdAt).toLocaleDateString()}
                                                 </td>
+                                                <td className="px-4 py-2.5 text-center">
+                                                    <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                                                        {school.stats?.userCount || 0}
+                                                    </span>
+                                                </td>
                                                 <td className="px-4 py-2.5 text-center whitespace-nowrap">
-                                                    <div className="flex items-center justify-center gap-1">
+                                                    <div className="flex items-center justify-center gap-1 flex-wrap">
                                                         {school.status === "pending" && (
                                                             <button onClick={() => handleApprove(school._id)} className="px-2 py-1 bg-emerald-600 text-white rounded-lg text-xs font-medium hover:bg-emerald-700 transition">Approve</button>
                                                         )}
                                                         {school.status === "active" && (
                                                             <button onClick={() => handleSuspend(school._id)} className="px-2 py-1 bg-amber-600 text-white rounded-lg text-xs font-medium hover:bg-amber-700 transition">Suspend</button>
+                                                        )}
+                                                        {school.status === "suspended" && (
+                                                            <button onClick={() => handleActivate(school._id)} className="px-2 py-1 bg-emerald-600 text-white rounded-lg text-xs font-medium hover:bg-emerald-700 transition">Activate</button>
                                                         )}
                                                         <button onClick={() => handleShareCredentials(school._id, school.name)} disabled={isSharing} className="px-2 py-1 bg-purple-600 text-white rounded-lg text-xs font-medium hover:bg-purple-700 transition disabled:opacity-50">Share</button>
                                                         <Link to={`/admin/schools/${school._id}`} className="px-2 py-1 bg-indigo-600 text-white rounded-lg text-xs font-medium hover:bg-indigo-700 transition">View</Link>
@@ -548,14 +597,6 @@ export default function AdminSchools() {
                     </>
                 )}
             </div>
-
-            <style>{`
-                @keyframes slide-in {
-                    from { transform: translateX(100%); opacity: 0; }
-                    to { transform: translateX(0); opacity: 1; }
-                }
-                .animate-slide-in { animation: slide-in 0.3s ease-out; }
-            `}</style>
         </div>
     );
 }

@@ -10,23 +10,44 @@ export default function AdminUsers() {
     const [showCredentials, setShowCredentials] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage] = useState(10);
+    const [filterUserType, setFilterUserType] = useState("");
+    const [filterStatus, setFilterStatus] = useState("");
+    const [searchTerm, setSearchTerm] = useState("");
     const [form, setForm] = useState({
         name: "",
         email: "",
         password: "",
         schoolId: "",
-        role: "staff"
+        role: "staff",
+        userType: "staff",
+        permissions: null
     });
+
+    const userTypes = [
+        { value: "superadmin", label: "Super Admin", icon: "👑", color: "purple" },
+        { value: "school_admin", label: "School Admin", icon: "🏫", color: "blue" },
+        { value: "teacher", label: "Teacher", icon: "👨‍🏫", color: "emerald" },
+        { value: "bursar", label: "Bursar", icon: "💰", color: "amber" },
+        { value: "stock_keeper", label: "Stock Keeper", icon: "📦", color: "indigo" },
+        { value: "customer_care", label: "Customer Care", icon: "🤝", color: "rose" },
+        { value: "staff", label: "Staff", icon: "👤", color: "slate" },
+        { value: "viewer", label: "Viewer", icon: "👁️", color: "cyan" },
+    ];
 
     useEffect(() => {
         fetchData();
-    }, []);
+    }, [filterUserType, filterStatus, searchTerm]);
 
     const fetchData = async () => {
         setLoading(true);
         try {
+            const params = {};
+            if (filterUserType) params.userType = filterUserType;
+            if (filterStatus) params.isActive = filterStatus === "active";
+            if (searchTerm) params.search = searchTerm;
+            
             const [usersRes, schoolsRes] = await Promise.all([
-                API.get("/admin/users"),
+                API.get("/admin/users", { params }),
                 API.get("/admin/schools")
             ]);
             setUsers(usersRes.data);
@@ -49,16 +70,22 @@ export default function AdminUsers() {
 
         setLoading(true);
         try {
-            const response = await API.post("/admin/users", form);
+            const response = await API.post("/admin/users", {
+                name: form.name,
+                email: form.email,
+                password: form.password || undefined,
+                schoolId: form.schoolId,
+                role: form.role,
+                userType: form.userType,
+            });
             
-            // Show credentials modal
             if (response.data.credentials) {
                 setShowCredentials(response.data.credentials);
             }
             
             setMessage({ type: "success", text: response.data.message || "User created successfully!" });
             setShowForm(false);
-            setForm({ name: "", email: "", password: "", schoolId: "", role: "staff" });
+            setForm({ name: "", email: "", password: "", schoolId: "", role: "staff", userType: "staff", permissions: null });
             fetchData();
             setTimeout(() => setMessage({ type: "", text: "" }), 3000);
         } catch (error) {
@@ -79,42 +106,69 @@ export default function AdminUsers() {
             fetchData();
             setTimeout(() => setMessage({ type: "", text: "" }), 3000);
         } catch (error) {
-            setMessage({ type: "error", text: "Failed to update user" });
+            setMessage({ type: "error", text: error.response?.data?.message || "Failed to update user" });
         } finally {
             setLoading(false);
         }
     };
 
-    const handleRoleChange = async (id, newRole) => {
+    const handleRoleChange = async (id, newUserType, newRole) => {
         setLoading(true);
         try {
-            await API.put(`/admin/users/${id}`, { role: newRole });
+            await API.put(`/admin/users/${id}`, { userType: newUserType, role: newRole });
             setMessage({ type: "success", text: "User role updated!" });
             fetchData();
             setTimeout(() => setMessage({ type: "", text: "" }), 3000);
         } catch (error) {
-            setMessage({ type: "error", text: "Failed to update role" });
+            setMessage({ type: "error", text: error.response?.data?.message || "Failed to update role" });
         } finally {
             setLoading(false);
         }
     };
 
-    const getRoleBadgeClass = (role) => {
-        switch(role) {
-            case "admin": return "bg-blue-100 text-blue-700";
-            case "manager": return "bg-emerald-100 text-emerald-700";
-            case "staff": return "bg-slate-100 text-slate-700";
-            default: return "bg-gray-100 text-gray-700";
+    const handleResetPassword = async (userId, userName) => {
+        if (!window.confirm(`Reset password for ${userName}? New credentials will be generated.`)) return;
+        
+        setLoading(true);
+        try {
+            const response = await API.post(`/admin/users/${userId}/reset-password`);
+            if (response.data.credentials) {
+                setShowCredentials({ ...response.data.credentials, isPasswordReset: true });
+                setMessage({ type: "success", text: `Password reset for ${userName}!` });
+            }
+            fetchData();
+            setTimeout(() => setMessage({ type: "", text: "" }), 3000);
+        } catch (error) {
+            setMessage({ type: "error", text: error.response?.data?.message || "Failed to reset password" });
+        } finally {
+            setLoading(false);
         }
     };
 
-    const getRoleIcon = (role) => {
-        switch(role) {
-            case "admin": return "👑";
-            case "manager": return "📋";
-            case "staff": return "👤";
-            default: return "👤";
+    const handleDeleteUser = async (id, userName) => {
+        if (!window.confirm(`Delete user "${userName}"? This action cannot be undone.`)) return;
+        
+        setLoading(true);
+        try {
+            await API.delete(`/admin/users/${id}`);
+            setMessage({ type: "success", text: `User "${userName}" deleted!` });
+            fetchData();
+            setTimeout(() => setMessage({ type: "", text: "" }), 3000);
+        } catch (error) {
+            setMessage({ type: "error", text: error.response?.data?.message || "Failed to delete user" });
+        } finally {
+            setLoading(false);
         }
+    };
+
+    const getUserTypeInfo = (userType) => {
+        return userTypes.find(t => t.value === userType) || userTypes[6];
+    };
+
+    const copyToClipboard = (text, label) => {
+        navigator.clipboard.writeText(text);
+        setMessage({ type: "success", text: `${label} copied!` });
+        setTimeout(() => setMessage({ type: "", text: "" }), 2000);
     };
 
     // Pagination
@@ -165,10 +219,10 @@ export default function AdminUsers() {
             {showCredentials && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
                     <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
-                        <div className="bg-gradient-to-r from-emerald-500 to-teal-500 px-6 py-4">
+                        <div className={`px-6 py-4 ${showCredentials.isPasswordReset ? 'bg-gradient-to-r from-amber-500 to-orange-500' : 'bg-gradient-to-r from-emerald-500 to-teal-500'}`}>
                             <div className="flex items-center gap-2">
-                                <span className="text-2xl">🎉</span>
-                                <h3 className="text-lg font-bold text-white">User Created Successfully!</h3>
+                                <span className="text-2xl">{showCredentials.isPasswordReset ? "🔄" : "🎉"}</span>
+                                <h3 className="text-lg font-bold text-white">{showCredentials.isPasswordReset ? 'Password Reset!' : 'User Created Successfully!'}</h3>
                             </div>
                         </div>
                         <div className="p-6">
@@ -192,22 +246,23 @@ export default function AdminUsers() {
                                 </div>
                                 <div className="flex justify-between items-center border-b border-slate-200 pb-2">
                                     <span className="text-xs font-semibold text-slate-500">SCHOOL:</span>
-                                    <span className="text-sm text-slate-800">{showCredentials.school} ({showCredentials.schoolCode})</span>
+                                    <span className="text-sm text-slate-800">{showCredentials.schoolName || showCredentials.school} ({showCredentials.schoolCode})</span>
                                 </div>
                                 <div className="flex justify-between items-center">
                                     <span className="text-xs font-semibold text-slate-500">ROLE:</span>
-                                    <span className="text-sm capitalize">{showCredentials.role}</span>
+                                    <span className="text-sm capitalize">{showCredentials.userTypeDisplay || showCredentials.userType || showCredentials.role}</span>
                                 </div>
                             </div>
                             <div className="mt-6 flex gap-3">
                                 <button
                                     onClick={() => {
-                                        navigator.clipboard.writeText(`Email: ${showCredentials.email}\nPassword: ${showCredentials.password}\nLogin: ${showCredentials.loginUrl}`);
+                                        const credText = `Email: ${showCredentials.email}\nPassword: ${showCredentials.password}\nSchool Code: ${showCredentials.schoolCode}\nLogin: ${showCredentials.loginUrl}`;
+                                        navigator.clipboard.writeText(credText);
                                         setMessage({ type: "success", text: "Credentials copied to clipboard!" });
                                     }}
                                     className="flex-1 bg-indigo-500 hover:bg-indigo-600 text-white py-2 rounded-lg font-semibold text-sm transition"
                                 >
-                                    📋 Copy Credentials
+                                    📋 Copy All
                                 </button>
                                 <button
                                     onClick={() => setShowCredentials(null)}
@@ -241,6 +296,41 @@ export default function AdminUsers() {
                             {showForm ? "Close Form" : "Add User"}
                         </button>
                     </div>
+                </div>
+            </div>
+
+            {/* Filters */}
+            <div className="bg-white rounded-xl shadow-md p-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <div className="relative">
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400">🔍</span>
+                        <input
+                            type="text"
+                            placeholder="Search by name or email..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none"
+                        />
+                    </div>
+                    <select
+                        value={filterUserType}
+                        onChange={(e) => setFilterUserType(e.target.value)}
+                        className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none"
+                    >
+                        <option value="">All User Types</option>
+                        {userTypes.map(type => (
+                            <option key={type.value} value={type.value}>{type.icon} {type.label}</option>
+                        ))}
+                    </select>
+                    <select
+                        value={filterStatus}
+                        onChange={(e) => setFilterStatus(e.target.value)}
+                        className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none"
+                    >
+                        <option value="">All Status</option>
+                        <option value="active">✅ Active</option>
+                        <option value="inactive">❌ Inactive</option>
+                    </select>
                 </div>
             </div>
 
@@ -303,15 +393,25 @@ export default function AdminUsers() {
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1">Role</label>
+                                <label className="block text-xs font-semibold text-slate-600 mb-1">User Type *</label>
                                 <select
-                                    value={form.role}
-                                    onChange={(e) => setForm({ ...form, role: e.target.value })}
+                                    value={form.userType}
+                                    onChange={(e) => {
+                                        const newUserType = e.target.value;
+                                        let newRole = "staff";
+                                        if (newUserType === "school_admin") newRole = "admin";
+                                        else if (newUserType === "teacher") newRole = "manager";
+                                        else if (newUserType === "bursar") newRole = "manager";
+                                        else if (newUserType === "stock_keeper") newRole = "staff";
+                                        else if (newUserType === "customer_care") newRole = "staff";
+                                        else if (newUserType === "viewer") newRole = "viewer";
+                                        setForm({ ...form, userType: newUserType, role: newRole });
+                                    }}
                                     className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all outline-none"
                                 >
-                                    <option value="admin">👑 Admin</option>
-                                    <option value="manager">📋 Manager</option>
-                                    <option value="staff">👤 Staff</option>
+                                    {userTypes.filter(t => t.value !== "superadmin").map(type => (
+                                        <option key={type.value} value={type.value}>{type.icon} {type.label}</option>
+                                    ))}
                                 </select>
                             </div>
                         </div>
@@ -356,64 +456,89 @@ export default function AdminUsers() {
                                         <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">User</th>
                                         <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">Email</th>
                                         <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">School</th>
-                                        <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">Role</th>
+                                        <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">Type</th>
                                         <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">Status</th>
                                         <th className="px-4 py-2 text-center text-xs font-semibold text-slate-600">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
-                                    {currentUsers.map((user) => (
-                                        <tr key={user._id} className="hover:bg-slate-50 transition-colors">
-                                            <td className="px-4 py-2.5">
-                                                <div className="flex items-center gap-2">
-                                                    <div className="w-8 h-8 rounded-full bg-gradient-to-r from-indigo-100 to-purple-100 flex items-center justify-center">
-                                                        <span className="text-sm">{getRoleIcon(user.role)}</span>
+                                    {currentUsers.map((user) => {
+                                        const userTypeInfo = getUserTypeInfo(user.userType);
+                                        return (
+                                            <tr key={user._id} className="hover:bg-slate-50 transition-colors">
+                                                <td className="px-4 py-2.5">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className={`w-8 h-8 rounded-full bg-${userTypeInfo.color}-100 flex items-center justify-center`}>
+                                                            <span className="text-sm">{userTypeInfo.icon}</span>
+                                                        </div>
+                                                        <div>
+                                                            <p className="font-medium text-slate-800 text-sm">{user.name}</p>
+                                                            {user.userType === "school_admin" && <span className="text-xs text-indigo-600">(School Admin)</span>}
+                                                        </div>
                                                     </div>
-                                                    <div>
-                                                        <p className="font-medium text-slate-800 text-sm">{user.name}</p>
-                                                        {user.role === "admin" && <span className="text-xs text-indigo-600">(School Admin)</span>}
+                                                </td>
+                                                <td className="px-4 py-2.5 text-xs text-slate-600">{user.email}</td>
+                                                <td className="px-4 py-2.5">
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="text-xs">🏫</span>
+                                                        <span className="text-xs text-slate-600">{user.school?.name || "-"}</span>
                                                     </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-2.5 text-xs text-slate-600">{user.email}</td>
-                                            <td className="px-4 py-2.5">
-                                                <div className="flex items-center gap-1">
-                                                    <span className="text-xs">🏫</span>
-                                                    <span className="text-xs text-slate-600">{user.school?.name || "-"}</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-2.5">
-                                                <select
-                                                    value={user.role}
-                                                    onChange={(e) => handleRoleChange(user._id, e.target.value)}
-                                                    className={`px-2 py-1 rounded-lg text-xs font-medium border-0 focus:ring-2 focus:ring-indigo-400 ${getRoleBadgeClass(user.role)}`}
-                                                >
-                                                    <option value="admin">👑 Admin</option>
-                                                    <option value="manager">📋 Manager</option>
-                                                    <option value="staff">👤 Staff</option>
-                                                </select>
-                                            </td>
-                                            <td className="px-4 py-2.5">
-                                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${user.isActive ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
-                                                    {user.isActive ? "✅ Active" : "❌ Inactive"}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-2.5 text-center">
-                                                <div className="flex gap-1 justify-center">
-                                                    <button
-                                                        onClick={() => handleToggleStatus(user._id, user.isActive)}
-                                                        className={`px-3 py-1 rounded-lg text-xs font-medium transition ${
-                                                            user.isActive 
-                                                                ? "bg-rose-600 hover:bg-rose-700 text-white" 
-                                                                : "bg-emerald-600 hover:bg-emerald-700 text-white"
-                                                        }`}
+                                                </td>
+                                                <td className="px-4 py-2.5">
+                                                    <select
+                                                        value={user.userType || user.role}
+                                                        onChange={(e) => {
+                                                            const newType = e.target.value;
+                                                            let newRole = "staff";
+                                                            if (newType === "school_admin") newRole = "admin";
+                                                            else if (newType === "teacher") newRole = "manager";
+                                                            else if (newType === "bursar") newRole = "manager";
+                                                            else if (newType === "stock_keeper") newRole = "staff";
+                                                            else if (newType === "customer_care") newRole = "staff";
+                                                            else if (newType === "viewer") newRole = "viewer";
+                                                            handleRoleChange(user._id, newType, newRole);
+                                                        }}
+                                                        className={`px-2 py-1 rounded-lg text-xs font-medium border-0 focus:ring-2 focus:ring-indigo-400 bg-${userTypeInfo.color}-100 text-${userTypeInfo.color}-700`}
                                                     >
-                                                        {user.isActive ? "Deactivate" : "Activate"}
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
+                                                        {userTypes.map(type => (
+                                                            <option key={type.value} value={type.value}>{type.icon} {type.label}</option>
+                                                        ))}
+                                                    </select>
+                                                </td>
+                                                <td className="px-4 py-2.5">
+                                                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${user.isActive ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
+                                                        {user.isActive ? "✅ Active" : "❌ Inactive"}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-2.5 text-center">
+                                                    <div className="flex gap-1 justify-center flex-wrap">
+                                                        <button
+                                                            onClick={() => handleToggleStatus(user._id, user.isActive)}
+                                                            className={`px-2 py-1 rounded-lg text-xs font-medium transition ${
+                                                                user.isActive 
+                                                                    ? "bg-rose-600 hover:bg-rose-700 text-white" 
+                                                                    : "bg-emerald-600 hover:bg-emerald-700 text-white"
+                                                            }`}
+                                                        >
+                                                            {user.isActive ? "Deactivate" : "Activate"}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleResetPassword(user._id, user.name)}
+                                                            className="px-2 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-medium transition"
+                                                        >
+                                                            🔄 Reset
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDeleteUser(user._id, user.name)}
+                                                            className="px-2 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-medium transition"
+                                                        >
+                                                            🗑️ Delete
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </div>
@@ -436,19 +561,6 @@ export default function AdminUsers() {
                     </>
                 )}
             </div>
-
-            <style>{`
-                @keyframes slide-in {
-                    from { transform: translateX(100%); opacity: 0; }
-                    to { transform: translateX(0); opacity: 1; }
-                }
-                @keyframes fade-in {
-                    from { opacity: 0; }
-                    to { opacity: 1; }
-                }
-                .animate-slide-in { animation: slide-in 0.3s ease-out; }
-                .animate-fade-in { animation: fade-in 0.2s ease-out; }
-            `}</style>
         </div>
     );
 }

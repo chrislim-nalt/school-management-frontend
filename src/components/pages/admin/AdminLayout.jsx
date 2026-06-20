@@ -6,7 +6,9 @@ export default function AdminLayout({ children }) {
     const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
     const [adminName, setAdminName] = useState("");
+    const [adminEmail, setAdminEmail] = useState("");
     const [hoveredItem, setHoveredItem] = useState(null);
+    const [showUserMenu, setShowUserMenu] = useState(false);
     const location = useLocation();
     const navigate = useNavigate();
 
@@ -26,18 +28,29 @@ export default function AdminLayout({ children }) {
         const token = localStorage.getItem("token");
         if (!token) navigate("/");
         const name = localStorage.getItem("userName");
+        const email = localStorage.getItem("userEmail");
         if (name) setAdminName(name);
+        if (email) setAdminEmail(email);
+        
+        // Also try to fetch from localStorage if not set
+        if (!name) {
+            const storedName = localStorage.getItem("userName");
+            if (storedName) setAdminName(storedName);
+        }
     }, [navigate]);
 
     // Close drawer on route change
     useEffect(() => {
         if (isMobile) setIsMobileDrawerOpen(false);
+        setShowUserMenu(false);
     }, [location.pathname, isMobile]);
 
     const handleLogout = () => {
         localStorage.removeItem("token");
         localStorage.removeItem("userName");
+        localStorage.removeItem("userEmail");
         localStorage.removeItem("userRole");
+        localStorage.removeItem("userType");
         localStorage.removeItem("schoolCode");
         localStorage.removeItem("schoolName");
         navigate("/");
@@ -58,6 +71,7 @@ export default function AdminLayout({ children }) {
         { path: "/admin", name: "Dashboard", icon: "📊", description: "Overview and statistics" },
         { path: "/admin/schools", name: "Schools", icon: "🏫", description: "Manage all schools" },
         { path: "/admin/users", name: "Users", icon: "👥", description: "Manage system users" },
+        { path: "/profile", name: "My Profile", icon: "👤", description: "Update your account" },
     ];
 
     const currentPage = menuItems.find((item) => item.path === location.pathname);
@@ -103,7 +117,7 @@ export default function AdminLayout({ children }) {
             )}
 
             {/* ═══════════════════════════════════════
-                DESKTOP SIDEBAR (unchanged)
+                DESKTOP SIDEBAR
             ═══════════════════════════════════════ */}
             {!isMobile && (
                 <div
@@ -125,7 +139,8 @@ export default function AdminLayout({ children }) {
                             </div>
                             <button
                                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                                className="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-800 flex-shrink-0"
+                                className="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-800 transition-all duration-200 flex-shrink-0"
+                                aria-label="Toggle sidebar"
                             >
                                 {isSidebarOpen ? "◀" : "▶"}
                             </button>
@@ -139,13 +154,21 @@ export default function AdminLayout({ children }) {
 
                     {/* Admin info */}
                     {isSidebarOpen && adminName && (
-                        <div className="px-4 py-2 border-b border-slate-700 bg-slate-800/50">
-                            <p className="text-xs text-slate-400">Logged in as</p>
-                            <p className="text-sm font-semibold text-white truncate">{adminName}</p>
+                        <div className="px-4 py-3 border-b border-slate-700 bg-slate-800/50">
+                            <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 flex items-center justify-center text-sm font-bold">
+                                    {adminName.charAt(0).toUpperCase()}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-xs text-slate-400">Logged in as</p>
+                                    <p className="text-sm font-semibold text-white truncate">{adminName}</p>
+                                    <p className="text-xs text-indigo-400 truncate">Super Administrator</p>
+                                </div>
+                            </div>
                         </div>
                     )}
 
-                    {/* Nav */}
+                    {/* Navigation */}
                     <nav className="flex-1 mt-4 overflow-y-auto">
                         <div className="space-y-1">
                             {menuItems.map((item) => (
@@ -160,23 +183,42 @@ export default function AdminLayout({ children }) {
                                             : "text-slate-300 hover:bg-slate-800 hover:text-white"
                                     } ${!isSidebarOpen ? "justify-center" : ""}`}
                                 >
-                                    <span className="text-xl min-w-[28px] text-center">{item.icon}</span>
+                                    <span className={`${!isSidebarOpen ? "text-2xl" : "text-xl"} min-w-[28px] text-center`}>
+                                        {item.icon}
+                                    </span>
                                     {isSidebarOpen && (
                                         <div className="flex-1 min-w-0">
                                             <span className="block text-sm font-medium">{item.name}</span>
-                                            <span className="text-xs text-slate-400">{item.description}</span>
+                                            <span className="text-xs text-slate-400 truncate">{item.description}</span>
                                         </div>
+                                    )}
+                                    {isActive(item.path) && isSidebarOpen && (
+                                        <span className="w-1 h-6 bg-white rounded-full ml-auto"></span>
                                     )}
                                 </Link>
                             ))}
                         </div>
                     </nav>
 
+                    {/* System Info */}
+                    {isSidebarOpen && (
+                        <div className="mx-3 mb-2 p-2 bg-slate-800/30 rounded-lg">
+                            <p className="text-[10px] text-slate-500 text-center">
+                                School Management System
+                            </p>
+                            <p className="text-[9px] text-slate-600 text-center">
+                                Version 2.0.0
+                            </p>
+                        </div>
+                    )}
+
                     {/* Logout */}
                     <div className="p-3 border-t border-slate-700">
                         <button
                             onClick={handleLogout}
-                            className={`flex items-center gap-3 px-3 py-2.5 w-full rounded-xl text-slate-300 hover:bg-red-600 hover:text-white transition-all duration-200 ${!isSidebarOpen ? "justify-center" : ""}`}
+                            className={`flex items-center gap-3 px-3 py-2.5 w-full rounded-xl text-slate-300 hover:bg-red-600 hover:text-white transition-all duration-200 ${
+                                !isSidebarOpen ? "justify-center" : ""
+                            }`}
                         >
                             <span className="text-xl min-w-[28px] text-center">🚪</span>
                             {isSidebarOpen && <span className="text-sm font-medium">Logout</span>}
@@ -219,6 +261,7 @@ export default function AdminLayout({ children }) {
                                 <button
                                     onClick={() => setIsMobileDrawerOpen(false)}
                                     className="text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-700 transition-colors"
+                                    aria-label="Close menu"
                                 >
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -231,15 +274,16 @@ export default function AdminLayout({ children }) {
                                     <div className="w-8 h-8 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 flex items-center justify-center text-sm font-bold flex-shrink-0">
                                         {adminName.charAt(0).toUpperCase()}
                                     </div>
-                                    <div>
+                                    <div className="flex-1 min-w-0">
                                         <p className="text-xs text-slate-400">Logged in as</p>
-                                        <p className="text-sm font-semibold text-white">{adminName}</p>
+                                        <p className="text-sm font-semibold text-white truncate">{adminName}</p>
+                                        {adminEmail && <p className="text-xs text-slate-400 truncate">{adminEmail}</p>}
                                     </div>
                                 </div>
                             )}
                         </div>
 
-                        {/* Drawer nav */}
+                        {/* Drawer navigation */}
                         <nav className="flex-1 overflow-y-auto py-4">
                             <div className="px-4 mb-2">
                                 <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Navigation</p>
@@ -271,7 +315,14 @@ export default function AdminLayout({ children }) {
                             </div>
                         </nav>
 
-                        {/* Drawer footer */}
+                        {/* System Info */}
+                        <div className="px-4 py-2 border-t border-slate-700">
+                            <p className="text-[10px] text-slate-500 text-center">
+                                School Management System v2.0.0
+                            </p>
+                        </div>
+
+                        {/* Drawer footer - Logout */}
                         <div className="p-3 border-t border-slate-700">
                             <button
                                 onClick={handleLogout}
@@ -315,17 +366,60 @@ export default function AdminLayout({ children }) {
                                 )}
                             </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 flex items-center justify-center flex-shrink-0">
-                                <span className="text-white text-xs">👑</span>
-                            </div>
-                            <span className="text-xs font-medium text-slate-600 hidden sm:inline">{adminName || "Admin"}</span>
+                        
+                        {/* User Menu Dropdown */}
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowUserMenu(!showUserMenu)}
+                                className="flex items-center gap-2 hover:bg-slate-100 rounded-lg px-2 py-1 transition-colors"
+                            >
+                                <div className="w-7 h-7 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 flex items-center justify-center flex-shrink-0">
+                                    <span className="text-white text-xs font-bold">
+                                        {adminName ? adminName.charAt(0).toUpperCase() : "A"}
+                                    </span>
+                                </div>
+                                <span className="text-xs font-medium text-slate-600 hidden sm:inline">
+                                    {adminName || "Admin"}
+                                </span>
+                                <svg className={`w-3 h-3 text-slate-400 transition-transform ${showUserMenu ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </button>
+                            
+                            {/* Dropdown Menu */}
+                            {showUserMenu && (
+                                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-slate-100 z-20 overflow-hidden">
+                                    <div className="px-4 py-3 border-b border-slate-100 bg-slate-50">
+                                        <p className="text-xs font-semibold text-slate-700">{adminName || "Admin"}</p>
+                                        <p className="text-xs text-slate-500">Super Administrator</p>
+                                    </div>
+                                    <Link
+                                        to="/profile"
+                                        onClick={() => setShowUserMenu(false)}
+                                        className="flex items-center gap-3 px-4 py-2 hover:bg-slate-50 transition-colors"
+                                    >
+                                        <span className="text-base">👤</span>
+                                        <span className="text-sm text-slate-700">My Profile</span>
+                                    </Link>
+                                    <div className="border-t border-slate-100">
+                                        <button
+                                            onClick={handleLogout}
+                                            className="flex items-center gap-3 px-4 py-2 w-full hover:bg-red-50 transition-colors text-left"
+                                        >
+                                            <span className="text-base">🚪</span>
+                                            <span className="text-sm text-red-600">Logout</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
 
                 {/* Page Content */}
-                <div className="flex-1 p-3 md:p-5">{children}</div>
+                <div className="flex-1 p-3 md:p-5">
+                    {children}
+                </div>
             </div>
 
             {/* ═══════════════════════════════════════
@@ -334,7 +428,8 @@ export default function AdminLayout({ children }) {
             {isMobile && (
                 <div className="fixed bottom-0 left-0 right-0 z-30 bg-slate-900 border-t border-slate-700 shadow-2xl">
                     <div className="flex items-stretch">
-                        {menuItems.map((item) => (
+                        {/* Main navigation items (first 3) */}
+                        {menuItems.slice(0, 3).map((item) => (
                             <Link
                                 key={item.path}
                                 to={item.path}
@@ -351,6 +446,22 @@ export default function AdminLayout({ children }) {
                                 )}
                             </Link>
                         ))}
+                        
+                        {/* Profile link */}
+                        <Link
+                            to="/profile"
+                            className={`flex-1 flex flex-col items-center justify-center py-2 px-1 transition-all duration-150 ${
+                                isActive("/profile")
+                                    ? "text-indigo-400 bg-slate-800"
+                                    : "text-slate-400 hover:text-white hover:bg-slate-800 active:bg-slate-700"
+                            }`}
+                        >
+                            <span className="text-xl leading-none">👤</span>
+                            <span className="text-xs mt-1 font-medium leading-tight text-center">Profile</span>
+                            {isActive("/profile") && (
+                                <div className="w-1 h-1 rounded-full bg-indigo-400 mt-1" />
+                            )}
+                        </Link>
 
                         {/* Logout shortcut */}
                         <button
