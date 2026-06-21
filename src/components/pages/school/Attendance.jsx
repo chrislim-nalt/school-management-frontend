@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { 
   getStudentsByClass, 
   markStudentAttendance, 
-  getStudentAttendanceByClass,
+  getStudentsByClassForAttendance,
   getStudentAttendanceReport,
   getTeachersForAttendance,
   markTeacherAttendance,
@@ -55,22 +55,23 @@ export default function Attendance() {
 
   // Fetch students by class with better error handling
   const fetchStudentsByClass = async () => {
-    if (!selectedGrade || !selectedClass) {
-      setError("Please select a grade and class");
-      return;
-    }
+  if (!selectedGrade || !selectedClass) {
+    setError("Please select a grade and class");
+    return;
+  }
+  
+  setLoading(true);
+  setError("");
+  setStudents([]);
+  
+  try {
+    console.log(`Fetching students for class: ${selectedGrade} ${selectedClass}`);
+    // Use the correct API endpoint
+    const res = await getStudentsByClassForAttendance(selectedGrade, selectedClass);
+    console.log("Students response:", res.data);
     
-    setLoading(true);
-    setError("");
-    setStudents([]);
-    
-    try {
-      console.log(`Fetching students for class: ${selectedGrade} ${selectedClass}`);
-      const res = await getStudentsByClass(selectedGrade, selectedClass);
-      console.log("Students response:", res.data);
-      
-      const studentsData = res.data.students || [];
-      setStudents(studentsData);
+    const studentsData = res.data.students || [];
+    setStudents(studentsData);
       
       // Initialize attendance data
       const initialData = {};

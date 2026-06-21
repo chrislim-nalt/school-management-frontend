@@ -1,5 +1,45 @@
 import API from "./api";
 
+// ==================== HELPER FUNCTIONS ====================
+// Safely extract array from response
+const safeGetArray = (responseData, fallback = []) => {
+  if (!responseData) return fallback;
+  if (Array.isArray(responseData)) return responseData;
+  if (responseData.data && Array.isArray(responseData.data)) return responseData.data;
+  if (responseData.students && Array.isArray(responseData.students)) return responseData.students;
+  if (responseData.teachers && Array.isArray(responseData.teachers)) return responseData.teachers;
+  if (responseData.courses && Array.isArray(responseData.courses)) return responseData.courses;
+  if (responseData.marks && Array.isArray(responseData.marks)) return responseData.marks;
+  if (responseData.payments && Array.isArray(responseData.payments)) return responseData.payments;
+  if (responseData.items && Array.isArray(responseData.items)) return responseData.items;
+  if (responseData.activities && Array.isArray(responseData.activities)) return responseData.activities;
+  if (responseData.homeworks && Array.isArray(responseData.homeworks)) return responseData.homeworks;
+  if (responseData.visitors && Array.isArray(responseData.visitors)) return responseData.visitors;
+  if (responseData.users && Array.isArray(responseData.users)) return responseData.users;
+  if (responseData.schools && Array.isArray(responseData.schools)) return responseData.schools;
+  if (responseData.categories && Array.isArray(responseData.categories)) return responseData.categories;
+  if (responseData.assets && Array.isArray(responseData.assets)) return responseData.assets;
+  if (responseData.libraryBooks && Array.isArray(responseData.libraryBooks)) return responseData.libraryBooks;
+  if (responseData.laboratoryItems && Array.isArray(responseData.laboratoryItems)) return responseData.laboratoryItems;
+  if (responseData.cleaningSupplies && Array.isArray(responseData.cleaningSupplies)) return responseData.cleaningSupplies;
+  if (responseData.feedingRecords && Array.isArray(responseData.feedingRecords)) return responseData.feedingRecords;
+  if (responseData.borrowedItems && Array.isArray(responseData.borrowedItems)) return responseData.borrowedItems;
+  if (responseData.stockRecords && Array.isArray(responseData.stockRecords)) return responseData.stockRecords;
+  // If it's an object with numeric keys, convert to array
+  if (responseData && typeof responseData === 'object' && !Array.isArray(responseData)) {
+    const values = Object.values(responseData);
+    if (values.length > 0 && values.every(v => typeof v === 'object' && v !== null)) {
+      return values;
+    }
+  }
+  return fallback;
+};
+
+const handleApiError = (error, fallbackData = []) => {
+  console.error("API Error:", error);
+  return { data: fallbackData, success: false, error: error.message };
+};
+
 // ==================== AUTH & PROFILE ====================
 export const login = (data) => API.post("/auth/login", data);
 export const adminLogin = (data) => API.post("/auth/admin-login", data);
@@ -21,15 +61,10 @@ export const getStudents = async (params) => {
   try {
     const response = await API.get("/students", { params });
     const data = response.data;
-    if (data && Array.isArray(data.students)) {
-      return { ...response, data: data.students };
-    }
-    if (Array.isArray(data)) {
-      return { ...response, data };
-    }
-    return { ...response, data: [] };
+    const students = safeGetArray(data);
+    return { ...response, data: students };
   } catch (error) {
-    return { data: [], success: false, error: error.message };
+    return handleApiError(error);
   }
 };
 
@@ -47,15 +82,10 @@ export const getTeachers = async (params) => {
   try {
     const response = await API.get("/teachers", { params });
     const data = response.data;
-    if (data && Array.isArray(data.teachers)) {
-      return { ...response, data: data.teachers };
-    }
-    if (Array.isArray(data)) {
-      return { ...response, data };
-    }
-    return { ...response, data: [] };
+    const teachers = safeGetArray(data);
+    return { ...response, data: teachers };
   } catch (error) {
-    return { data: [], success: false, error: error.message };
+    return handleApiError(error);
   }
 };
 
@@ -70,52 +100,10 @@ export const getCourses = async (params) => {
   try {
     const response = await API.get("/courses", { params });
     const data = response.data;
-    
-    console.log("=== getCourses DEBUG ===");
-    console.log("Raw response data:", data);
-    console.log("Data type:", typeof data);
-    console.log("Is array:", Array.isArray(data));
-    console.log("Has courses property:", data?.courses);
-    console.log("Courses property is array:", Array.isArray(data?.courses));
-    
-    // CASE 1: Data is already an array
-    if (Array.isArray(data)) {
-      console.log("getCourses: Data is array, length:", data.length);
-      return { ...response, data };
-    }
-    
-    // CASE 2: Data has courses property that is an array
-    if (data && data.courses && Array.isArray(data.courses)) {
-      console.log("getCourses: Found courses array, length:", data.courses.length);
-      return { ...response, data: data.courses };
-    }
-    
-    // CASE 3: Data has data property that is an array
-    if (data && data.data && Array.isArray(data.data)) {
-      console.log("getCourses: Found data.data array, length:", data.data.length);
-      return { ...response, data: data.data };
-    }
-    
-    // CASE 4: Data has success and courses
-    if (data && data.success && Array.isArray(data.courses)) {
-      console.log("getCourses: Found success.courses array, length:", data.courses.length);
-      return { ...response, data: data.courses };
-    }
-    
-    // CASE 5: Data is an object with numeric keys (like {0: {...}, 1: {...}})
-    if (data && typeof data === 'object' && !Array.isArray(data)) {
-      const values = Object.values(data);
-      if (values.length > 0 && values.every(v => typeof v === 'object' && v !== null)) {
-        console.log("getCourses: Converted object to array, length:", values.length);
-        return { ...response, data: values };
-      }
-    }
-    
-    console.warn("getCourses: Unexpected data format, returning empty array", data);
-    return { ...response, data: [] };
+    const courses = safeGetArray(data);
+    return { ...response, data: courses };
   } catch (error) {
-    console.error("getCourses error:", error);
-    return { data: [], success: false, error: error.message };
+    return handleApiError(error);
   }
 };
 
@@ -174,19 +162,13 @@ export const getMarks = async (params) => {
   try {
     const response = await API.get("/marks", { params });
     const data = response.data;
-    if (data && Array.isArray(data.marks)) {
-      return { ...response, data: data.marks };
-    }
-    if (Array.isArray(data)) {
-      return { ...response, data };
-    }
-    return { ...response, data: [] };
+    const marks = safeGetArray(data);
+    return { ...response, data: marks };
   } catch (error) {
-    return { data: [], success: false, error: error.message };
+    return handleApiError(error);
   }
 };
 
-// NEW: Get marks for a specific class and course
 export const getClassMarks = async (params) => {
   try {
     const response = await API.get("/marks/class", { params });
@@ -197,7 +179,6 @@ export const getClassMarks = async (params) => {
   }
 };
 
-// NEW: Get students for a class
 export const getClassStudents = async (params) => {
   try {
     const response = await API.get("/marks/class-students", { params });
@@ -213,11 +194,11 @@ export const getStudentMarks = async (studentId, params) => {
     const response = await API.get(`/marks/student/${studentId}`, { params });
     return response;
   } catch (error) {
+    console.error("getStudentMarks error:", error);
     return { data: { marks: [], average: 0, gradeDistribution: {} } };
   }
 };
 
-// NEW: Bulk upsert marks for a class
 export const bulkUpsertClassMarks = async (data) => {
   try {
     const response = await API.post("/marks/bulk-class", data);
@@ -243,6 +224,7 @@ export const getMarksAnalytics = async (params) => {
     const response = await API.get("/marks/analytics", { params });
     return response;
   } catch (error) {
+    console.error("getMarksAnalytics error:", error);
     return { 
       data: { 
         totalStudents: 0, 
@@ -266,38 +248,101 @@ export const deleteMark = async (id) => {
 
 // ==================== ATTENDANCE ====================
 // Student Attendance
-export const getStudentsByClassForAttendance = (grade, className) => API.get("/attendance/students/by-class", { params: { grade, className } });
-export const markStudentAttendance = (data) => API.post("/attendance/students/mark", data);
-export const getStudentAttendanceByClass = (params) => API.get("/attendance/students/class", { params });
-export const getStudentAttendanceReport = (params) => {
-  // Try the main endpoint, fallback to by-class if needed
-  return API.get("/attendance/students/report", { params }).catch(() => {
-    // If the endpoint doesn't exist, try to get data from class endpoint
-    if (params?.grade && params?.className) {
-      return API.get("/attendance/students/class", { params });
-    }
-    // Return empty data as last resort
+export const getStudentsByClassForAttendance = async (grade, className) => {
+  try {
+    const response = await API.get("/attendance/students/by-class", { params: { grade, className } });
+    return response;
+  } catch (error) {
+    console.error("getStudentsByClassForAttendance error:", error);
+    return { data: { students: [], count: 0 } };
+  }
+};
+
+export const markStudentAttendance = async (data) => {
+  try {
+    const response = await API.post("/attendance/students/mark", data);
+    return response;
+  } catch (error) {
+    console.error("markStudentAttendance error:", error);
+    throw error;
+  }
+};
+
+export const getStudentAttendanceByClass = async (params) => {
+  try {
+    const response = await API.get("/attendance/students/class", { params });
+    return response;
+  } catch (error) {
+    console.error("getStudentAttendanceByClass error:", error);
+    return { data: { attendance: [] } };
+  }
+};
+
+export const getStudentAttendanceReport = async (params) => {
+  try {
+    const response = await API.get("/attendance/students/report", { params });
+    return response;
+  } catch (error) {
+    console.error("getStudentAttendanceReport error:", error);
     return { data: { summary: { averageAttendance: 0, totalPresent: 0, totalAbsent: 0, totalLate: 0 }, records: [] } };
-  });
+  }
 };
 
 // Teacher Attendance
-export const getTeachersForAttendance = () => API.get("/attendance/teachers/list");
-export const markTeacherAttendance = (data) => API.post("/attendance/teachers/mark", data);
-export const getTeacherAttendanceByDate = (params) => API.get("/attendance/teachers/date", { params });
-export const getTeacherAttendanceReport = (params) => API.get("/attendance/teachers/report", { params });
+export const getTeachersForAttendance = async () => {
+  try {
+    const response = await API.get("/attendance/teachers/list");
+    return response;
+  } catch (error) {
+    console.error("getTeachersForAttendance error:", error);
+    return { data: { teachers: [], count: 0 } };
+  }
+};
+
+export const markTeacherAttendance = async (data) => {
+  try {
+    const response = await API.post("/attendance/teachers/mark", data);
+    return response;
+  } catch (error) {
+    console.error("markTeacherAttendance error:", error);
+    throw error;
+  }
+};
+
+export const getTeacherAttendanceByDate = async (params) => {
+  try {
+    const response = await API.get("/attendance/teachers/date", { params });
+    return response;
+  } catch (error) {
+    console.error("getTeacherAttendanceByDate error:", error);
+    return { data: { attendance: [] } };
+  }
+};
+
+export const getTeacherAttendanceReport = async (params) => {
+  try {
+    const response = await API.get("/attendance/teachers/report", { params });
+    return response;
+  } catch (error) {
+    console.error("getTeacherAttendanceReport error:", error);
+    return { data: { summary: { averageAttendance: 0, totalPresent: 0, totalAbsent: 0, totalLate: 0 }, records: [] } };
+  }
+};
 
 // Legacy - Keep with fallbacks
 export const markAttendance = (data) => API.post("/attendance/mark", data);
-export const getAttendanceReport = (params) => {
-  if (params?.userType === "STUDENT") {
-    return getStudentAttendanceReport(params);
-  } else if (params?.userType === "TEACHER") {
-    return getTeacherAttendanceReport(params);
-  }
-  return API.get("/attendance/report", { params }).catch(() => {
+export const getAttendanceReport = async (params) => {
+  try {
+    if (params?.userType === "STUDENT") {
+      return await getStudentAttendanceReport(params);
+    } else if (params?.userType === "TEACHER") {
+      return await getTeacherAttendanceReport(params);
+    }
+    const response = await API.get("/attendance/report", { params });
+    return response;
+  } catch (error) {
     return { data: { summary: {}, records: [] } };
-  });
+  }
 };
 
 // ==================== TRANSPORT ====================
@@ -321,7 +366,7 @@ export const getTransportByClassReport = (grade, className, semester, year) =>
 export const getStudentTransportHistory = (studentId) => 
   API.get(`/transport/students/${studentId}/history`);
 
-// ==================== PERMISSIONS ====================
+// ==================== PERMISSIONS (Teacher Leave Requests) ====================
 export const requestPermission = (data) => API.post("/permissions/request", data);
 export const getMyPermissions = () => API.get("/permissions/my-permissions");
 export const getAllPermissions = (params) => API.get("/permissions/all", { params });
@@ -359,15 +404,10 @@ export const getHomeworks = async (params) => {
   try {
     const response = await API.get("/homework", { params });
     const data = response.data;
-    if (data && Array.isArray(data.homeworks)) {
-      return { ...response, data: data.homeworks };
-    }
-    if (Array.isArray(data)) {
-      return { ...response, data };
-    }
-    return { ...response, data: [] };
+    const homeworks = safeGetArray(data);
+    return { ...response, data: homeworks };
   } catch (error) {
-    return { data: [], success: false, error: error.message };
+    return handleApiError(error);
   }
 };
 
@@ -436,6 +476,7 @@ export const getHomeworkReport = async (params) => {
     const response = await API.get("/homework/report", { params });
     return response;
   } catch (error) {
+    console.error("getHomeworkReport error:", error);
     return { data: { summary: {}, byTeacher: {}, byCourse: [], chartData: {}, homeworks: [] } };
   }
 };
@@ -445,6 +486,7 @@ export const getHomeworkSummary = async (params) => {
     const response = await API.get("/homework/summary", { params });
     return response;
   } catch (error) {
+    console.error("getHomeworkSummary error:", error);
     return { data: { summary: { total: 0, pending: 0, overdue: 0, completed: 0 }, recentHomeworks: [] } };
   }
 };
@@ -485,6 +527,7 @@ export const getClassActivities = async (params) => {
     const response = await API.get("/activities/class", { params });
     return response;
   } catch (error) {
+    console.error("getClassActivities error:", error);
     return { data: { activities: [], groupedByBatch: [] } };
   }
 };
@@ -494,6 +537,7 @@ export const getClassPerformanceDashboard = async (params) => {
     const response = await API.get("/activities/class-performance", { params });
     return response;
   } catch (error) {
+    console.error("getClassPerformanceDashboard error:", error);
     return { data: { classInfo: {}, activityTypeStats: {}, studentRanking: [], trendChartData: [] } };
   }
 };
@@ -503,6 +547,7 @@ export const getActivityTrends = async (params) => {
     const response = await API.get("/activities/trends", { params });
     return response;
   } catch (error) {
+    console.error("getActivityTrends error:", error);
     return { data: { trendData: [], summary: {} } };
   }
 };
@@ -512,6 +557,7 @@ export const getStudentActivities = async (studentId, params) => {
     const response = await API.get(`/activities/student/${studentId}`, { params });
     return response;
   } catch (error) {
+    console.error("getStudentActivities error:", error);
     return { data: { statistics: {}, activities: [] } };
   }
 };
@@ -540,15 +586,10 @@ export const getActivities = async (params) => {
   try {
     const response = await API.get("/activities", { params });
     const data = response.data;
-    if (data && Array.isArray(data.activities)) {
-      return { ...response, data: data.activities };
-    }
-    if (Array.isArray(data)) {
-      return { ...response, data };
-    }
-    return { ...response, data: [] };
+    const activities = safeGetArray(data);
+    return { ...response, data: activities };
   } catch (error) {
-    return { data: [], success: false, error: error.message };
+    return handleApiError(error);
   }
 };
 
@@ -557,6 +598,7 @@ export const getStudentPerformanceByCourse = async (studentId, params) => {
     const response = await API.get(`/activities/student-performance/${studentId}`, { params });
     return response;
   } catch (error) {
+    console.error("getStudentPerformanceByCourse error:", error);
     return { data: { coursePerformance: [], overallAverage: 0 } };
   }
 };
@@ -566,6 +608,7 @@ export const getCoursePerformanceAnalysis = async (params) => {
     const response = await API.get("/activities/course-analysis", { params });
     return response;
   } catch (error) {
+    console.error("getCoursePerformanceAnalysis error:", error);
     return { data: { classPerformance: [], weaknessAnalysis: [] } };
   }
 };
@@ -575,6 +618,7 @@ export const getPerformanceReport = async (params) => {
     const response = await API.get("/activities/performance-report", { params });
     return response;
   } catch (error) {
+    console.error("getPerformanceReport error:", error);
     return { data: { summary: {}, courseAverages: [], chartData: {} } };
   }
 };
