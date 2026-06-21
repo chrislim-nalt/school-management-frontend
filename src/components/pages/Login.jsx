@@ -233,9 +233,9 @@ export default function Login() {
             </div>
           </div>
           <h2 className="text-2xl font-bold bg-gradient-to-r from-white to-indigo-200 bg-clip-text text-transparent">
-            School Information
+            School Management 
           </h2>
-          <p className="text-indigo-200 text-sm mt-1">Management System</p>
+          <p className="text-indigo-200 text-sm mt-1">Information System</p>
           <div className="flex justify-center mt-3">
             <div className="h-0.5 w-12 bg-gradient-to-r from-indigo-400 to-purple-400 rounded-full"></div>
           </div>
