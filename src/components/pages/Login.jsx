@@ -233,7 +233,7 @@ export default function Login() {
             </div>
           </div>
           <h2 className="text-2xl font-bold bg-gradient-to-r from-white to-indigo-200 bg-clip-text text-transparent">
-            School 
+            School Information
           </h2>
           <p className="text-indigo-200 text-sm mt-1">Management System</p>
           <div className="flex justify-center mt-3">
