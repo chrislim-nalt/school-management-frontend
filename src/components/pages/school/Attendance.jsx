@@ -12,7 +12,7 @@ import {
 import DownloadButton from "../../DownloadButton";
 
 export default function Attendance() {
-  const [attendanceType, setAttendanceType] = useState("STUDENT"); // STUDENT or TEACHER
+  const [attendanceType, setAttendanceType] = useState("STUDENT");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -25,7 +25,7 @@ export default function Attendance() {
   const [students, setStudents] = useState([]);
   const [studentAttendanceData, setStudentAttendanceData] = useState({});
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [selectedPeriod, setSelectedPeriod] = useState("MORNING");
+  const [selectedPeriod, setSelectedPeriod] = useState("DAILY");
   
   // Teacher attendance states
   const [teachers, setTeachers] = useState([]);
@@ -40,54 +40,73 @@ export default function Attendance() {
   const [reportGrade, setReportGrade] = useState("");
   const [reportClass, setReportClass] = useState("");
 
-  const periods = ["MORNING", "AFTERNOON", "DAILY"];
+  const periods = ["DAILY", "MORNING", "AFTERNOON"];
   
-  // Get user role from localStorage
-  const userType = localStorage.getItem("userType");
-  const userRole = localStorage.getItem("userRole");
+  // Get user info from localStorage
+  const userType = localStorage.getItem("userType") || "staff";
+  const userRole = localStorage.getItem("userRole") || "staff";
+  const userName = localStorage.getItem("userName") || "User";
   
   // Determine if user can access student attendance
-  const canAccessStudentAttendance = userRole === "superadmin" || userType === "school_admin" || userType === "teacher";
+  const canAccessStudentAttendance = userRole === "superadmin" || userType === "school_admin" || userType === "admin" || userType === "teacher" || userType === "staff";
   
   // Determine if user can access teacher attendance
-  const canAccessTeacherAttendance = userRole === "superadmin" || userType === "school_admin" || userType === "customer_care";
+  const canAccessTeacherAttendance = userRole === "superadmin" || userType === "school_admin" || userType === "admin" || userType === "customer_care";
 
-  // Fetch students by class
+  // Fetch students by class with better error handling
   const fetchStudentsByClass = async () => {
-    if (!selectedGrade || !selectedClass) return;
+    if (!selectedGrade || !selectedClass) {
+      setError("Please select a grade and class");
+      return;
+    }
     
     setLoading(true);
+    setError("");
+    setStudents([]);
+    
     try {
+      console.log(`Fetching students for class: ${selectedGrade} ${selectedClass}`);
       const res = await getStudentsByClass(selectedGrade, selectedClass);
-      setStudents(res.data.students || []);
+      console.log("Students response:", res.data);
+      
+      const studentsData = res.data.students || [];
+      setStudents(studentsData);
       
       // Initialize attendance data
       const initialData = {};
-      (res.data.students || []).forEach(s => {
+      studentsData.forEach(s => {
         initialData[s._id] = { status: "PRESENT", reason: "" };
       });
       setStudentAttendanceData(initialData);
       
       // Also fetch existing attendance for this date
-      const existingRes = await getStudentAttendanceByClass({
-        grade: selectedGrade,
-        className: selectedClass,
-        date: selectedDate,
-        period: selectedPeriod
-      });
-      
-      if (existingRes.data.attendance) {
-        const existingData = {};
-        existingRes.data.attendance.forEach(a => {
-          if (a.status !== "UNMARKED") {
-            existingData[a.studentId] = { status: a.status, reason: a.reason || "" };
-          }
+      try {
+        const existingRes = await getStudentAttendanceByClass({
+          grade: selectedGrade,
+          className: selectedClass,
+          date: selectedDate,
+          period: selectedPeriod
         });
-        setStudentAttendanceData(prev => ({ ...prev, ...existingData }));
+        
+        if (existingRes.data.attendance) {
+          const existingData = {};
+          existingRes.data.attendance.forEach(a => {
+            if (a.status !== "UNMARKED") {
+              existingData[a.studentId] = { status: a.status, reason: a.reason || "" };
+            }
+          });
+          setStudentAttendanceData(prev => ({ ...prev, ...existingData }));
+        }
+      } catch (existingErr) {
+        console.log("No existing attendance found, starting fresh");
+      }
+      
+      if (studentsData.length === 0) {
+        setError(`No students found in ${selectedGrade} ${selectedClass}`);
       }
     } catch (error) {
       console.error("Error fetching students:", error);
-      setError("Failed to load students");
+      setError(error.response?.data?.message || "Failed to load students");
     } finally {
       setLoading(false);
     }
@@ -96,11 +115,11 @@ export default function Attendance() {
   // Fetch teachers for attendance
   const fetchTeachers = async () => {
     setLoading(true);
+    setError("");
     try {
       const res = await getTeachersForAttendance();
       setTeachers(res.data.teachers || []);
       
-      // Initialize attendance data
       const initialData = {};
       (res.data.teachers || []).forEach(t => {
         initialData[t._id] = { status: "PRESENT", reason: "", checkInTime: "", checkOutTime: "" };
@@ -108,24 +127,28 @@ export default function Attendance() {
       setTeacherAttendanceData(initialData);
       
       // Fetch existing attendance for this date
-      const existingRes = await getTeacherAttendanceByDate({
-        date: selectedDate,
-        period: selectedPeriod
-      });
-      
-      if (existingRes.data.attendance) {
-        const existingData = {};
-        existingRes.data.attendance.forEach(a => {
-          if (a.status !== "UNMARKED") {
-            existingData[a.teacherId] = { 
-              status: a.status, 
-              reason: a.reason || "",
-              checkInTime: a.checkInTime || "",
-              checkOutTime: a.checkOutTime || ""
-            };
-          }
+      try {
+        const existingRes = await getTeacherAttendanceByDate({
+          date: selectedDate,
+          period: selectedPeriod
         });
-        setTeacherAttendanceData(prev => ({ ...prev, ...existingData }));
+        
+        if (existingRes.data.attendance) {
+          const existingData = {};
+          existingRes.data.attendance.forEach(a => {
+            if (a.status !== "UNMARKED") {
+              existingData[a.teacherId] = { 
+                status: a.status, 
+                reason: a.reason || "",
+                checkInTime: a.checkInTime || "",
+                checkOutTime: a.checkOutTime || ""
+              };
+            }
+          });
+          setTeacherAttendanceData(prev => ({ ...prev, ...existingData }));
+        }
+      } catch (existingErr) {
+        console.log("No existing teacher attendance found");
       }
     } catch (error) {
       console.error("Error fetching teachers:", error);
@@ -137,7 +160,10 @@ export default function Attendance() {
 
   useEffect(() => {
     if (attendanceType === "STUDENT" && canAccessStudentAttendance) {
-      fetchStudentsByClass();
+      // Only fetch if we have grade and class selected
+      if (selectedGrade && selectedClass) {
+        fetchStudentsByClass();
+      }
     } else if (attendanceType === "TEACHER" && canAccessTeacherAttendance) {
       fetchTeachers();
     }
@@ -161,7 +187,13 @@ export default function Attendance() {
 
   // Submit student attendance
   const handleSubmitStudentAttendance = async () => {
+    if (students.length === 0) {
+      setError("No students to mark attendance for");
+      return;
+    }
+    
     setLoading(true);
+    setError("");
     try {
       const records = Object.entries(studentAttendanceData).map(([studentId, data]) => {
         const student = students.find(s => s._id === studentId);
@@ -181,11 +213,11 @@ export default function Attendance() {
         records
       });
       
-      setSuccess(`Attendance recorded for ${records.length} students in ${selectedGrade} ${selectedClass}!`);
+      setSuccess(`✅ Attendance recorded for ${records.length} students in ${selectedGrade} ${selectedClass}!`);
       setTimeout(() => setSuccess(""), 3000);
     } catch (error) {
-      setError("Failed to save attendance");
-      console.error(error);
+      console.error("Error saving attendance:", error);
+      setError(error.response?.data?.message || "Failed to save attendance");
     } finally {
       setLoading(false);
     }
@@ -193,7 +225,13 @@ export default function Attendance() {
 
   // Submit teacher attendance
   const handleSubmitTeacherAttendance = async () => {
+    if (teachers.length === 0) {
+      setError("No teachers to mark attendance for");
+      return;
+    }
+    
     setLoading(true);
+    setError("");
     try {
       const records = Object.entries(teacherAttendanceData).map(([teacherId, data]) => {
         const teacher = teachers.find(t => t._id === teacherId);
@@ -213,11 +251,11 @@ export default function Attendance() {
         records
       });
       
-      setSuccess(`Attendance recorded for ${records.length} teachers!`);
+      setSuccess(`✅ Attendance recorded for ${records.length} teachers!`);
       setTimeout(() => setSuccess(""), 3000);
     } catch (error) {
-      setError("Failed to save attendance");
-      console.error(error);
+      console.error("Error saving teacher attendance:", error);
+      setError(error.response?.data?.message || "Failed to save attendance");
     } finally {
       setLoading(false);
     }
@@ -226,6 +264,7 @@ export default function Attendance() {
   // Fetch report
   const fetchReport = async () => {
     setLoading(true);
+    setError("");
     try {
       let res;
       if (reportType === "STUDENT") {
@@ -246,8 +285,8 @@ export default function Attendance() {
       setReportData(res.data);
       setShowReport(true);
     } catch (error) {
+      console.error("Error fetching report:", error);
       setError("Failed to load report");
-      console.error(error);
     } finally {
       setLoading(false);
     }
@@ -332,8 +371,8 @@ export default function Attendance() {
   return (
     <div className="space-y-4">
       {(success || error) && (
-        <div className={`fixed top-20 right-4 z-50 animate-slide-in ${success ? "bg-emerald-500" : "bg-rose-500"} text-white px-4 py-2 rounded-xl shadow-2xl flex items-center gap-2 text-sm`}>
-          <span className="text-lg">{success ? "✓" : "⚠"}</span>
+        <div className={`fixed top-20 right-4 z-50 animate-slide-in ${success ? "bg-emerald-500" : "bg-rose-500"} text-white px-4 py-2 rounded-xl shadow-2xl flex items-center gap-2 text-sm max-w-md`}>
+          <span className="text-lg flex-shrink-0">{success ? "✓" : "⚠"}</span>
           <p className="font-medium">{success || error}</p>
         </div>
       )}
@@ -391,14 +430,14 @@ export default function Attendance() {
               <select 
                 value={selectedGrade} 
                 onChange={(e) => setSelectedGrade(e.target.value)}
-                className="border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none"
               >
                 {grades.map(g => <option key={g} value={g}>Grade {g}</option>)}
               </select>
               <select 
                 value={selectedClass} 
                 onChange={(e) => setSelectedClass(e.target.value)}
-                className="border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none"
               >
                 {classes.map(c => <option key={c} value={c}>Class {c}</option>)}
               </select>
@@ -406,22 +445,26 @@ export default function Attendance() {
                 type="date" 
                 value={selectedDate} 
                 onChange={(e) => setSelectedDate(e.target.value)} 
-                className="border border-slate-200 rounded-lg px-3 py-2 text-sm" 
+                className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none" 
               />
               <select 
                 value={selectedPeriod} 
                 onChange={(e) => setSelectedPeriod(e.target.value)}
-                className="border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none"
               >
                 {periods.map(p => <option key={p} value={p}>{p}</option>)}
               </select>
             </div>
             <button 
               onClick={fetchStudentsByClass}
-              className="mt-3 w-full bg-indigo-100 text-indigo-700 py-2 rounded-lg text-sm font-medium hover:bg-indigo-200 transition"
+              disabled={loading}
+              className="mt-3 w-full bg-indigo-100 text-indigo-700 py-2 rounded-lg text-sm font-medium hover:bg-indigo-200 transition disabled:opacity-50"
             >
-              🔄 Load Students
+              {loading ? "⏳ Loading..." : "🔄 Load Students"}
             </button>
+            {error && (
+              <p className="mt-2 text-rose-600 text-sm text-center">{error}</p>
+            )}
           </div>
 
           {/* Export Section */}
@@ -447,7 +490,17 @@ export default function Attendance() {
             <div className="bg-white rounded-xl shadow-lg p-8 text-center">
               <div className="text-6xl mb-3">👨‍🎓</div>
               <h3 className="text-lg font-bold text-slate-800 mb-1">No students found</h3>
-              <p className="text-slate-500 text-sm">No students in {selectedGrade} {selectedClass}</p>
+              <p className="text-slate-500 text-sm">
+                {selectedGrade && selectedClass 
+                  ? `No students in ${selectedGrade} ${selectedClass}`
+                  : "Please select a grade and class"}
+              </p>
+              <button 
+                onClick={fetchStudentsByClass}
+                className="mt-3 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition"
+              >
+                🔄 Try Again
+              </button>
             </div>
           ) : (
             <div className="bg-white rounded-xl shadow-lg overflow-hidden">
@@ -478,7 +531,7 @@ export default function Attendance() {
                             placeholder="Reason if absent/late"
                             value={studentAttendanceData[student._id]?.reason || ""}
                             onChange={(e) => handleStudentAttendanceChange(student._id, "reason", e.target.value)}
-                            className="w-32 border border-slate-200 rounded px-2 py-1 text-xs"
+                            className="w-32 border border-slate-200 rounded px-2 py-1 text-xs focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none"
                           />
                         </td>
                         <td className="px-3 py-2">
@@ -493,9 +546,10 @@ export default function Attendance() {
                   </tbody>
                 </table>
               </div>
-              <div className="px-4 py-3 border-t border-slate-200 bg-slate-50 flex justify-end">
+              <div className="px-4 py-3 border-t border-slate-200 bg-slate-50 flex justify-between items-center flex-wrap gap-2">
+                <span className="text-xs text-slate-500">Total: {students.length} students</span>
                 <button onClick={handleSubmitStudentAttendance} disabled={loading} className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-6 py-2 rounded-lg font-semibold hover:shadow-lg transition-all text-sm disabled:opacity-50">
-                  💾 Save Attendance
+                  💾 {loading ? "Saving..." : "Save Attendance"}
                 </button>
               </div>
             </div>
@@ -512,21 +566,22 @@ export default function Attendance() {
                 type="date" 
                 value={selectedDate} 
                 onChange={(e) => setSelectedDate(e.target.value)} 
-                className="border border-slate-200 rounded-lg px-3 py-2 text-sm" 
+                className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none" 
               />
               <select 
                 value={selectedPeriod} 
                 onChange={(e) => setSelectedPeriod(e.target.value)}
-                className="border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none"
               >
                 {periods.map(p => <option key={p} value={p}>{p}</option>)}
               </select>
             </div>
             <button 
               onClick={fetchTeachers}
-              className="mt-3 w-full bg-indigo-100 text-indigo-700 py-2 rounded-lg text-sm font-medium hover:bg-indigo-200 transition"
+              disabled={loading}
+              className="mt-3 w-full bg-indigo-100 text-indigo-700 py-2 rounded-lg text-sm font-medium hover:bg-indigo-200 transition disabled:opacity-50"
             >
-              🔄 Load Teachers
+              {loading ? "⏳ Loading..." : "🔄 Load Teachers"}
             </button>
           </div>
 
@@ -587,7 +642,7 @@ export default function Attendance() {
                             placeholder="Reason"
                             value={teacherAttendanceData[teacher._id]?.reason || ""}
                             onChange={(e) => handleTeacherAttendanceChange(teacher._id, "reason", e.target.value)}
-                            className="w-24 border border-slate-200 rounded px-2 py-1 text-xs"
+                            className="w-24 border border-slate-200 rounded px-2 py-1 text-xs focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none"
                           />
                         </td>
                         <td className="px-3 py-2">
@@ -597,14 +652,14 @@ export default function Attendance() {
                               placeholder="In"
                               value={teacherAttendanceData[teacher._id]?.checkInTime || ""}
                               onChange={(e) => handleTeacherAttendanceChange(teacher._id, "checkInTime", e.target.value)}
-                              className="w-16 border border-slate-200 rounded px-1 py-1 text-xs"
+                              className="w-16 border border-slate-200 rounded px-1 py-1 text-xs focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none"
                             />
                             <input 
                               type="time" 
                               placeholder="Out"
                               value={teacherAttendanceData[teacher._id]?.checkOutTime || ""}
                               onChange={(e) => handleTeacherAttendanceChange(teacher._id, "checkOutTime", e.target.value)}
-                              className="w-16 border border-slate-200 rounded px-1 py-1 text-xs"
+                              className="w-16 border border-slate-200 rounded px-1 py-1 text-xs focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none"
                             />
                           </div>
                         </td>
@@ -622,7 +677,7 @@ export default function Attendance() {
               </div>
               <div className="px-4 py-3 border-t border-slate-200 bg-slate-50 flex justify-end">
                 <button onClick={handleSubmitTeacherAttendance} disabled={loading} className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-6 py-2 rounded-lg font-semibold hover:shadow-lg transition-all text-sm disabled:opacity-50">
-                  💾 Save Attendance
+                  💾 {loading ? "Saving..." : "Save Attendance"}
                 </button>
               </div>
             </div>
@@ -636,7 +691,7 @@ export default function Attendance() {
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl my-8 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="sticky top-0 bg-gradient-to-r from-indigo-600 to-purple-600 px-5 py-3 flex justify-between items-center text-white rounded-t-xl">
               <h2 className="text-base font-bold">📊 Attendance Report - {reportData.summary?.schoolName || "School"}</h2>
-              <button onClick={() => setShowReport(false)} className="text-white text-2xl">&times;</button>
+              <button onClick={() => setShowReport(false)} className="text-white text-2xl hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center transition">×</button>
             </div>
             <div className="p-5 space-y-4">
               <div className="bg-slate-50 p-3 rounded-lg">
