@@ -33,7 +33,7 @@
     "tailwindcss": "^3.4.19",
     "vite": "^8.0.4"
   },
-  "description": "This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.",
+  "description": "School Management System Frontend",
   "main": "eslint.config.js",
   "keywords": [],
   "author": "",
