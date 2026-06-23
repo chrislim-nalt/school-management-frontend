@@ -1,31 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { getTeachers, createTeacher, updateTeacher, deleteTeacher } from "../../services/schoolService";
 import DownloadButton from "../../DownloadButton";
-import {
-  Users,
-  UserPlus,
-  Search,
-  Edit,
-  Trash2,
-  ChevronLeft,
-  ChevronRight,
-  Mail,
-  Phone,
-  MapPin,
-  GraduationCap,
-  Award,
-  Calendar,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
-  Download,
-  User,
-  Briefcase,
-  Clock,
-  Plus,
-  X,
-  Filter
-} from "lucide-react";
 
 export default function Teachers() {
   const [teachers, setTeachers] = useState([]);
@@ -176,12 +151,12 @@ export default function Teachers() {
     return colors[status] || "bg-slate-100 text-slate-700";
   };
 
-  const getStatusIcon = (status) => {
+  const getStatusEmoji = (status) => {
     switch(status) {
-      case "ACTIVE": return <CheckCircle className="w-3 h-3" />;
-      case "INACTIVE": return <XCircle className="w-3 h-3" />;
-      case "ON_LEAVE": return <Clock className="w-3 h-3" />;
-      default: return <AlertCircle className="w-3 h-3" />;
+      case "ACTIVE": return "✅";
+      case "INACTIVE": return "❌";
+      case "ON_LEAVE": return "⏳";
+      default: return "📋";
     }
   };
 
@@ -251,12 +226,12 @@ export default function Teachers() {
       {/* Toast Messages */}
       {(success || error) && (
         <div className={`fixed top-20 right-4 z-50 animate-slide-in ${success ? "bg-emerald-500" : "bg-rose-500"} text-white px-4 py-2 rounded-xl shadow-2xl flex items-center gap-2 text-sm max-w-md`}>
-          <span className="text-lg flex-shrink-0">{success ? "✓" : "⚠"}</span>
+          <span className="text-lg flex-shrink-0">{success ? "✅" : "⚠️"}</span>
           <p className="font-medium">{success || error}</p>
         </div>
       )}
 
-      {/* Hero Section */}
+      {/* Hero Section - Dark Gradient */}
       <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl shadow-xl">
         <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-full blur-3xl"></div>
         <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-indigo-500/10 to-purple-500/10 rounded-full blur-3xl"></div>
@@ -265,8 +240,8 @@ export default function Teachers() {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-white/10 backdrop-blur rounded-xl">
-                  <Users className="w-6 h-6 text-white" />
+                <div className="p-2 bg-white/10 backdrop-blur rounded-xl text-2xl">
+                  👨‍🏫
                 </div>
                 <div>
                   <h1 className="text-2xl md:text-3xl font-bold text-white mb-1 tracking-tight">
@@ -282,7 +257,7 @@ export default function Teachers() {
               onClick={() => { resetForm(); setShowForm(true); }}
               className="group bg-white/10 backdrop-blur-md hover:bg-white/20 text-white px-4 py-2 rounded-xl transition-all duration-300 flex items-center gap-2 font-semibold border border-white/20 hover:scale-105 text-sm"
             >
-              <UserPlus className="w-4 h-4 group-hover:rotate-90 transition-transform duration-300" />
+              <span className="text-xl group-hover:rotate-90 transition-transform duration-300">➕</span>
               Add Teacher
             </button>
           </div>
@@ -290,27 +265,19 @@ export default function Teachers() {
           {/* Stats Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-6">
             <div className="bg-white/5 backdrop-blur rounded-xl p-3 border border-white/10 hover:bg-white/10 transition-all">
-              <p className="text-slate-300 text-xs flex items-center gap-1">
-                <Users className="w-3 h-3" /> Total
-              </p>
+              <p className="text-slate-300 text-xs flex items-center gap-1">👥 Total</p>
               <p className="text-2xl md:text-3xl font-bold text-white mt-1">{totalTeachers}</p>
             </div>
             <div className="bg-white/5 backdrop-blur rounded-xl p-3 border border-white/10 hover:bg-white/10 transition-all">
-              <p className="text-slate-300 text-xs flex items-center gap-1">
-                <CheckCircle className="w-3 h-3" /> Active
-              </p>
+              <p className="text-slate-300 text-xs flex items-center gap-1">✅ Active</p>
               <p className="text-2xl md:text-3xl font-bold text-emerald-400 mt-1">{activeTeachers}</p>
             </div>
             <div className="bg-white/5 backdrop-blur rounded-xl p-3 border border-white/10 hover:bg-white/10 transition-all">
-              <p className="text-slate-300 text-xs flex items-center gap-1">
-                <Clock className="w-3 h-3" /> On Leave
-              </p>
+              <p className="text-slate-300 text-xs flex items-center gap-1">⏳ On Leave</p>
               <p className="text-2xl md:text-3xl font-bold text-amber-400 mt-1">{onLeaveTeachers}</p>
             </div>
             <div className="bg-white/5 backdrop-blur rounded-xl p-3 border border-white/10 hover:bg-white/10 transition-all">
-              <p className="text-slate-300 text-xs flex items-center gap-1">
-                <XCircle className="w-3 h-3" /> Inactive
-              </p>
+              <p className="text-slate-300 text-xs flex items-center gap-1">❌ Inactive</p>
               <p className="text-2xl md:text-3xl font-bold text-slate-400 mt-1">{inactiveTeachers}</p>
             </div>
           </div>
@@ -321,7 +288,7 @@ export default function Teachers() {
       <div className="bg-white rounded-xl shadow-lg p-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 text-sm">🔍</span>
             <input
               type="text"
               placeholder="Search by name, email, or ID..."
@@ -335,10 +302,10 @@ export default function Teachers() {
             onChange={(e) => setFilterStatus(e.target.value)}
             className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none"
           >
-            <option value="ALL">All Status</option>
-            <option value="ACTIVE">Active</option>
-            <option value="INACTIVE">Inactive</option>
-            <option value="ON_LEAVE">On Leave</option>
+            <option value="ALL">📋 All Status</option>
+            <option value="ACTIVE">✅ Active</option>
+            <option value="INACTIVE">❌ Inactive</option>
+            <option value="ON_LEAVE">⏳ On Leave</option>
           </select>
         </div>
         {(searchTerm || filterStatus !== "ALL") && (
@@ -347,7 +314,7 @@ export default function Teachers() {
               onClick={() => { setSearchTerm(""); setFilterStatus("ALL"); }} 
               className="text-xs text-indigo-600 hover:text-indigo-700 flex items-center gap-1"
             >
-              <X className="w-3 h-3" /> Clear Filters
+              ✕ Clear Filters
             </button>
           </div>
         )}
@@ -358,7 +325,7 @@ export default function Teachers() {
         <div className="bg-white rounded-xl shadow-lg p-4">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div className="flex items-center gap-2">
-              <Download className="w-4 h-4 text-indigo-600" />
+              <span className="text-lg">📥</span>
               <div>
                 <h3 className="font-semibold text-slate-800 text-sm">Export Teachers List</h3>
                 <p className="text-xs text-slate-400">Download in CSV, Excel, or PDF format</p>
@@ -421,7 +388,7 @@ export default function Teachers() {
                     </td>
                     <td className="px-3 py-2.5">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-100 to-pink-100 flex items-center justify-center text-sm">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-100 to-pink-100 flex items-center justify-center text-sm font-bold text-purple-600">
                           {teacher.name?.charAt(0) || "T"}
                         </div>
                         <span className="font-medium text-slate-800">{teacher.name || "-"}</span>
@@ -429,36 +396,36 @@ export default function Teachers() {
                     </td>
                     <td className="px-3 py-2.5 text-slate-600">
                       <div className="flex items-center gap-1">
-                        <Mail className="w-3 h-3 text-slate-400" />
+                        <span className="text-sm">📧</span>
                         <span className="text-sm">{teacher.email || "-"}</span>
                       </div>
                     </td>
                     <td className="px-3 py-2.5 text-slate-600">
                       <div className="flex items-center gap-1">
-                        <Award className="w-3 h-3 text-amber-500" />
+                        <span className="text-sm">🎓</span>
                         <span className="text-sm">{teacher.qualification || "-"}</span>
                       </div>
                     </td>
                     <td className="px-3 py-2.5">
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(teacher.status)}`}>
-                        {getStatusIcon(teacher.status)} {getStatusLabel(teacher.status)}
+                        {getStatusEmoji(teacher.status)} {getStatusLabel(teacher.status)}
                       </span>
                     </td>
                     <td className="px-3 py-2.5 text-center">
                       <div className="flex items-center justify-center gap-1">
                         <button
                           onClick={() => handleEdit(teacher)}
-                          className="p-1.5 rounded-lg hover:bg-indigo-50 text-indigo-600 transition-colors"
+                          className="p-1.5 rounded-lg hover:bg-indigo-50 text-indigo-600 transition-colors text-sm"
                           title="Edit"
                         >
-                          <Edit className="w-4 h-4" />
+                          ✏️
                         </button>
                         <button
                           onClick={() => handleDelete(teacher._id)}
-                          className="p-1.5 rounded-lg hover:bg-rose-50 text-rose-500 transition-colors"
+                          className="p-1.5 rounded-lg hover:bg-rose-50 text-rose-500 transition-colors text-sm"
                           title="Delete"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          🗑️
                         </button>
                       </div>
                     </td>
@@ -481,7 +448,7 @@ export default function Teachers() {
                     disabled={currentPage === 1}
                     className="px-3 py-1.5 rounded-lg text-xs bg-white text-slate-700 hover:bg-slate-100 shadow-sm disabled:opacity-50 transition-colors flex items-center gap-1"
                   >
-                    <ChevronLeft className="w-3 h-3" /> Prev
+                    ◀ Prev
                   </button>
                   {getPageNumbers().map((page, idx) => (
                     <button 
@@ -504,7 +471,7 @@ export default function Teachers() {
                     disabled={currentPage === totalPages}
                     className="px-3 py-1.5 rounded-lg text-xs bg-white text-slate-700 hover:bg-slate-100 shadow-sm disabled:opacity-50 transition-colors flex items-center gap-1"
                   >
-                    Next <ChevronRight className="w-3 h-3" />
+                    Next ▶
                   </button>
                 </div>
               </div>
@@ -519,16 +486,16 @@ export default function Teachers() {
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md my-8 max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-gradient-to-r from-purple-600 to-pink-600 px-5 py-4 flex justify-between items-center rounded-t-xl">
               <div className="flex items-center gap-2">
-                <UserPlus className="w-5 h-5 text-white" />
+                <span className="text-xl">➕</span>
                 <h2 className="text-lg font-bold text-white">
                   {editingTeacher ? "Edit Teacher" : "Add New Teacher"}
                 </h2>
               </div>
               <button
                 onClick={() => { setShowForm(false); resetForm(); }}
-                className="text-white/70 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10"
+                className="text-white/70 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10 text-xl"
               >
-                <X className="w-5 h-5" />
+                ✕
               </button>
             </div>
 
@@ -608,9 +575,9 @@ export default function Teachers() {
                     onChange={(e) => setFormData({...formData, status: e.target.value})}
                     className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none transition-all"
                   >
-                    <option value="ACTIVE">Active</option>
-                    <option value="INACTIVE">Inactive</option>
-                    <option value="ON_LEAVE">On Leave</option>
+                    <option value="ACTIVE">✅ Active</option>
+                    <option value="INACTIVE">❌ Inactive</option>
+                    <option value="ON_LEAVE">⏳ On Leave</option>
                   </select>
                 </div>
               </div>
@@ -628,7 +595,7 @@ export default function Teachers() {
 
               {error && (
                 <div className="bg-rose-50 border-l-4 border-rose-500 text-rose-700 p-3 rounded-lg text-sm flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  <span className="text-lg">⚠️</span>
                   <span>{error}</span>
                 </div>
               )}
@@ -639,8 +606,7 @@ export default function Teachers() {
                   disabled={loading}
                   className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white py-2.5 rounded-lg font-semibold text-sm hover:shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                  <UserPlus className="w-4 h-4" />
-                  {loading ? "Saving..." : (editingTeacher ? "Update Teacher" : "Add Teacher")}
+                  💾 {loading ? "Saving..." : (editingTeacher ? "Update Teacher" : "Add Teacher")}
                 </button>
                 <button
                   type="button"

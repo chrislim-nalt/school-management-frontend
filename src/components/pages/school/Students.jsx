@@ -1,33 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { getStudents, createStudent, updateStudent, deleteStudent } from "../../services/schoolService";
 import DownloadButton from "../../DownloadButton";
-import {
-  Users,
-  UserPlus,
-  Search,
-  Edit,
-  Trash2,
-  User,
-  Phone,
-  Mail,
-  GraduationCap,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
-  Download,
-  UserCheck,
-  UserX,
-  Bus,
-  Calendar,
-  MapPin,
-  RefreshCw,
-  School,
-  ChevronLeft,
-  ChevronRight,
-  Plus,
-  X,
-  Eye
-} from "lucide-react";
 
 export default function Students() {
   const [students, setStudents] = useState([]);
@@ -257,13 +230,13 @@ export default function Students() {
     return colors[status] || "bg-slate-100 text-slate-700";
   };
 
-  const getStatusIcon = (status) => {
+  const getStatusEmoji = (status) => {
     switch(status) {
-      case "ACTIVE": return <CheckCircle className="w-3 h-3" />;
-      case "INACTIVE": return <UserX className="w-3 h-3" />;
-      case "GRADUATED": return <GraduationCap className="w-3 h-3" />;
-      case "TRANSFERRED": return <RefreshCw className="w-3 h-3" />;
-      default: return <AlertCircle className="w-3 h-3" />;
+      case "ACTIVE": return "✅";
+      case "INACTIVE": return "❌";
+      case "GRADUATED": return "🎓";
+      case "TRANSFERRED": return "🔄";
+      default: return "📋";
     }
   };
 
@@ -329,7 +302,7 @@ export default function Students() {
       {/* Toast Messages */}
       {(success || error) && (
         <div className={`fixed top-20 right-4 z-50 animate-slide-in ${success ? "bg-emerald-500" : "bg-rose-500"} text-white px-4 py-2 rounded-xl shadow-2xl flex items-center gap-2 text-sm max-w-md`}>
-          <span className="text-lg flex-shrink-0">{success ? "✓" : "⚠"}</span>
+          <span className="text-lg flex-shrink-0">{success ? "✅" : "⚠️"}</span>
           <p className="font-medium">{success || error}</p>
         </div>
       )}
@@ -343,8 +316,8 @@ export default function Students() {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-white/10 backdrop-blur rounded-xl">
-                  <Users className="w-6 h-6 text-white" />
+                <div className="p-2 bg-white/10 backdrop-blur rounded-xl text-2xl">
+                  👨‍🎓
                 </div>
                 <div>
                   <h1 className="text-2xl md:text-3xl font-bold text-white mb-1 tracking-tight">
@@ -360,7 +333,7 @@ export default function Students() {
               onClick={() => { resetForm(); setShowForm(true); }}
               className="group bg-white/10 backdrop-blur-md hover:bg-white/20 text-white px-4 py-2 rounded-xl transition-all duration-300 flex items-center gap-2 font-semibold border border-white/20 hover:scale-105 shadow-lg text-sm"
             >
-              <UserPlus className="w-4 h-4 group-hover:rotate-90 transition-transform duration-300" />
+              <span className="text-xl group-hover:rotate-90 transition-transform duration-300">➕</span>
               Add Student
             </button>
           </div>
@@ -368,15 +341,11 @@ export default function Students() {
           {/* Stats Cards */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mt-6">
             <div className="bg-white/5 backdrop-blur rounded-xl p-3 border border-white/10 hover:bg-white/10 transition-all">
-              <p className="text-slate-300 text-xs flex items-center gap-1">
-                <Users className="w-3 h-3" /> Total
-              </p>
+              <p className="text-slate-300 text-xs flex items-center gap-1">👥 Total</p>
               <p className="text-2xl md:text-3xl font-bold text-white mt-1">{totalStudents}</p>
             </div>
             <div className="bg-white/5 backdrop-blur rounded-xl p-3 border border-white/10 hover:bg-white/10 transition-all">
-              <p className="text-slate-300 text-xs flex items-center gap-1">
-                <UserCheck className="w-3 h-3" /> Active
-              </p>
+              <p className="text-slate-300 text-xs flex items-center gap-1">✅ Active</p>
               <p className="text-2xl md:text-3xl font-bold text-emerald-400 mt-1">{activeStudents}</p>
             </div>
             <div className="bg-white/5 backdrop-blur rounded-xl p-3 border border-white/10 hover:bg-white/10 transition-all">
@@ -388,9 +357,7 @@ export default function Students() {
               <p className="text-2xl md:text-3xl font-bold text-pink-400 mt-1">{girls}</p>
             </div>
             <div className="bg-white/5 backdrop-blur rounded-xl p-3 border border-white/10 hover:bg-white/10 transition-all">
-              <p className="text-slate-300 text-xs flex items-center gap-1">
-                <Bus className="w-3 h-3" /> Transport
-              </p>
+              <p className="text-slate-300 text-xs flex items-center gap-1">🚌 Transport</p>
               <p className="text-2xl md:text-3xl font-bold text-amber-400 mt-1">{transportSubscribed}</p>
             </div>
           </div>
@@ -401,7 +368,7 @@ export default function Students() {
       <div className="bg-white rounded-xl shadow-lg p-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 text-sm">🔍</span>
             <input
               type="text"
               placeholder="Search by name, ID, or parent phone..."
@@ -415,7 +382,7 @@ export default function Students() {
             onChange={(e) => setFilterGrade(e.target.value)}
             className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none"
           >
-            <option value="ALL">All Grades</option>
+            <option value="ALL">📂 All Grades</option>
             {grades.map(g => <option key={g} value={g}>{g}</option>)}
           </select>
           <select 
@@ -423,7 +390,7 @@ export default function Students() {
             onChange={(e) => setFilterClass(e.target.value)}
             className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none"
           >
-            <option value="ALL">All Classes</option>
+            <option value="ALL">📂 All Classes</option>
             {classes.map(c => <option key={c} value={c}>Class {c}</option>)}
           </select>
           <select 
@@ -431,11 +398,11 @@ export default function Students() {
             onChange={(e) => setFilterStatus(e.target.value)}
             className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none"
           >
-            <option value="ALL">All Status</option>
-            <option value="ACTIVE">Active</option>
-            <option value="INACTIVE">Inactive</option>
-            <option value="GRADUATED">Graduated</option>
-            <option value="TRANSFERRED">Transferred</option>
+            <option value="ALL">📋 All Status</option>
+            <option value="ACTIVE">✅ Active</option>
+            <option value="INACTIVE">❌ Inactive</option>
+            <option value="GRADUATED">🎓 Graduated</option>
+            <option value="TRANSFERRED">🔄 Transferred</option>
           </select>
         </div>
         {(searchTerm || filterGrade !== "ALL" || filterClass !== "ALL" || filterStatus !== "ALL") && (
@@ -444,7 +411,7 @@ export default function Students() {
               onClick={() => { setSearchTerm(""); setFilterGrade("ALL"); setFilterClass("ALL"); setFilterStatus("ALL"); }} 
               className="text-xs text-indigo-600 hover:text-indigo-700 flex items-center gap-1"
             >
-              <X className="w-3 h-3" /> Clear Filters
+              ✕ Clear Filters
             </button>
           </div>
         )}
@@ -455,7 +422,7 @@ export default function Students() {
         <div className="bg-white rounded-xl shadow-lg p-4">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div className="flex items-center gap-2">
-              <Download className="w-4 h-4 text-indigo-600" />
+              <span className="text-lg">📥</span>
               <div>
                 <h3 className="font-semibold text-slate-800 text-sm">Export Students List</h3>
                 <p className="text-xs text-slate-400">Download in CSV, Excel, or PDF format</p>
@@ -513,7 +480,7 @@ export default function Students() {
                     <td className="px-4 py-3 whitespace-nowrap font-mono text-xs text-indigo-600">{student.studentId}</td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-r from-indigo-100 to-purple-100 flex items-center justify-center text-sm">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-r from-indigo-100 to-purple-100 flex items-center justify-center text-sm font-bold text-indigo-600">
                           {student.name?.charAt(0) || "S"}
                         </div>
                         <span className="font-medium text-slate-800 text-sm">{student.name}</span>
@@ -521,13 +488,13 @@ export default function Students() {
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-slate-600 text-sm">
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-blue-50 text-blue-700 text-xs font-medium">
-                        <School className="w-3 h-3" /> {student.grade} {student.className}
+                        🏫 {student.grade} {student.className}
                       </span>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-slate-600 text-sm">
                       {student.parentPhone ? (
                         <span className="flex items-center gap-1">
-                          <Phone className="w-3 h-3 text-slate-400" /> {student.parentPhone}
+                          📱 {student.parentPhone}
                         </span>
                       ) : "-"}
                     </td>
@@ -536,24 +503,24 @@ export default function Students() {
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(student.status)}`}>
-                        {getStatusIcon(student.status)} {student.status}
+                        {getStatusEmoji(student.status)} {student.status}
                       </span>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-center">
                       <div className="flex items-center justify-center gap-1">
                         <button 
                           onClick={() => handleEdit(student)} 
-                          className="p-1.5 rounded-lg hover:bg-indigo-50 text-indigo-600 transition-colors"
+                          className="p-1.5 rounded-lg hover:bg-indigo-50 text-indigo-600 transition-colors text-sm"
                           title="Edit"
                         >
-                          <Edit className="w-4 h-4" />
+                          ✏️
                         </button>
                         <button 
                           onClick={() => handleDelete(student._id)} 
-                          className="p-1.5 rounded-lg hover:bg-rose-50 text-rose-500 transition-colors"
+                          className="p-1.5 rounded-lg hover:bg-rose-50 text-rose-500 transition-colors text-sm"
                           title="Delete"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          🗑️
                         </button>
                       </div>
                     </td>
@@ -576,7 +543,7 @@ export default function Students() {
                     disabled={currentPage === 1}
                     className="px-3 py-1.5 rounded-lg text-xs bg-white text-slate-700 hover:bg-slate-100 shadow-sm disabled:opacity-50 transition-colors flex items-center gap-1"
                   >
-                    <ChevronLeft className="w-3 h-3" /> Prev
+                    ◀ Prev
                   </button>
                   {getPageNumbers().map((page, idx) => (
                     <button 
@@ -599,7 +566,7 @@ export default function Students() {
                     disabled={currentPage === totalPages}
                     className="px-3 py-1.5 rounded-lg text-xs bg-white text-slate-700 hover:bg-slate-100 shadow-sm disabled:opacity-50 transition-colors flex items-center gap-1"
                   >
-                    Next <ChevronRight className="w-3 h-3" />
+                    Next ▶
                   </button>
                 </div>
               </div>
@@ -614,14 +581,14 @@ export default function Students() {
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md my-8 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="sticky top-0 bg-gradient-to-r from-slate-800 to-slate-700 px-5 py-4 flex justify-between items-center rounded-t-xl">
               <div className="flex items-center gap-2">
-                <UserPlus className="w-5 h-5 text-white" />
+                <span className="text-xl">➕</span>
                 <h2 className="text-lg font-bold text-white">{editingId ? "Edit Student" : "Add New Student"}</h2>
               </div>
               <button 
                 onClick={() => { setShowForm(false); resetForm(); }} 
-                className="text-white/70 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10"
+                className="text-white/70 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10 text-xl"
               >
-                <X className="w-5 h-5" />
+                ✕
               </button>
             </div>
             
@@ -738,7 +705,7 @@ export default function Students() {
                   className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                 />
                 <label htmlFor="transport" className="text-sm text-slate-700 flex items-center gap-1">
-                  <Bus className="w-4 h-4" /> Subscribe to School Transport
+                  🚌 Subscribe to School Transport
                 </label>
               </div>
 
@@ -762,16 +729,16 @@ export default function Students() {
                   onChange={(e) => setForm({...form, status: e.target.value})}
                   className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none transition-all"
                 >
-                  <option value="ACTIVE">Active</option>
-                  <option value="INACTIVE">Inactive</option>
-                  <option value="GRADUATED">Graduated</option>
-                  <option value="TRANSFERRED">Transferred</option>
+                  <option value="ACTIVE">✅ Active</option>
+                  <option value="INACTIVE">❌ Inactive</option>
+                  <option value="GRADUATED">🎓 Graduated</option>
+                  <option value="TRANSFERRED">🔄 Transferred</option>
                 </select>
               </div>
 
               {error && (
                 <div className="bg-rose-50 border-l-4 border-rose-500 text-rose-700 p-3 rounded-lg text-sm flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  <span className="text-lg">⚠️</span>
                   <span>{error}</span>
                 </div>
               )}
@@ -782,8 +749,7 @@ export default function Students() {
                   disabled={loading} 
                   className="flex-1 bg-gradient-to-r from-indigo-500 to-purple-500 text-white py-2.5 rounded-lg font-semibold text-sm hover:shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                  <UserPlus className="w-4 h-4" />
-                  {loading ? "Saving..." : (editingId ? "Update Student" : "Create Student")}
+                  💾 {loading ? "Saving..." : (editingId ? "Update Student" : "Create Student")}
                 </button>
                 <button 
                   type="button" 

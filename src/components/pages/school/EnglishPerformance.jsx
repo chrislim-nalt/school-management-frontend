@@ -6,54 +6,6 @@ import {
   getStudents 
 } from "../../services/schoolService";
 import DownloadButton from "../../DownloadButton";
-import {
-  Languages,
-  Plus,
-  X,
-  ChevronLeft,
-  ChevronRight,
-  Search,
-  Filter,
-  Download,
-  Eye,
-  Edit,
-  Trash2,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
-  Clock,
-  Calendar,
-  Users,
-  BarChart,
-  PieChart,
-  TrendingUp,
-  TrendingDown,
-  Award,
-  Star,
-  BookOpen,
-  GraduationCap,
-  ClipboardList,
-  FileText,
-  UserCheck,
-  UserX,
-  RefreshCw,
-  Settings,
-  MoreHorizontal,
-  ChevronDown,
-  Zap,
-  Target,
-  Brain,
-  Lightbulb,
-  MessageSquare,
-  MapPin,
-  AlertTriangle,
-  Check,
-  User,
-  School,
-  Flag,
-  Gauge,
-  Activity
-} from "lucide-react";
 
 export default function EnglishPerformance() {
   const [students, setStudents] = useState([]);
@@ -220,7 +172,7 @@ export default function EnglishPerformance() {
         actionTaken: form.actionTaken,
         semester: filterSemester
       });
-      setSuccess("Violation recorded successfully!");
+      setSuccess("✅ Violation recorded successfully!");
       setShowAddForm(false);
       setForm({
         studentId: "",
@@ -245,10 +197,10 @@ export default function EnglishPerformance() {
   };
 
   const getStatusBadge = (violationCount) => {
-    if (violationCount === 0) return { label: "Excellent", color: "bg-emerald-100 text-emerald-700", icon: CheckCircle, description: "No violations" };
-    if (violationCount <= 2) return { label: "Good", color: "bg-blue-100 text-blue-700", icon: CheckCircle, description: "Minor violations" };
-    if (violationCount <= 4) return { label: "Needs Attention", color: "bg-amber-100 text-amber-700", icon: AlertCircle, description: "Multiple violations" };
-    return { label: "Critical", color: "bg-rose-100 text-rose-700", icon: AlertTriangle, description: "Frequent violations" };
+    if (violationCount === 0) return { label: "Excellent", color: "bg-emerald-100 text-emerald-700", icon: "✅", description: "No violations" };
+    if (violationCount <= 2) return { label: "Good", color: "bg-blue-100 text-blue-700", icon: "👍", description: "Minor violations" };
+    if (violationCount <= 4) return { label: "Needs Attention", color: "bg-amber-100 text-amber-700", icon: "⚠️", description: "Multiple violations" };
+    return { label: "Critical", color: "bg-rose-100 text-rose-700", icon: "🔴", description: "Frequent violations" };
   };
 
   const calculateSchoolMetrics = () => {
@@ -318,26 +270,26 @@ export default function EnglishPerformance() {
     if (recentAvg < previousAvg) {
       return {
         direction: "improving",
-        message: `Violations are DECREASING by ${Math.abs(percentChange)}% compared to previous period`,
+        message: `📉 Violations are DECREASING by ${Math.abs(percentChange)}% compared to previous period`,
         color: "text-emerald-600",
         bg: "bg-emerald-50",
-        icon: TrendingDown
+        icon: "📉"
       };
     } else if (recentAvg > previousAvg) {
       return {
         direction: "worsening",
-        message: `Violations are INCREASING by ${percentChange}% compared to previous period`,
+        message: `📈 Violations are INCREASING by ${percentChange}% compared to previous period`,
         color: "text-rose-600",
         bg: "bg-rose-50",
-        icon: TrendingUp
+        icon: "📈"
       };
     } else {
       return {
         direction: "stable",
-        message: "Violations are STABLE compared to previous period",
+        message: "➡️ Violations are STABLE compared to previous period",
         color: "text-blue-600",
         bg: "bg-blue-50",
-        icon: Activity
+        icon: "➡️"
       };
     }
   };
@@ -362,7 +314,7 @@ export default function EnglishPerformance() {
       {/* Toast Messages */}
       {(success || error) && (
         <div className={`fixed top-20 right-4 z-50 animate-slide-in ${success ? "bg-emerald-500" : "bg-rose-500"} text-white px-4 py-2 rounded-xl shadow-2xl flex items-center gap-2 text-sm max-w-md`}>
-          <span className="text-lg flex-shrink-0">{success ? "✓" : "⚠"}</span>
+          <span className="text-lg flex-shrink-0">{success ? "✅" : "⚠️"}</span>
           <p className="font-medium">{success || error}</p>
         </div>
       )}
@@ -376,12 +328,12 @@ export default function EnglishPerformance() {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-white/10 backdrop-blur rounded-xl">
-                  <Languages className="w-6 h-6 text-white" />
+                <div className="p-2 bg-white/10 backdrop-blur rounded-xl text-2xl">
+                  🇬🇧
                 </div>
                 <div>
                   <h1 className="text-2xl md:text-3xl font-bold text-white mb-1 tracking-tight">
-                    🇬🇧 English Speaking Performance
+                    English Speaking Performance
                   </h1>
                   <p className="text-slate-300 text-sm">
                     Track and improve English speaking compliance across the school
@@ -399,14 +351,14 @@ export default function EnglishPerformance() {
                 }}
                 className="bg-white/10 backdrop-blur-md hover:bg-white/20 text-white px-4 py-2 rounded-xl transition-all flex items-center gap-2 font-semibold border border-white/20 text-sm"
               >
-                <Plus className="w-4 h-4" />
+                <span className="text-lg">➕</span>
                 Record Violation
               </button>
               <button
                 onClick={fetchReport}
                 className="bg-white/10 backdrop-blur-md hover:bg-white/20 text-white px-4 py-2 rounded-xl transition-all flex items-center gap-2 font-semibold border border-white/20 text-sm"
               >
-                <BarChart className="w-4 h-4" />
+                <span className="text-lg">📊</span>
                 Full Report
               </button>
             </div>
@@ -420,7 +372,7 @@ export default function EnglishPerformance() {
           <div className="p-4 md:p-5">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-2">
               <h2 className="text-base md:text-lg font-bold text-gray-800 flex items-center gap-2">
-                <ClipboardList className="w-5 h-5" /> Executive Summary
+                📋 Executive Summary
               </h2>
               <span className={`text-sm font-bold ${schoolMetrics.performanceColor}`}>
                 Performance: {schoolMetrics.performanceLevel}
@@ -430,25 +382,25 @@ export default function EnglishPerformance() {
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
               <div className="text-center">
                 <p className="text-xl md:text-2xl font-bold text-gray-800">{schoolMetrics.totalStudents}</p>
-                <p className="text-[10px] md:text-xs text-gray-500">Total Students</p>
+                <p className="text-[10px] md:text-xs text-gray-500">👥 Total Students</p>
               </div>
               <div className="text-center">
                 <p className="text-xl md:text-2xl font-bold text-rose-600">{schoolMetrics.totalViolations}</p>
-                <p className="text-[10px] md:text-xs text-gray-500">Total Violations</p>
+                <p className="text-[10px] md:text-xs text-gray-500">🔴 Total Violations</p>
               </div>
               <div className="text-center">
                 <p className="text-xl md:text-2xl font-bold text-emerald-600">{schoolMetrics.cleanStudents}</p>
-                <p className="text-[10px] md:text-xs text-gray-500">Clean Students</p>
+                <p className="text-[10px] md:text-xs text-gray-500">✅ Clean Students</p>
                 <p className="text-[8px] md:text-[10px] text-gray-400">(0 violations)</p>
               </div>
               <div className="text-center">
                 <p className="text-xl md:text-2xl font-bold text-amber-600">{schoolMetrics.atRiskStudents}</p>
-                <p className="text-[10px] md:text-xs text-gray-500">At Risk Students</p>
+                <p className="text-[10px] md:text-xs text-gray-500">⚠️ At Risk Students</p>
                 <p className="text-[8px] md:text-[10px] text-gray-400">(1+ violations)</p>
               </div>
               <div className="text-center">
                 <p className="text-xl md:text-2xl font-bold text-purple-600">{schoolMetrics.averageViolationsPerStudent}</p>
-                <p className="text-[10px] md:text-xs text-gray-500">Avg Violations/Student</p>
+                <p className="text-[10px] md:text-xs text-gray-500">📊 Avg Violations/Student</p>
               </div>
             </div>
             
@@ -464,7 +416,7 @@ export default function EnglishPerformance() {
                 />
               </div>
               <p className="text-xs md:text-sm text-gray-600 mt-3 flex items-start gap-2">
-                <Lightbulb className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                <span className="text-lg">💡</span>
                 <span>{schoolMetrics.recommendation}</span>
               </p>
             </div>
@@ -478,18 +430,17 @@ export default function EnglishPerformance() {
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
             <div>
               <h3 className="font-bold text-gray-800 mb-1 flex items-center gap-2">
-                <TrendingUp className="w-4 h-4" /> Trend Analysis
+                📈 Trend Analysis
               </h3>
               <p className={`text-xs md:text-sm font-medium ${trendAnalysis.color}`}>
-                <trendAnalysis.icon className="w-4 h-4 inline mr-1" />
-                {trendAnalysis.message}
+                {trendAnalysis.icon} {trendAnalysis.message}
               </p>
             </div>
             <div className="text-right">
               <p className="text-xl md:text-2xl font-bold">
                 {dashboardData?.weeklyTrend?.slice(-4).reduce((sum, w) => sum + w.count, 0) || 0}
               </p>
-              <p className="text-[10px] md:text-xs text-gray-500">Last 4 weeks violations</p>
+              <p className="text-[10px] md:text-xs text-gray-500">📅 Last 4 weeks violations</p>
             </div>
           </div>
         </div>
@@ -500,7 +451,7 @@ export default function EnglishPerformance() {
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
           <div className="px-4 py-3 border-b border-gray-100 bg-gradient-to-r from-slate-50 to-slate-100">
             <h3 className="font-semibold text-gray-800 flex items-center gap-2">
-              <Calendar className="w-4 h-4" /> Weekly Violation Trend
+              📅 Weekly Violation Trend
             </h3>
             <p className="text-xs text-gray-500 mt-0.5">Number of violations recorded each week</p>
           </div>
@@ -521,13 +472,13 @@ export default function EnglishPerformance() {
                     const prevCount = dashboardData.weeklyTrend[idx - 1].count;
                     if (week.count < prevCount) {
                       statusColor = "text-emerald-600";
-                      statusIcon = "↓";
+                      statusIcon = "📉";
                     } else if (week.count > prevCount) {
                       statusColor = "text-rose-600";
-                      statusIcon = "↑";
+                      statusIcon = "📈";
                     } else {
                       statusColor = "text-blue-600";
-                      statusIcon = "→";
+                      statusIcon = "➡️";
                     }
                   }
                   return (
@@ -552,7 +503,7 @@ export default function EnglishPerformance() {
       {dashboardData?.locationDistribution && (
         <div className="bg-white rounded-xl shadow-lg p-4 md:p-5">
           <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            <MapPin className="w-4 h-4" /> Where Violations Happen
+            📍 Where Violations Happen
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             {Object.entries(dashboardData.locationDistribution).map(([location, count]) => {
@@ -582,7 +533,7 @@ export default function EnglishPerformance() {
           </div>
           <div className="mt-4 pt-3 border-t border-gray-100">
             <p className="text-xs md:text-sm text-gray-600 flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-amber-500" />
+              <span className="text-lg">⚠️</span>
               <span><span className="font-semibold">Focus Area:</span> Most violations occur in {
                 Object.entries(dashboardData.locationDistribution)
                   .sort((a, b) => b[1] - a[1])[0]?.[0]
@@ -600,7 +551,7 @@ export default function EnglishPerformance() {
             onChange={(e) => setFilterGrade(e.target.value)}
             className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none"
           >
-            <option value="ALL">All Grades</option>
+            <option value="ALL">📂 All Grades</option>
             {grades.map(g => <option key={g} value={g}>{g}</option>)}
           </select>
           <select 
@@ -608,7 +559,7 @@ export default function EnglishPerformance() {
             onChange={(e) => setFilterClass(e.target.value)}
             className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none"
           >
-            <option value="ALL">All Classes</option>
+            <option value="ALL">📂 All Classes</option>
             {classes.map(c => <option key={c} value={c}>Class {c}</option>)}
           </select>
           <select 
@@ -622,7 +573,7 @@ export default function EnglishPerformance() {
             onClick={fetchDashboard}
             className="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg font-semibold text-sm transition flex items-center justify-center gap-2"
           >
-            <RefreshCw className="w-4 h-4" /> Refresh
+            🔄 Refresh
           </button>
         </div>
       </div>
@@ -631,7 +582,7 @@ export default function EnglishPerformance() {
       {dashboardData?.performances && dashboardData.performances.length > 0 && (
         <div className="bg-white rounded-xl shadow-lg p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div className="flex items-center gap-2">
-            <Download className="w-4 h-4 text-indigo-600" />
+            <span className="text-lg">📥</span>
             <div>
               <h3 className="font-semibold text-gray-800 text-sm">Export Data</h3>
               <p className="text-xs text-gray-500">Download report in CSV, Excel, or PDF</p>
@@ -652,7 +603,7 @@ export default function EnglishPerformance() {
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
           <div className="px-4 py-3 border-b border-gray-100 bg-gradient-to-r from-slate-50 to-slate-100">
             <h3 className="font-semibold text-gray-800 flex items-center gap-2">
-              <Users className="w-4 h-4" /> Student Performance Details
+              👥 Student Performance Details
             </h3>
             <p className="text-xs text-gray-500 mt-0.5">Individual student violation records and status</p>
           </div>
@@ -674,7 +625,6 @@ export default function EnglishPerformance() {
               <tbody className="divide-y divide-gray-100">
                 {dashboardData.performances.slice(0, 50).map((student, idx) => {
                   const status = getStatusBadge(student.violationCount);
-                  const StatusIcon = status.icon;
                   return (
                     <tr key={idx} className="hover:bg-gray-50 transition">
                       <td className="px-3 py-2 text-sm font-medium text-gray-800">{student.studentName}</td>
@@ -687,7 +637,7 @@ export default function EnglishPerformance() {
                       </td>
                       <td className="px-3 py-2">
                         <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${status.color}`}>
-                          <StatusIcon className="w-3 h-3" /> {status.label}
+                          {status.icon} {status.label}
                         </span>
                         <p className="text-[10px] text-gray-400 mt-0.5">{status.description}</p>
                       </td>
@@ -698,12 +648,12 @@ export default function EnglishPerformance() {
                               "{student.recentViolationContext?.substring(0, 40)}..."
                             </p>
                             <p className="text-[10px] text-gray-400 mt-0.5 flex items-center gap-1">
-                              <MapPin className="w-3 h-3" /> {student.recentViolationLocation} • {student.recentViolationDate}
+                              📍 {student.recentViolationLocation} • {student.recentViolationDate}
                             </p>
                           </div>
                         ) : (
                           <span className="text-xs text-emerald-600 flex items-center gap-1">
-                            <Check className="w-3 h-3" /> No violations
+                            ✅ No violations
                           </span>
                         )}
                       </td>
@@ -716,7 +666,7 @@ export default function EnglishPerformance() {
                           className="text-indigo-600 hover:text-indigo-800 text-xs font-medium flex items-center gap-1 mx-auto"
                           disabled={student.violationCount === 0}
                         >
-                          <Eye className="w-3 h-3" /> {student.violationCount > 0 ? "View Details" : "-"}
+                          👁️ {student.violationCount > 0 ? "View Details" : "-"}
                         </button>
                       </td>
                     </tr>
@@ -730,7 +680,6 @@ export default function EnglishPerformance() {
           <div className="block md:hidden divide-y divide-gray-100">
             {dashboardData.performances.slice(0, 50).map((student, idx) => {
               const status = getStatusBadge(student.violationCount);
-              const StatusIcon = status.icon;
               return (
                 <div key={idx} className="p-4 hover:bg-gray-50 transition">
                   <div className="flex justify-between items-start mb-2">
@@ -740,7 +689,7 @@ export default function EnglishPerformance() {
                       <p className="text-xs text-gray-500">{student.grade} {student.className}</p>
                     </div>
                     <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${status.color}`}>
-                      <StatusIcon className="w-3 h-3" /> {status.label}
+                      {status.icon} {status.label}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
@@ -762,7 +711,7 @@ export default function EnglishPerformance() {
                       className="text-indigo-600 hover:text-indigo-800 text-xs font-medium flex items-center gap-1"
                       disabled={student.violationCount === 0}
                     >
-                      <Eye className="w-3 h-3" /> {student.violationCount > 0 ? "Details" : "-"}
+                      👁️ {student.violationCount > 0 ? "Details" : "-"}
                     </button>
                   </div>
                 </div>
@@ -783,7 +732,7 @@ export default function EnglishPerformance() {
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
           <div className="px-4 py-3 border-b border-gray-100 bg-gradient-to-r from-rose-50 to-amber-50">
             <h3 className="font-semibold text-rose-800 flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4" /> Students Needing Immediate Attention
+              ⚠️ Students Needing Immediate Attention
             </h3>
             <p className="text-xs text-rose-600 mt-0.5">Students with 3 or more violations require intervention</p>
           </div>
@@ -819,7 +768,7 @@ export default function EnglishPerformance() {
                       </p>
                     </td>
                     <td className="px-3 py-2 text-xs text-gray-500">
-                      {student.recentViolations?.[0]?.location || "-"}
+                      📍 {student.recentViolations?.[0]?.location || "-"}
                     </td>
                     <td className="px-3 py-2">
                       <span className={`text-xs font-medium ${student.violationCount >= 5 ? "text-rose-600" : student.violationCount >= 3 ? "text-amber-600" : "text-blue-600"}`}>
@@ -854,7 +803,7 @@ export default function EnglishPerformance() {
                 <div className="flex justify-between items-center mt-2 text-xs">
                   <span className="text-gray-500">📍 {student.recentViolations?.[0]?.location || "-"}</span>
                   <span className={`font-medium ${student.violationCount >= 5 ? "text-rose-600" : student.violationCount >= 3 ? "text-amber-600" : "text-blue-600"}`}>
-                    {student.violationCount >= 5 ? "⚠️ Parent meeting" : 
+                    {student.violationCount >= 5 ? "📞 Parent meeting" : 
                      student.violationCount >= 3 ? "📝 Counselor" : 
                      "👁️ Monitor"}
                   </span>
@@ -886,18 +835,18 @@ export default function EnglishPerformance() {
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md my-8 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="sticky top-0 bg-gradient-to-r from-rose-500 to-amber-500 px-5 py-4 flex justify-between items-center rounded-t-xl">
               <div className="flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5 text-white" />
+                <span className="text-xl">🔴</span>
                 <h2 className="text-lg font-bold text-white">Record English Violation</h2>
               </div>
-              <button onClick={() => setShowAddForm(false)} className="text-white/70 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10">
-                <X className="w-5 h-5" />
+              <button onClick={() => setShowAddForm(false)} className="text-white/70 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10 text-xl">
+                ✕
               </button>
             </div>
             <form onSubmit={handleRecordViolation} className="p-5 space-y-4">
               {/* Student Selection */}
               <div className="bg-slate-50 rounded-lg p-3">
                 <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
-                  <Users className="w-4 h-4" /> Select Student
+                  👥 Select Student
                 </h3>
                 <div className="grid grid-cols-2 gap-2 mb-3">
                   <select
@@ -905,7 +854,7 @@ export default function EnglishPerformance() {
                     onChange={(e) => setSelectedGrade(e.target.value)}
                     className="border border-slate-200 rounded-lg px-2 py-1.5 text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none"
                   >
-                    <option value="ALL">All Grades</option>
+                    <option value="ALL">📂 All Grades</option>
                     {grades.map(g => <option key={g} value={g}>{g}</option>)}
                   </select>
                   <select
@@ -913,12 +862,12 @@ export default function EnglishPerformance() {
                     onChange={(e) => setSelectedClass(e.target.value)}
                     className="border border-slate-200 rounded-lg px-2 py-1.5 text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none"
                   >
-                    <option value="ALL">All Classes</option>
+                    <option value="ALL">📂 All Classes</option>
                     {classes.map(c => <option key={c} value={c}>Class {c}</option>)}
                   </select>
                 </div>
                 <div className="relative mb-3">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-3 h-3" />
+                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 text-sm">🔍</span>
                   <input
                     type="text"
                     placeholder="Search by name or ID..."
@@ -960,7 +909,7 @@ export default function EnglishPerformance() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Location</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">📍 Location</label>
                 <select
                   value={form.location}
                   onChange={(e) => setForm({...form, location: e.target.value})}
@@ -998,15 +947,14 @@ export default function EnglishPerformance() {
 
               {error && (
                 <div className="bg-rose-50 border-l-4 border-rose-500 text-rose-700 p-3 rounded-lg text-sm flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  <span className="text-lg">⚠️</span>
                   <span>{error}</span>
                 </div>
               )}
 
               <div className="flex gap-3 pt-2 border-t border-slate-100">
                 <button type="submit" disabled={loading} className="flex-1 bg-gradient-to-r from-indigo-500 to-purple-500 text-white py-2.5 rounded-lg font-semibold text-sm hover:shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2">
-                  <AlertTriangle className="w-4 h-4" />
-                  {loading ? "Recording..." : "Record Violation"}
+                  🔴 {loading ? "Recording..." : "Record Violation"}
                 </button>
                 <button type="button" onClick={() => setShowAddForm(false)} className="flex-1 bg-slate-100 text-slate-700 py-2.5 rounded-lg font-semibold text-sm hover:bg-slate-200 transition-all">
                   Cancel
@@ -1023,29 +971,29 @@ export default function EnglishPerformance() {
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl my-8 max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="sticky top-0 bg-gradient-to-r from-indigo-600 to-purple-600 px-5 py-4 flex justify-between items-center text-white rounded-t-xl">
               <div className="flex items-center gap-2">
-                <BarChart className="w-5 h-5" />
+                <span className="text-xl">📊</span>
                 <h2 className="text-lg font-bold">English Performance Report</h2>
               </div>
-              <button onClick={() => setShowReport(false)} className="text-white/70 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10">
-                <X className="w-5 h-5" />
+              <button onClick={() => setShowReport(false)} className="text-white/70 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10 text-xl">
+                ✕
               </button>
             </div>
             <div className="p-5 space-y-4">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div className="bg-blue-50 rounded-lg p-3 text-center">
-                  <p className="text-xs text-blue-600">Total Violations</p>
+                  <p className="text-xs text-blue-600">🔴 Total Violations</p>
                   <p className="text-xl font-bold text-blue-700">{reportData.totalViolations}</p>
                 </div>
                 <div className="bg-emerald-50 rounded-lg p-3 text-center">
-                  <p className="text-xs text-emerald-600">Avg per Student</p>
+                  <p className="text-xs text-emerald-600">📊 Avg per Student</p>
                   <p className="text-xl font-bold text-emerald-700">{reportData.averageViolationsPerStudent}</p>
                 </div>
                 <div className="bg-amber-50 rounded-lg p-3 text-center">
-                  <p className="text-xs text-amber-600">Trend</p>
+                  <p className="text-xs text-amber-600">📈 Trend</p>
                   <p className="text-xl font-bold text-amber-700">{reportData.improvementTrend}</p>
                 </div>
                 <div className="bg-rose-50 rounded-lg p-3 text-center">
-                  <p className="text-xs text-rose-600">Need Intervention</p>
+                  <p className="text-xs text-rose-600">⚠️ Need Intervention</p>
                   <p className="text-xl font-bold text-rose-700">{reportData.studentsNeedingIntervention}</p>
                 </div>
               </div>
@@ -1060,11 +1008,11 @@ export default function EnglishPerformance() {
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="sticky top-0 bg-gradient-to-r from-indigo-600 to-purple-600 px-5 py-4 flex justify-between items-center text-white rounded-t-xl">
               <div className="flex items-center gap-2">
-                <FileText className="w-5 h-5" />
+                <span className="text-xl">📋</span>
                 <h2 className="text-lg font-bold">Violation History - {selectedStudentDetails.studentName}</h2>
               </div>
-              <button onClick={() => setShowViolationDetails(false)} className="text-white/70 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10">
-                <X className="w-5 h-5" />
+              <button onClick={() => setShowViolationDetails(false)} className="text-white/70 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10 text-xl">
+                ✕
               </button>
             </div>
             <div className="p-5 space-y-4">
@@ -1085,7 +1033,7 @@ export default function EnglishPerformance() {
               
               <div className="space-y-3">
                 <h3 className="font-semibold text-slate-800 flex items-center gap-2">
-                  <ClipboardList className="w-4 h-4" /> Violation Records
+                  📋 Violation Records
                 </h3>
                 {selectedStudentDetails.recentViolations?.map((violation, idx) => (
                   <div key={idx} className="border border-slate-200 rounded-lg p-3">
@@ -1097,7 +1045,7 @@ export default function EnglishPerformance() {
                       <span className="font-semibold">What was said:</span> "{violation.context}"
                     </p>
                     <div className="grid grid-cols-2 gap-2 text-xs text-slate-500">
-                      <p><span className="font-semibold">Location:</span> {violation.location}</p>
+                      <p><span className="font-semibold">📍 Location:</span> {violation.location}</p>
                       <p><span className="font-semibold">Action:</span> {violation.actionTaken || "Red Card"}</p>
                     </div>
                   </div>

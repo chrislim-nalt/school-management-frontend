@@ -10,45 +10,6 @@ import {
   getCourses
 } from "../../services/schoolService";
 import DownloadButton from "../../DownloadButton";
-import {
-  Activity,
-  Plus,
-  X,
-  ChevronLeft,
-  ChevronRight,
-  Search,
-  Filter,
-  Download,
-  Eye,
-  Edit,
-  Trash2,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
-  Clock,
-  Calendar,
-  Users,
-  BarChart,
-  PieChart,
-  TrendingUp,
-  TrendingDown,
-  Award,
-  Star,
-  BookOpen,
-  GraduationCap,
-  ClipboardList,
-  FileText,
-  UserCheck,
-  UserX,
-  RefreshCw,
-  Settings,
-  MoreHorizontal,
-  ChevronDown,
-  Zap,
-  Target,
-  Brain,
-  Lightbulb
-} from "lucide-react";
 
 // --- Error Boundary ---
 class ActivitiesErrorBoundary extends React.Component {
@@ -112,10 +73,10 @@ function ActivitiesComponent() {
   const classes = ["A", "B", "C", "D"];
   const terms = ["TERM1", "TERM2", "TERM3"];
   const activityTypes = [
-    { value: "EXERCISE", label: "Exercise", icon: FileText, color: "bg-blue-100 text-blue-700" },
-    { value: "QUIZ", label: "Quiz", icon: ClipboardList, color: "bg-purple-100 text-purple-700" },
-    { value: "HOMEWORK", label: "Homework", icon: BookOpen, color: "bg-emerald-100 text-emerald-700" },
-    { value: "EXAM", label: "Exam", icon: GraduationCap, color: "bg-amber-100 text-amber-700" }
+    { value: "EXERCISE", label: "Exercise", icon: "✏️", color: "bg-blue-100 text-blue-700" },
+    { value: "QUIZ", label: "Quiz", icon: "📝", color: "bg-purple-100 text-purple-700" },
+    { value: "HOMEWORK", label: "Homework", icon: "📚", color: "bg-emerald-100 text-emerald-700" },
+    { value: "EXAM", label: "Exam", icon: "📋", color: "bg-amber-100 text-amber-700" }
   ];
 
   const [form, setForm] = useState({
@@ -239,7 +200,7 @@ function ActivitiesComponent() {
     setLoading(true);
     try {
       await assignActivityToClass(form);
-      setSuccess(`Activity assigned to ${form.grade} ${form.className} successfully!`);
+      setSuccess(`✅ Activity assigned to ${form.grade} ${form.className} successfully!`);
       setShowAssignForm(false);
       setForm({
         grade: form.grade,
@@ -274,7 +235,7 @@ function ActivitiesComponent() {
         studentId: editingScore.studentId,
         score: parseFloat(editingScore.score)
       });
-      setSuccess("Score updated successfully!");
+      setSuccess("✅ Score updated successfully!");
       setEditingScore(null);
       await fetchData();
       setTimeout(() => setSuccess(null), 3000);
@@ -327,7 +288,7 @@ function ActivitiesComponent() {
       {/* Toast Messages */}
       {(success || error) && (
         <div className={`fixed top-20 right-4 z-50 animate-slide-in ${success ? "bg-emerald-500" : "bg-rose-500"} text-white px-4 py-2 rounded-xl shadow-2xl flex items-center gap-2 text-sm max-w-md`}>
-          <span className="text-lg flex-shrink-0">{success ? "✓" : "⚠"}</span>
+          <span className="text-lg flex-shrink-0">{success ? "✅" : "⚠️"}</span>
           <p className="font-medium">{success || error}</p>
         </div>
       )}
@@ -341,8 +302,8 @@ function ActivitiesComponent() {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-white/10 backdrop-blur rounded-xl">
-                  <Activity className="w-6 h-6 text-white" />
+                <div className="p-2 bg-white/10 backdrop-blur rounded-xl text-2xl">
+                  ✏️
                 </div>
                 <div>
                   <h1 className="text-2xl md:text-3xl font-bold text-white mb-1 tracking-tight">
@@ -367,21 +328,21 @@ function ActivitiesComponent() {
                 }}
                 className="bg-white/10 backdrop-blur-md hover:bg-white/20 text-white px-4 py-2 rounded-xl transition-all flex items-center gap-2 font-semibold border border-white/20 text-sm"
               >
-                <Plus className="w-4 h-4" />
+                <span className="text-lg">➕</span>
                 Assign Activity
               </button>
               <button
                 onClick={fetchDashboard}
                 className="bg-white/10 backdrop-blur-md hover:bg-white/20 text-white px-4 py-2 rounded-xl transition-all flex items-center gap-2 font-semibold border border-white/20 text-sm"
               >
-                <BarChart className="w-4 h-4" />
+                <span className="text-lg">📊</span>
                 Dashboard
               </button>
               <button
                 onClick={fetchTrends}
                 className="bg-white/10 backdrop-blur-md hover:bg-white/20 text-white px-4 py-2 rounded-xl transition-all flex items-center gap-2 font-semibold border border-white/20 text-sm"
               >
-                <TrendingUp className="w-4 h-4" />
+                <span className="text-lg">📈</span>
                 Trends
               </button>
             </div>
@@ -397,7 +358,7 @@ function ActivitiesComponent() {
             onChange={(e) => setFilterGrade(e.target.value)}
             className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none"
           >
-            <option value="ALL">All Grades</option>
+            <option value="ALL">📂 All Grades</option>
             {grades.map(g => <option key={g} value={g}>{g}</option>)}
           </select>
           <select 
@@ -405,7 +366,7 @@ function ActivitiesComponent() {
             onChange={(e) => setFilterClass(e.target.value)}
             className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none"
           >
-            <option value="ALL">All Classes</option>
+            <option value="ALL">📂 All Classes</option>
             {classes.map(c => <option key={c} value={c}>Class {c}</option>)}
           </select>
           <select 
@@ -423,7 +384,7 @@ function ActivitiesComponent() {
         <div className="bg-white rounded-xl shadow-lg p-4">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div className="flex items-center gap-2">
-              <Download className="w-4 h-4 text-indigo-600" />
+              <span className="text-lg">📥</span>
               <h3 className="font-semibold text-slate-800 text-sm">Export Activities</h3>
             </div>
             <DownloadButton 
@@ -458,31 +419,29 @@ function ActivitiesComponent() {
         <div className="space-y-4">
           {groupedBatches.map((batch) => {
             const typeInfo = getActivityTypeInfo(batch.activityType);
-            const IconComponent = typeInfo.icon || FileText;
             return (
               <div key={batch.batchId} className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all">
                 {/* Batch Header */}
                 <div className="bg-gradient-to-r from-slate-50 to-slate-100 px-4 py-3 border-b border-slate-200 flex flex-wrap justify-between items-center gap-2">
                   <div className="flex items-center gap-3 flex-wrap">
                     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${typeInfo.color}`}>
-                      <IconComponent className="w-3 h-3" />
-                      {typeInfo.label}
+                      {typeInfo.icon} {typeInfo.label}
                     </span>
                     <h3 className="font-semibold text-slate-800 text-sm">{batch.title}</h3>
                     <span className="text-xs text-slate-400">{batch.courseName}</span>
                   </div>
                   <div className="flex items-center gap-3 text-xs flex-wrap">
                     <span className="text-slate-500 flex items-center gap-1">
-                      <Calendar className="w-3 h-3" /> {new Date(batch.date).toLocaleDateString()}
+                      📅 {new Date(batch.date).toLocaleDateString()}
                     </span>
                     <span className="text-slate-500 flex items-center gap-1">
-                      <Target className="w-3 h-3" /> Max: {batch.maxScore}pts
+                      🎯 Max: {batch.maxScore}pts
                     </span>
                     <span className="text-emerald-600 flex items-center gap-1">
-                      <CheckCircle className="w-3 h-3" /> {batch.statistics?.completionRate || 0}%
+                      ✅ {batch.statistics?.completionRate || 0}%
                     </span>
                     <span className="text-indigo-600 flex items-center gap-1">
-                      <BarChart className="w-3 h-3" /> {batch.statistics?.averageScore || 0}%
+                      📊 {batch.statistics?.averageScore || 0}%
                     </span>
                   </div>
                 </div>
@@ -523,7 +482,7 @@ function ActivitiesComponent() {
                               }}
                               className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-600 text-white rounded-lg text-xs font-medium hover:bg-indigo-700 transition"
                             >
-                              <Edit className="w-3 h-3" /> Update Score
+                              ✏️ Update Score
                             </button>
                           </td>
                         </tr>
@@ -568,7 +527,7 @@ function ActivitiesComponent() {
                           }}
                           className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-600 text-white rounded-lg text-xs font-medium hover:bg-indigo-700 transition"
                         >
-                          <Edit className="w-3 h-3" /> Update
+                          ✏️ Update
                         </button>
                       </div>
                     </div>
@@ -577,10 +536,10 @@ function ActivitiesComponent() {
                 
                 {/* Batch Stats */}
                 <div className="bg-slate-50 px-4 py-2 border-t border-slate-200 text-xs text-slate-500 flex flex-wrap justify-between items-center gap-2">
-                  <span className="flex items-center gap-1"><Users className="w-3 h-3" /> Total: {batch.statistics?.totalStudents || 0}</span>
-                  <span className="flex items-center gap-1"><CheckCircle className="w-3 h-3" /> Submitted: {batch.statistics?.submitted || 0}</span>
-                  <span className="flex items-center gap-1"><BarChart className="w-3 h-3" /> Average: {batch.statistics?.averageScore || 0}%</span>
-                  <span className="flex items-center gap-1"><Award className="w-3 h-3" /> Pass Rate: {batch.statistics?.passRate || 0}%</span>
+                  <span className="flex items-center gap-1">👥 Total: {batch.statistics?.totalStudents || 0}</span>
+                  <span className="flex items-center gap-1">✅ Submitted: {batch.statistics?.submitted || 0}</span>
+                  <span className="flex items-center gap-1">📊 Average: {batch.statistics?.averageScore || 0}%</span>
+                  <span className="flex items-center gap-1">🏆 Pass Rate: {batch.statistics?.passRate || 0}%</span>
                 </div>
               </div>
             );
@@ -594,11 +553,11 @@ function ActivitiesComponent() {
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md my-8 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="sticky top-0 bg-gradient-to-r from-orange-500 to-amber-500 px-5 py-4 flex justify-between items-center rounded-t-xl">
               <div className="flex items-center gap-2">
-                <Activity className="w-5 h-5 text-white" />
+                <span className="text-xl">✏️</span>
                 <h2 className="text-lg font-bold text-white">Assign Activity to Class</h2>
               </div>
-              <button onClick={() => setShowAssignForm(false)} className="text-white/70 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10">
-                <X className="w-5 h-5" />
+              <button onClick={() => setShowAssignForm(false)} className="text-white/70 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10 text-xl">
+                ✕
               </button>
             </div>
             <form onSubmit={handleAssign} className="p-5 space-y-4">
@@ -660,7 +619,7 @@ function ActivitiesComponent() {
                   >
                     {activityTypes.map(a => (
                       <option key={a.value} value={a.value}>
-                        {a.label}
+                        {a.icon} {a.label}
                       </option>
                     ))}
                   </select>
@@ -724,15 +683,14 @@ function ActivitiesComponent() {
 
               {error && (
                 <div className="bg-rose-50 border-l-4 border-rose-500 text-rose-700 p-3 rounded-lg text-sm flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  <span className="text-lg">⚠️</span>
                   <span>{error}</span>
                 </div>
               )}
 
               <div className="flex gap-3 pt-2 border-t border-slate-100">
                 <button type="submit" disabled={loading} className="flex-1 bg-gradient-to-r from-orange-500 to-amber-500 text-white py-2.5 rounded-lg font-semibold text-sm hover:shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2">
-                  <Activity className="w-4 h-4" />
-                  {loading ? "Assigning..." : "Assign Activity"}
+                  ✏️ {loading ? "Assigning..." : "Assign Activity"}
                 </button>
                 <button type="button" onClick={() => setShowAssignForm(false)} className="flex-1 bg-slate-100 text-slate-700 py-2.5 rounded-lg font-semibold text-sm hover:bg-slate-200 transition-all">
                   Cancel
@@ -749,11 +707,11 @@ function ActivitiesComponent() {
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
             <div className="sticky top-0 bg-gradient-to-r from-indigo-500 to-purple-500 px-5 py-4 flex justify-between items-center rounded-t-xl">
               <div className="flex items-center gap-2">
-                <Edit className="w-5 h-5 text-white" />
+                <span className="text-xl">✏️</span>
                 <h2 className="text-lg font-bold text-white">Update Score</h2>
               </div>
-              <button onClick={() => setEditingScore(null)} className="text-white/70 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10">
-                <X className="w-5 h-5" />
+              <button onClick={() => setEditingScore(null)} className="text-white/70 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10 text-xl">
+                ✕
               </button>
             </div>
             <form onSubmit={handleUpdateScore} className="p-5 space-y-4">
@@ -775,14 +733,13 @@ function ActivitiesComponent() {
               </div>
               {error && (
                 <div className="bg-rose-50 border-l-4 border-rose-500 text-rose-700 p-3 rounded-lg text-sm flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  <span className="text-lg">⚠️</span>
                   <span>{error}</span>
                 </div>
               )}
               <div className="flex gap-3 pt-2 border-t border-slate-100">
                 <button type="submit" disabled={loading} className="flex-1 bg-gradient-to-r from-indigo-500 to-purple-500 text-white py-2.5 rounded-lg font-semibold text-sm hover:shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2">
-                  <CheckCircle className="w-4 h-4" />
-                  {loading ? "Saving..." : "Update Score"}
+                  💾 {loading ? "Saving..." : "Update Score"}
                 </button>
                 <button type="button" onClick={() => setEditingScore(null)} className="flex-1 bg-slate-100 text-slate-700 py-2.5 rounded-lg font-semibold text-sm hover:bg-slate-200 transition-all">
                   Cancel
@@ -799,42 +756,41 @@ function ActivitiesComponent() {
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl my-8 max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="sticky top-0 bg-gradient-to-r from-orange-600 to-amber-600 px-5 py-4 flex justify-between items-center text-white rounded-t-xl">
               <div className="flex items-center gap-2">
-                <BarChart className="w-5 h-5" />
+                <span className="text-xl">📊</span>
                 <h2 className="text-lg font-bold">Class Performance Dashboard</h2>
               </div>
-              <button onClick={() => setShowDashboard(false)} className="text-white/70 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10">
-                <X className="w-5 h-5" />
+              <button onClick={() => setShowDashboard(false)} className="text-white/70 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10 text-xl">
+                ✕
               </button>
             </div>
             <div className="p-5 space-y-4">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div className="bg-blue-50 rounded-lg p-3 text-center">
-                  <p className="text-xs text-blue-600 flex items-center justify-center gap-1"><Users className="w-3 h-3" /> Total Students</p>
+                  <p className="text-xs text-blue-600 flex items-center justify-center gap-1">👥 Total Students</p>
                   <p className="text-xl font-bold text-blue-700">{dashboardData?.classInfo?.totalStudents || 0}</p>
                 </div>
                 <div className="bg-purple-50 rounded-lg p-3 text-center">
-                  <p className="text-xs text-purple-600 flex items-center justify-center gap-1"><Activity className="w-3 h-3" /> Total Activities</p>
+                  <p className="text-xs text-purple-600 flex items-center justify-center gap-1">✏️ Total Activities</p>
                   <p className="text-xl font-bold text-purple-700">{dashboardData?.classInfo?.totalActivities || 0}</p>
                 </div>
                 <div className="bg-emerald-50 rounded-lg p-3 text-center">
-                  <p className="text-xs text-emerald-600 flex items-center justify-center gap-1"><BarChart className="w-3 h-3" /> Overall Average</p>
+                  <p className="text-xs text-emerald-600 flex items-center justify-center gap-1">📊 Overall Average</p>
                   <p className="text-xl font-bold text-emerald-700">{dashboardData?.summary?.overallAverage || 0}%</p>
                 </div>
                 <div className="bg-amber-50 rounded-lg p-3 text-center">
-                  <p className="text-xs text-amber-600 flex items-center justify-center gap-1"><Award className="w-3 h-3" /> Pass Rate</p>
+                  <p className="text-xs text-amber-600 flex items-center justify-center gap-1">🏆 Pass Rate</p>
                   <p className="text-xl font-bold text-amber-700">{dashboardData?.summary?.passRate || 0}%</p>
                 </div>
               </div>
 
               <div>
-                <p className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2"><PieChart className="w-4 h-4" /> Activity Type Performance</p>
+                <p className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">📊 Activity Type Performance</p>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                   {Object.entries(dashboardData?.activityTypeStats || {}).map(([type, data]) => {
                     const info = getActivityTypeInfo(type);
-                    const IconComp = info.icon || FileText;
                     return (
                       <div key={type} className={`${info.color} rounded-lg p-2 text-center`}>
-                        <p className="text-xs font-medium flex items-center justify-center gap-1"><IconComp className="w-3 h-3" /> {info.label}</p>
+                        <p className="text-xs font-medium flex items-center justify-center gap-1">{info.icon} {info.label}</p>
                         <p className="text-lg font-bold">{data?.average || 0}%</p>
                         <p className="text-[10px] opacity-75">{data?.count || 0} activities</p>
                       </div>
@@ -844,7 +800,7 @@ function ActivitiesComponent() {
               </div>
 
               <div>
-                <p className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2"><Award className="w-4 h-4" /> Top Performers</p>
+                <p className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">🏆 Top Performers</p>
                 <div className="space-y-2 max-h-48 overflow-y-auto">
                   {(dashboardData?.studentRanking || []).slice(0, 10).map((student, idx) => (
                     <div key={idx} className="flex justify-between items-center p-2 bg-slate-50 rounded-lg">
@@ -853,8 +809,8 @@ function ActivitiesComponent() {
                         <span className="text-sm font-medium">{student?.studentName || "Unknown"}</span>
                       </div>
                       <div className="flex gap-3 text-xs">
-                        <span className="text-emerald-600 flex items-center gap-1"><BarChart className="w-3 h-3" /> {student?.average || 0}%</span>
-                        <span className="text-blue-600 flex items-center gap-1"><Activity className="w-3 h-3" /> {student?.totalActivities || 0}</span>
+                        <span className="text-emerald-600 flex items-center gap-1">📊 {student?.average || 0}%</span>
+                        <span className="text-blue-600 flex items-center gap-1">✏️ {student?.totalActivities || 0}</span>
                       </div>
                     </div>
                   ))}
@@ -871,39 +827,39 @@ function ActivitiesComponent() {
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl my-8 max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="sticky top-0 bg-gradient-to-r from-indigo-600 to-purple-600 px-5 py-4 flex justify-between items-center text-white rounded-t-xl">
               <div className="flex items-center gap-2">
-                <TrendingUp className="w-5 h-5" />
+                <span className="text-xl">📈</span>
                 <h2 className="text-lg font-bold">Activity Trends</h2>
               </div>
-              <button onClick={() => setShowTrends(false)} className="text-white/70 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10">
-                <X className="w-5 h-5" />
+              <button onClick={() => setShowTrends(false)} className="text-white/70 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10 text-xl">
+                ✕
               </button>
             </div>
             <div className="p-5 space-y-4">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div className="bg-blue-50 rounded-lg p-3 text-center">
-                  <p className="text-xs text-blue-600 flex items-center justify-center gap-1"><Activity className="w-3 h-3" /> Total Activities</p>
+                  <p className="text-xs text-blue-600 flex items-center justify-center gap-1">✏️ Total Activities</p>
                   <p className="text-xl font-bold text-blue-700">{trendData?.summary?.totalActivities || 0}</p>
                 </div>
                 <div className="bg-emerald-50 rounded-lg p-3 text-center">
-                  <p className="text-xs text-emerald-600 flex items-center justify-center gap-1"><BarChart className="w-3 h-3" /> Overall Average</p>
+                  <p className="text-xs text-emerald-600 flex items-center justify-center gap-1">📊 Overall Average</p>
                   <p className="text-xl font-bold text-emerald-700">{trendData?.summary?.overallAverage || 0}%</p>
                 </div>
                 <div className="bg-amber-50 rounded-lg p-3 text-center">
-                  <p className="text-xs text-amber-600 flex items-center justify-center gap-1"><TrendingUp className="w-3 h-3" /> Improvement</p>
+                  <p className="text-xs text-amber-600 flex items-center justify-center gap-1">📈 Improvement</p>
                   <p className="text-xl font-bold text-amber-700">{trendData?.summary?.improvement || 0}%</p>
                 </div>
                 <div className="bg-purple-50 rounded-lg p-3 text-center">
-                  <p className="text-xs text-purple-600 flex items-center justify-center gap-1"><Calendar className="w-3 h-3" /> Days Tracked</p>
+                  <p className="text-xs text-purple-600 flex items-center justify-center gap-1">📅 Days Tracked</p>
                   <p className="text-xl font-bold text-purple-700">{trendData?.summary?.totalDays || 0}</p>
                 </div>
               </div>
 
               <div>
-                <p className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2"><TrendingUp className="w-4 h-4" /> Daily Performance Trend</p>
+                <p className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">📈 Daily Performance Trend</p>
                 <div className="space-y-1 max-h-60 overflow-y-auto">
                   {(trendData?.trendData || []).slice(-30).map((day) => (
                     <div key={day.date} className="flex items-center gap-2 p-1 hover:bg-slate-50 rounded">
-                      <span className="text-xs text-slate-500 w-20 truncate">{day.date}</span>
+                      <span className="text-xs text-slate-500 w-20 truncate">📅 {day.date}</span>
                       <div className="flex-1 h-4 bg-slate-100 rounded-full overflow-hidden">
                         <div 
                           className={`h-full ${day.average >= 70 ? 'bg-emerald-500' : day.average >= 50 ? 'bg-amber-500' : 'bg-rose-500'} rounded-full transition-all`}
@@ -911,18 +867,18 @@ function ActivitiesComponent() {
                         />
                       </div>
                       <span className="text-xs font-medium w-12 text-right">{day.average || 0}%</span>
-                      <span className="text-xs text-slate-400 w-12 flex items-center gap-1"><Activity className="w-3 h-3" /> {day.count || 0}</span>
+                      <span className="text-xs text-slate-400 w-12 flex items-center gap-1">✏️ {day.count || 0}</span>
                     </div>
                   ))}
                 </div>
               </div>
 
               <div>
-                <p className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2"><Star className="w-4 h-4" /> 7-Day Moving Average</p>
+                <p className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">⭐ 7-Day Moving Average</p>
                 <div className="grid grid-cols-3 md:grid-cols-7 gap-2">
                   {(trendData?.trendData || []).slice(-7).map((day) => (
                     <div key={day.date} className="bg-slate-50 rounded-lg p-2 text-center">
-                      <p className="text-[10px] text-slate-500 truncate">{day.date}</p>
+                      <p className="text-[10px] text-slate-500 truncate">📅 {day.date}</p>
                       <p className="text-sm font-bold text-indigo-600">{day.movingAverage || 0}%</p>
                     </div>
                   ))}

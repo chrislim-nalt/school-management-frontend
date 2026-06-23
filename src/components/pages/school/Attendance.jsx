@@ -10,45 +10,6 @@ import {
   getTeacherAttendanceReport
 } from "../../services/schoolService";
 import DownloadButton from "../../DownloadButton";
-import {
-  Users,
-  UserCheck,
-  UserX,
-  Clock,
-  Calendar,
-  Filter,
-  Search,
-  Download,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
-  User,
-  School,
-  ChevronLeft,
-  ChevronRight,
-  Eye,
-  Printer,
-  RefreshCw,
-  Plus,
-  Minus,
-  Edit,
-  Trash2,
-  BarChart,
-  PieChart,
-  UserPlus,
-  UserMinus,
-  Check,
-  X,
-  Clock as ClockIcon,
-  Calendar as CalendarIcon,
-  UserCog,
-  Briefcase,
-  Phone,
-  Mail,
-  MapPin,
-  Star,
-  Award
-} from "lucide-react";
 
 export default function Attendance() {
   const [attendanceType, setAttendanceType] = useState("STUDENT");
@@ -84,7 +45,6 @@ export default function Attendance() {
   // Get user info from localStorage
   const userType = localStorage.getItem("userType") || "staff";
   const userRole = localStorage.getItem("userRole") || "staff";
-  const userName = localStorage.getItem("userName") || "User";
   
   // Determine permissions
   const canAccessStudentAttendance = userRole === "superadmin" || userType === "school_admin" || userType === "admin" || userType === "teacher" || userType === "staff";
@@ -327,12 +287,12 @@ export default function Attendance() {
     return colors[status] || "bg-slate-100 text-slate-700";
   };
 
-  const getStatusIcon = (status) => {
+  const getStatusEmoji = (status) => {
     switch(status) {
-      case "PRESENT": return <CheckCircle className="w-3 h-3" />;
-      case "ABSENT": return <XCircle className="w-3 h-3" />;
-      case "LATE": return <Clock className="w-3 h-3" />;
-      default: return <AlertCircle className="w-3 h-3" />;
+      case "PRESENT": return "✅";
+      case "ABSENT": return "❌";
+      case "LATE": return "⏰";
+      default: return "📋";
     }
   };
 
@@ -398,10 +358,6 @@ export default function Attendance() {
         { key: "period", label: "Period" }
       ];
 
-  // Mobile-first responsive design
-  const isMobile = window.innerWidth < 768;
-  const isTablet = window.innerWidth >= 768 && window.innerWidth < 1024;
-
   if (!canAccessStudentAttendance && !canAccessTeacherAttendance) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
@@ -426,21 +382,24 @@ export default function Attendance() {
       {/* Toast Messages */}
       {(success || error) && (
         <div className={`fixed top-20 right-4 z-50 animate-slide-in ${success ? "bg-emerald-500" : "bg-rose-500"} text-white px-4 py-2 rounded-xl shadow-2xl flex items-center gap-2 text-sm max-w-[90vw] md:max-w-md`}>
-          <span className="text-lg flex-shrink-0">{success ? "✓" : "⚠"}</span>
+          <span className="text-lg flex-shrink-0">{success ? "✅" : "⚠️"}</span>
           <p className="font-medium text-xs md:text-sm">{success || error}</p>
         </div>
       )}
 
       {/* Hero Section */}
       <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl shadow-xl">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-emerald-500/10 to-teal-500/10 rounded-full blur-3xl"></div>
+        
         <div className="relative px-4 py-5 md:p-6">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
             <div className="flex items-center gap-2 md:gap-3">
-              <div className="p-2 bg-white/10 backdrop-blur rounded-xl">
-                <Users className="w-5 h-5 md:w-6 md:h-6 text-white" />
+              <div className="p-2 bg-white/10 backdrop-blur rounded-xl text-2xl">
+                ✅
               </div>
               <div>
-                <h1 className="text-xl md:text-3xl font-bold text-white tracking-tight">✅ Attendance</h1>
+                <h1 className="text-xl md:text-3xl font-bold text-white tracking-tight">Attendance</h1>
                 <p className="text-slate-300 text-xs md:text-sm">Track daily attendance for students and teachers</p>
               </div>
             </div>
@@ -448,7 +407,7 @@ export default function Attendance() {
               onClick={fetchReport} 
               className="bg-white/10 backdrop-blur-md hover:bg-white/20 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-xl transition-all flex items-center gap-1.5 md:gap-2 font-semibold border border-white/20 text-xs md:text-sm"
             >
-              <BarChart className="w-4 h-4" />
+              <span>📊</span>
               <span className="hidden xs:inline">View Report</span>
               <span className="xs:hidden">Report</span>
             </button>
@@ -469,7 +428,7 @@ export default function Attendance() {
               }`}
             >
               <span className="flex items-center gap-1.5">
-                <User className="w-3 h-3 md:w-4 md:h-4" />
+                <span>👨‍🎓</span>
                 Students
               </span>
             </button>
@@ -484,7 +443,7 @@ export default function Attendance() {
               }`}
             >
               <span className="flex items-center gap-1.5">
-                <Briefcase className="w-3 h-3 md:w-4 md:h-4" />
+                <span>👨‍🏫</span>
                 Teachers
               </span>
             </button>
@@ -530,7 +489,7 @@ export default function Attendance() {
               disabled={loading}
               className="mt-3 w-full bg-indigo-100 text-indigo-700 py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-medium hover:bg-indigo-200 transition disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              <RefreshCw className={`w-3 h-3 md:w-4 md:h-4 ${loading ? 'animate-spin' : ''}`} />
+              <span className={`${loading ? 'animate-spin' : ''}`}>🔄</span>
               {loading ? "Loading..." : "Load Students"}
             </button>
             {error && (
@@ -565,7 +524,7 @@ export default function Attendance() {
             <div className="bg-white rounded-xl shadow-lg p-3 md:p-4">
               <div className="flex flex-col xs:flex-row justify-between items-start xs:items-center gap-2">
                 <div className="flex items-center gap-2">
-                  <Download className="w-3 h-3 md:w-4 md:h-4 text-indigo-600" />
+                  <span className="text-lg">📥</span>
                   <h3 className="font-semibold text-slate-800 text-xs md:text-sm">Export</h3>
                 </div>
                 <DownloadButton 
@@ -597,7 +556,7 @@ export default function Attendance() {
                 onClick={fetchStudentsByClass}
                 className="mt-3 px-3 py-1.5 md:px-4 md:py-2 bg-indigo-600 text-white rounded-lg text-xs md:text-sm font-medium hover:bg-indigo-700 transition"
               >
-                <RefreshCw className="w-3 h-3 md:w-4 md:h-4 inline mr-1" /> Try Again
+                🔄 Try Again
               </button>
             </div>
           ) : (
@@ -617,7 +576,7 @@ export default function Attendance() {
                         </div>
                       </div>
                       <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${getStatusColor(studentAttendanceData[student._id]?.status)}`}>
-                        {getStatusIcon(studentAttendanceData[student._id]?.status)} {getStatusLabel(studentAttendanceData[student._id]?.status)}
+                        {getStatusEmoji(studentAttendanceData[student._id]?.status)} {getStatusLabel(studentAttendanceData[student._id]?.status)}
                       </span>
                     </div>
                     <div className="flex flex-wrap gap-1 mt-2">
@@ -672,7 +631,7 @@ export default function Attendance() {
                         <td className="px-3 py-2 font-medium text-slate-800 text-sm">{student.name}</td>
                         <td className="px-3 py-2">
                           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(studentAttendanceData[student._id]?.status)}`}>
-                            {getStatusIcon(studentAttendanceData[student._id]?.status)} {getStatusLabel(studentAttendanceData[student._id]?.status)}
+                            {getStatusEmoji(studentAttendanceData[student._id]?.status)} {getStatusLabel(studentAttendanceData[student._id]?.status)}
                           </span>
                         </td>
                         <td className="px-3 py-2">
@@ -719,8 +678,7 @@ export default function Attendance() {
                   disabled={loading} 
                   className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-4 md:px-6 py-1.5 md:py-2 rounded-lg font-semibold hover:shadow-lg transition-all text-xs md:text-sm disabled:opacity-50 flex items-center gap-1.5 md:gap-2 w-full sm:w-auto justify-center"
                 >
-                  <Check className="w-3 h-3 md:w-4 md:h-4" />
-                  {loading ? "Saving..." : "Save Attendance"}
+                  💾 {loading ? "Saving..." : "Save Attendance"}
                 </button>
               </div>
             </div>
@@ -752,7 +710,7 @@ export default function Attendance() {
               disabled={loading}
               className="mt-3 w-full bg-indigo-100 text-indigo-700 py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-medium hover:bg-indigo-200 transition disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              <RefreshCw className={`w-3 h-3 md:w-4 md:h-4 ${loading ? 'animate-spin' : ''}`} />
+              <span className={`${loading ? 'animate-spin' : ''}`}>🔄</span>
               {loading ? "Loading..." : "Load Teachers"}
             </button>
           </div>
@@ -785,7 +743,7 @@ export default function Attendance() {
                         </div>
                       </div>
                       <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${getStatusColor(teacherAttendanceData[teacher._id]?.status)}`}>
-                        {getStatusIcon(teacherAttendanceData[teacher._id]?.status)} {getStatusLabel(teacherAttendanceData[teacher._id]?.status)}
+                        {getStatusEmoji(teacherAttendanceData[teacher._id]?.status)} {getStatusLabel(teacherAttendanceData[teacher._id]?.status)}
                       </span>
                     </div>
                     <div className="flex flex-wrap gap-1 mt-2">
@@ -859,7 +817,7 @@ export default function Attendance() {
                         <td className="px-3 py-2 text-slate-600 text-xs">{teacher.email}</td>
                         <td className="px-3 py-2">
                           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(teacherAttendanceData[teacher._id]?.status)}`}>
-                            {getStatusIcon(teacherAttendanceData[teacher._id]?.status)} {getStatusLabel(teacherAttendanceData[teacher._id]?.status)}
+                            {getStatusEmoji(teacherAttendanceData[teacher._id]?.status)} {getStatusLabel(teacherAttendanceData[teacher._id]?.status)}
                           </span>
                         </td>
                         <td className="px-3 py-2">
@@ -923,8 +881,7 @@ export default function Attendance() {
                   disabled={loading} 
                   className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-4 md:px-6 py-1.5 md:py-2 rounded-lg font-semibold hover:shadow-lg transition-all text-xs md:text-sm disabled:opacity-50 flex items-center gap-1.5 md:gap-2 w-full sm:w-auto justify-center"
                 >
-                  <Check className="w-3 h-3 md:w-4 md:h-4" />
-                  {loading ? "Saving..." : "Save Attendance"}
+                  💾 {loading ? "Saving..." : "Save Attendance"}
                 </button>
               </div>
             </div>
@@ -992,7 +949,6 @@ export default function Attendance() {
         }
         .animate-slide-in { animation: slide-in 0.3s ease-out; }
         
-        /* Custom breakpoint for extra small screens */
         @media (max-width: 480px) {
           .xs\\:inline { display: inline; }
           .xs\\:hidden { display: none; }
