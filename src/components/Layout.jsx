@@ -104,7 +104,7 @@ export default function Layout({ children }) {
     setTooltip({ show: false, text: "", x: 0, y: 0 });
   };
 
-  // Role-based menu configuration
+  // Role-based detection
   const isSuperAdmin = userRole === "superadmin";
   const isSchoolAdmin = userType === "school_admin" || userRole === "admin";
   const isTeacher = userType === "teacher" || userType === "staff";
@@ -112,13 +112,15 @@ export default function Layout({ children }) {
   const isStockKeeper = userType === "stock_keeper";
   const isCustomerCare = userType === "customer_care";
 
-  // Define menu groups based on user role
+  // ============================================================
+  // PROFESSIONAL MENU STRUCTURE - SCHOOL FEATURES FIRST
+  // ============================================================
   const getMenuGroups = () => {
-    // Super Admin gets minimal menu (they have separate admin interface)
+    // Super Admin
     if (isSuperAdmin) {
       return [
         {
-          title: "Navigation",
+          title: "Administration",
           items: [
             { path: "/profile", name: "My Profile", icon: "👤", description: "Manage your account", roles: ["all"] },
           ],
@@ -126,215 +128,228 @@ export default function Layout({ children }) {
       ];
     }
 
-    const groups = [];
-
-    // ==================== OVERVIEW ====================
-    const overviewItems = [
-      { path: "/profile", name: "My Profile", icon: "👤", description: "Manage your account", roles: ["all"] },
-    ];
-    
-    // Add dashboard based on role
-    if (isSchoolAdmin) {
-      overviewItems.unshift({ path: "/school-dashboard", name: "Dashboard", icon: "📈", description: "Performance analytics", roles: ["school_admin"] });
-    } else if (isTeacher) {
-      overviewItems.unshift({ path: "/teacher-dashboard", name: "My Dashboard", icon: "📊", description: "Teacher overview", roles: ["teacher"] });
-    } else if (isBursar) {
-      overviewItems.unshift({ path: "/transport", name: "Dashboard", icon: "📊", description: "Financial overview", roles: ["bursar"] });
-    }
-    
-    groups.push({
-      title: "Overview",
-      items: overviewItems,
-    });
-
-    // ==================== CUSTOMER CARE ONLY ====================
+    // Customer Care
     if (isCustomerCare) {
-      groups.push({
-        title: "👥 Visitor Management",
-        items: [
-          { path: "/visitors", name: "Visitors", icon: "👥", description: "Manage visitors", roles: ["customer_care"] },
-        ],
-      });
-      groups.push({
-        title: "✅ Attendance",
-        items: [
-          { path: "/attendance", name: "Teacher Attendance", icon: "✅", description: "Mark teacher attendance", roles: ["customer_care"] },
-        ],
-      });
-      groups.push({
-        title: "📊 Reports",
-        items: [
-          { path: "/visitors/report", name: "Visitor Report", icon: "📊", description: "Visitor statistics", roles: ["customer_care"] },
-        ],
-      });
-      return groups;
+      return [
+        {
+          title: "👥 Visitor Management",
+          items: [
+            { path: "/visitors", name: "Visitors", icon: "👥", description: "Manage visitors", roles: ["customer_care"] },
+            { path: "/visitors/report", name: "Visitor Report", icon: "📊", description: "Visitor statistics", roles: ["customer_care"] },
+          ],
+        },
+        {
+          title: "✅ Attendance",
+          items: [
+            { path: "/attendance", name: "Teacher Attendance", icon: "✅", description: "Mark teacher attendance", roles: ["customer_care"] },
+          ],
+        },
+      ];
     }
 
-    // ==================== TEACHER ONLY ====================
+    // ============================================================
+    // TEACHER MENU
+    // ============================================================
     if (isTeacher && !isSchoolAdmin && !isBursar) {
-      groups.push({
-        title: "🎓 My Classes",
-        items: [
-          { path: "/students", name: "My Students", icon: "👨‍🎓", description: "View students", roles: ["teacher"] },
-          { path: "/marks", name: "Marks & Grades", icon: "📝", description: "Record student marks", roles: ["teacher"] },
-          { path: "/attendance", name: "Student Attendance", icon: "✅", description: "Mark student attendance", roles: ["teacher"] },
-          { path: "/courses", name: "My Courses", icon: "📖", description: "View courses", roles: ["teacher"] },
-        ],
-      });
-      groups.push({
-        title: "👨‍🏫 Teaching Tools",
-        items: [
-          { path: "/homework", name: "Homework", icon: "📚", description: "Assign and grade homework", roles: ["teacher"] },
-          { path: "/activities", name: "Activities", icon: "📝", description: "Exercises & quizzes", roles: ["teacher"] },
-          { path: "/permissions", name: "Leave Requests", icon: "📋", description: "Request time off", roles: ["teacher"] },
-        ],
-      });
-      groups.push({
-        title: "🤝 Student Support",
-        items: [
-          { path: "/discipline", name: "Discipline", icon: "⚠️", description: "Track student conduct", roles: ["teacher"] },
-          { path: "/english-performance", name: "English Performance", icon: "🇬🇧", description: "English compliance", roles: ["teacher"] },
-          { path: "/slow-learners", name: "Slow Learners", icon: "🎯", description: "Additional support", roles: ["teacher"] },
-        ],
-      });
-      return groups;
+      return [
+        {
+          title: "📊 Overview",
+          items: [
+            { path: "/teacher-dashboard", name: "My Dashboard", icon: "📊", description: "Teacher overview", roles: ["teacher"] },
+            { path: "/profile", name: "My Profile", icon: "👤", description: "Manage your account", roles: ["teacher"] },
+          ],
+        },
+        {
+          title: "🎓 Academic Management",
+          items: [
+            { path: "/students", name: "My Students", icon: "👨‍🎓", description: "View and manage students", roles: ["teacher"] },
+            { path: "/courses", name: "My Courses", icon: "📖", description: "View assigned courses", roles: ["teacher"] },
+            { path: "/marks", name: "Marks & Grades", icon: "📝", description: "Record student marks", roles: ["teacher"] },
+            { path: "/attendance", name: "Student Attendance", icon: "✅", description: "Mark student attendance", roles: ["teacher"] },
+          ],
+        },
+        {
+          title: "📚 Teaching Tools",
+          items: [
+            { path: "/homework", name: "Homework", icon: "📚", description: "Assign and grade homework", roles: ["teacher"] },
+            { path: "/activities", name: "Activities", icon: "📝", description: "Exercises & quizzes", roles: ["teacher"] },
+            { path: "/permissions", name: "Leave Requests", icon: "📋", description: "Request time off", roles: ["teacher"] },
+          ],
+        },
+        {
+          title: "🤝 Student Support",
+          items: [
+            { path: "/discipline", name: "Discipline", icon: "⚠️", description: "Track student conduct", roles: ["teacher"] },
+            { path: "/english-performance", name: "English Performance", icon: "🇬🇧", description: "English compliance", roles: ["teacher"] },
+            { path: "/slow-learners", name: "Slow Learners", icon: "🎯", description: "Additional support", roles: ["teacher"] },
+          ],
+        },
+      ];
     }
 
-    // ==================== BURSAR (Full Inventory + Transport) ====================
+    // ============================================================
+    // BURSAR MENU - School Features + Inventory
+    // ============================================================
     if (isBursar) {
-      groups.push({
-        title: "💰 Finance & Transport",
-        items: [
-          { path: "/transport", name: "Transport", icon: "🚌", description: "Transport payments & records", roles: ["bursar"] },
-        ],
-      });
-      
-      groups.push({
-        title: "📦 Inventory Management",
-        items: [
-          { path: "/categories", name: "Categories", icon: "📂", description: "Organize inventory categories", roles: ["bursar"] },
-          { path: "/items", name: "Items", icon: "🛒", description: "Manage inventory items", roles: ["bursar"] },
-          { path: "/stock", name: "Stock Management", icon: "📦", description: "Track stock movements", roles: ["bursar"] },
-          { path: "/borrowed", name: "Borrowed Items", icon: "📋", description: "Manage borrowed items", roles: ["bursar"] },
-        ],
-      });
-      
-      groups.push({
-        title: "🏗️ Facility Management",
-        items: [
-          { path: "/assets", name: "Assets", icon: "🏗️", description: "School assets", roles: ["bursar"] },
-          { path: "/tracked-assets", name: "Computer Lab", icon: "💻", description: "Computer tracking", roles: ["bursar"] },
-          { path: "/laboratory", name: "Laboratory", icon: "🔬", description: "Lab equipment", roles: ["bursar"] },
-          { path: "/library", name: "Library", icon: "📚", description: "Books collection", roles: ["bursar"] },
-          { path: "/cleaning-supplies", name: "Cleaning Supplies", icon: "🧹", description: "Cleaning inventory", roles: ["bursar"] },
-          { path: "/feeding", name: "Feeding Records", icon: "🍽️", description: "Food management", roles: ["bursar"] },
-        ],
-      });
-      
-      groups.push({
-        title: "📊 Reports",
-        items: [
-          { path: "/transport", name: "Financial Reports", icon: "📊", description: "View financial reports", roles: ["bursar"] },
-        ],
-      });
-      
-      return groups;
+      return [
+        // SCHOOL FEATURES FIRST
+        {
+          title: "📊 Overview",
+          items: [
+            { path: "/transport", name: "Dashboard", icon: "📊", description: "Financial overview", roles: ["bursar"] },
+            { path: "/profile", name: "My Profile", icon: "👤", description: "Manage your account", roles: ["bursar"] },
+          ],
+        },
+        {
+          title: "💰 Finance & Transport",
+          items: [
+            { path: "/transport", name: "Transport Management", icon: "🚌", description: "Transport payments & records", roles: ["bursar"] },
+          ],
+        },
+        // INVENTORY MANAGEMENT SECONDARY
+        {
+          title: "📦 Inventory Management",
+          items: [
+            { path: "/categories", name: "Categories", icon: "📂", description: "Organize inventory categories", roles: ["bursar"] },
+            { path: "/items", name: "Items", icon: "🛒", description: "Manage inventory items", roles: ["bursar"] },
+            { path: "/stock", name: "Stock Management", icon: "📦", description: "Track stock movements", roles: ["bursar"] },
+            { path: "/borrowed", name: "Borrowed Items", icon: "📋", description: "Manage borrowed items", roles: ["bursar"] },
+          ],
+        },
+        {
+          title: "🏗️ Facility & Asset Management",
+          items: [
+            { path: "/assets", name: "Assets", icon: "🏗️", description: "School assets", roles: ["bursar"] },
+            { path: "/tracked-assets", name: "Computer Lab", icon: "💻", description: "Computer tracking", roles: ["bursar"] },
+            { path: "/laboratory", name: "Laboratory", icon: "🔬", description: "Lab equipment", roles: ["bursar"] },
+            { path: "/library", name: "Library", icon: "📚", description: "Books collection", roles: ["bursar"] },
+            { path: "/cleaning-supplies", name: "Cleaning Supplies", icon: "🧹", description: "Cleaning inventory", roles: ["bursar"] },
+            { path: "/feeding", name: "Feeding Records", icon: "🍽️", description: "Food management", roles: ["bursar"] },
+          ],
+        },
+      ];
     }
 
-    // ==================== STOCK KEEPER ONLY ====================
+    // ============================================================
+    // STOCK KEEPER MENU - Inventory Focus
+    // ============================================================
     if (isStockKeeper) {
-      groups.push({
-        title: "📦 Inventory",
-        items: [
-          { path: "/categories", name: "Categories", icon: "📂", description: "Organize items", roles: ["stock_keeper"] },
-          { path: "/items", name: "Items", icon: "🛒", description: "Manage inventory", roles: ["stock_keeper"] },
-          { path: "/stock", name: "Stock Management", icon: "📦", description: "Track movements", roles: ["stock_keeper"] },
-          { path: "/borrowed", name: "Borrowed Items", icon: "📋", description: "Manage borrows", roles: ["stock_keeper"] },
-        ],
-      });
-      groups.push({
-        title: "🏗️ Facility",
-        items: [
-          { path: "/assets", name: "Assets", icon: "🏗️", description: "School assets", roles: ["stock_keeper"] },
-          { path: "/tracked-assets", name: "Computer Lab", icon: "💻", description: "Computer Tracking", roles: ["stock_keeper"] },
-          { path: "/laboratory", name: "Laboratory", icon: "🔬", description: "Lab equipment", roles: ["stock_keeper"] },
-          { path: "/library", name: "Library", icon: "📚", description: "Books collection", roles: ["stock_keeper"] },
-          { path: "/cleaning-supplies", name: "Cleaning Supplies", icon: "🧹", description: "Cleaning inventory", roles: ["stock_keeper"] },
-          { path: "/feeding", name: "Feeding Records", icon: "🍽️", description: "Food management", roles: ["stock_keeper"] },
-        ],
-      });
-      return groups;
+      return [
+        {
+          title: "📊 Overview",
+          items: [
+            { path: "/profile", name: "My Profile", icon: "👤", description: "Manage your account", roles: ["stock_keeper"] },
+          ],
+        },
+        {
+          title: "📦 Inventory Management",
+          items: [
+            { path: "/categories", name: "Categories", icon: "📂", description: "Organize items", roles: ["stock_keeper"] },
+            { path: "/items", name: "Items", icon: "🛒", description: "Manage inventory", roles: ["stock_keeper"] },
+            { path: "/stock", name: "Stock Management", icon: "📦", description: "Track movements", roles: ["stock_keeper"] },
+            { path: "/borrowed", name: "Borrowed Items", icon: "📋", description: "Manage borrows", roles: ["stock_keeper"] },
+          ],
+        },
+        {
+          title: "🏗️ Facility & Asset Management",
+          items: [
+            { path: "/assets", name: "Assets", icon: "🏗️", description: "School assets", roles: ["stock_keeper"] },
+            { path: "/tracked-assets", name: "Computer Lab", icon: "💻", description: "Computer Tracking", roles: ["stock_keeper"] },
+            { path: "/laboratory", name: "Laboratory", icon: "🔬", description: "Lab equipment", roles: ["stock_keeper"] },
+            { path: "/library", name: "Library", icon: "📚", description: "Books collection", roles: ["stock_keeper"] },
+            { path: "/cleaning-supplies", name: "Cleaning Supplies", icon: "🧹", description: "Cleaning inventory", roles: ["stock_keeper"] },
+            { path: "/feeding", name: "Feeding Records", icon: "🍽️", description: "Food management", roles: ["stock_keeper"] },
+          ],
+        },
+      ];
     }
 
-    // ==================== SCHOOL ADMIN (Full Access) ====================
+    // ============================================================
+    // SCHOOL ADMIN - Full Access with Professional Flow
+    // ============================================================
     if (isSchoolAdmin) {
-      groups.push({
-        title: "🎓 School Management",
-        items: [
-          { path: "/teachers", name: "Teachers", icon: "👨‍🏫", description: "Manage teachers", roles: ["school_admin"] },
-          { path: "/students", name: "Students", icon: "👨‍🎓", description: "Manage students", roles: ["school_admin"] },
-          { path: "/courses", name: "Courses", icon: "📖", description: "Subject management", roles: ["school_admin"] },
-          { path: "/marks", name: "Marks & Grades", icon: "📝", description: "Record student marks", roles: ["school_admin"] },
-          { path: "/attendance", name: "Attendance", icon: "✅", description: "Track attendance", roles: ["school_admin"] },
-        ],
-      });
-      
-      groups.push({
-        title: "🤝 Student Support",
-        items: [
-          { path: "/discipline", name: "Discipline", icon: "⚠️", description: "Track student conduct", roles: ["school_admin"] },
-          { path: "/english-performance", name: "English Performance", icon: "🇬🇧", description: "English compliance", roles: ["school_admin"] },
-          { path: "/slow-learners", name: "Slow Learners", icon: "🎯", description: "Additional support", roles: ["school_admin"] },
-        ],
-      });
-      
-      groups.push({
-        title: "💰 Finance & Transport",
-        items: [
-          { path: "/transport", name: "Transport", icon: "🚌", description: "Transport payments", roles: ["school_admin"] },
-        ],
-      });
-      
-      groups.push({
-        title: "👥 Visitor Management",
-        items: [
-          { path: "/visitors", name: "Visitors", icon: "👥", description: "Manage visitors", roles: ["school_admin"] },
-        ],
-      });
-      
-      groups.push({
-        title: "📊 Reports",
-        items: [
-          { path: "/school-reports", name: "Reports", icon: "📊", description: "Generate reports", roles: ["school_admin"] },
-        ],
-      });
-      
-      groups.push({
-        title: "📦 Inventory",
-        items: [
-          { path: "/categories", name: "Categories", icon: "📂", description: "Organize items", roles: ["school_admin"] },
-          { path: "/items", name: "Items", icon: "🛒", description: "Manage inventory", roles: ["school_admin"] },
-          { path: "/stock", name: "Stock Management", icon: "📦", description: "Track movements", roles: ["school_admin"] },
-          { path: "/borrowed", name: "Borrowed Items", icon: "📋", description: "Manage borrows", roles: ["school_admin"] },
-          { path: "/assets", name: "Assets", icon: "🏗️", description: "School assets", roles: ["school_admin"] },
-          { path: "/tracked-assets", name: "Computer Lab", icon: "💻", description: "Computer Tracking", roles: ["school_admin"] },
-          { path: "/laboratory", name: "Laboratory", icon: "🔬", description: "Lab equipment", roles: ["school_admin"] },
-          { path: "/library", name: "Library", icon: "📚", description: "Books collection", roles: ["school_admin"] },
-          { path: "/cleaning-supplies", name: "Cleaning Supplies", icon: "🧹", description: "Cleaning inventory", roles: ["school_admin"] },
-          { path: "/feeding", name: "Feeding Records", icon: "🍽️", description: "Food management", roles: ["school_admin"] },
-        ],
-      });
-      
-      groups.push({
-        title: "👨‍🏫 Teacher Tools",
-        items: [
-          { path: "/homework", name: "Homework", icon: "📚", description: "Manage homework", roles: ["school_admin"] },
-          { path: "/activities", name: "Activities", icon: "📝", description: "Manage activities", roles: ["school_admin"] },
-          { path: "/permissions", name: "Leave Requests", icon: "📋", description: "Manage leave requests", roles: ["school_admin"] },
-        ],
-      });
-      
-      return groups;
+      return [
+        // SECTION 1: OVERVIEW
+        {
+          title: "📊 Overview",
+          items: [
+            { path: "/school-dashboard", name: "Dashboard", icon: "📈", description: "Performance analytics", roles: ["school_admin"] },
+            { path: "/profile", name: "My Profile", icon: "👤", description: "Manage your account", roles: ["school_admin"] },
+          ],
+        },
+        // SECTION 2: ACADEMIC MANAGEMENT
+        {
+          title: "🎓 Academic Management",
+          items: [
+            { path: "/teachers", name: "Teachers", icon: "👨‍🏫", description: "Manage teachers", roles: ["school_admin"] },
+            { path: "/students", name: "Students", icon: "👨‍🎓", description: "Manage students", roles: ["school_admin"] },
+            { path: "/courses", name: "Courses", icon: "📖", description: "Subject management", roles: ["school_admin"] },
+            { path: "/marks", name: "Marks & Grades", icon: "📝", description: "Record student marks", roles: ["school_admin"] },
+            { path: "/attendance", name: "Attendance", icon: "✅", description: "Track attendance", roles: ["school_admin"] },
+          ],
+        },
+        // SECTION 3: STUDENT SUPPORT
+        {
+          title: "🤝 Student Support",
+          items: [
+            { path: "/discipline", name: "Discipline", icon: "⚠️", description: "Track student conduct", roles: ["school_admin"] },
+            { path: "/english-performance", name: "English Performance", icon: "🇬🇧", description: "English compliance", roles: ["school_admin"] },
+            { path: "/slow-learners", name: "Slow Learners", icon: "🎯", description: "Additional support", roles: ["school_admin"] },
+          ],
+        },
+        // SECTION 4: TEACHER TOOLS
+        {
+          title: "👨‍🏫 Teacher Tools",
+          items: [
+            { path: "/homework", name: "Homework", icon: "📚", description: "Manage homework", roles: ["school_admin"] },
+            { path: "/activities", name: "Activities", icon: "📝", description: "Manage activities", roles: ["school_admin"] },
+            { path: "/permissions", name: "Leave Requests", icon: "📋", description: "Manage leave requests", roles: ["school_admin"] },
+          ],
+        },
+        // SECTION 5: FINANCE & TRANSPORT
+        {
+          title: "💰 Finance & Transport",
+          items: [
+            { path: "/transport", name: "Transport Management", icon: "🚌", description: "Transport payments", roles: ["school_admin"] },
+          ],
+        },
+        // SECTION 6: VISITOR MANAGEMENT
+        {
+          title: "👥 Visitor Management",
+          items: [
+            { path: "/visitors", name: "Visitors", icon: "👥", description: "Manage visitors", roles: ["school_admin"] },
+          ],
+        },
+        // SECTION 7: REPORTS
+        {
+          title: "📊 Reports",
+          items: [
+            { path: "/school-reports", name: "Reports", icon: "📊", description: "Generate reports", roles: ["school_admin"] },
+          ],
+        },
+        // SECTION 8: INVENTORY MANAGEMENT
+        {
+          title: "📦 Inventory Management",
+          items: [
+            { path: "/categories", name: "Categories", icon: "📂", description: "Organize items", roles: ["school_admin"] },
+            { path: "/items", name: "Items", icon: "🛒", description: "Manage inventory", roles: ["school_admin"] },
+            { path: "/stock", name: "Stock Management", icon: "📦", description: "Track movements", roles: ["school_admin"] },
+            { path: "/borrowed", name: "Borrowed Items", icon: "📋", description: "Manage borrows", roles: ["school_admin"] },
+          ],
+        },
+        // SECTION 9: FACILITY & ASSET MANAGEMENT
+        {
+          title: "🏗️ Facility & Asset Management",
+          items: [
+            { path: "/assets", name: "Assets", icon: "🏗️", description: "School assets", roles: ["school_admin"] },
+            { path: "/tracked-assets", name: "Computer Lab", icon: "💻", description: "Computer tracking", roles: ["school_admin"] },
+            { path: "/laboratory", name: "Laboratory", icon: "🔬", description: "Lab equipment", roles: ["school_admin"] },
+            { path: "/library", name: "Library", icon: "📚", description: "Books collection", roles: ["school_admin"] },
+            { path: "/cleaning-supplies", name: "Cleaning Supplies", icon: "🧹", description: "Cleaning inventory", roles: ["school_admin"] },
+            { path: "/feeding", name: "Feeding Records", icon: "🍽️", description: "Food management", roles: ["school_admin"] },
+          ],
+        },
+      ];
     }
 
     // Default fallback
@@ -350,6 +365,9 @@ export default function Layout({ children }) {
 
   const menuGroups = getMenuGroups();
 
+  // ============================================================
+  // BOTTOM NAVIGATION - School Features First
+  // ============================================================
   const getBottomNavItems = () => {
     if (isSuperAdmin) {
       return [{ path: "/profile", name: "Profile", icon: "👤" }];
@@ -388,7 +406,7 @@ export default function Layout({ children }) {
       ];
     }
     
-    // School admin or default
+    // School admin or default - School Features First
     return [
       { path: "/school-dashboard", name: "Dashboard", icon: "📊" },
       { path: "/students", name: "Students", icon: "👨‍🎓" },
@@ -442,7 +460,7 @@ export default function Layout({ children }) {
   return (
     <div className="flex h-screen bg-gray-100 overflow-hidden">
 
-      {/* Tooltip (desktop collapsed sidebar) */}
+      {/* Tooltip */}
       {tooltip.show && (
         <div
           style={{
