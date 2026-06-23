@@ -168,23 +168,34 @@ export default function SchoolDashboard() {
       // --- Extract Attendance Data ---
       const attendance = attendanceRes.data || {};
       console.log("Attendance data:", attendance);
-      
+
+      // Handle different response structures
       let avgAttendance = 0;
       let totalPresent = 0;
       let totalAbsent = 0;
       let totalLate = 0;
-      
+
+      // Check multiple possible structures
       if (attendance.summary) {
-        avgAttendance = attendance.summary.averageAttendance || 0;
+        avgAttendance = parseFloat(attendance.summary.averageAttendance) || 0;
+        // Also check for overallAttendance (alternate field name)
+        if (!avgAttendance && attendance.summary.overallAttendance) {
+          avgAttendance = parseFloat(attendance.summary.overallAttendance) || 0;
+        }
         totalPresent = attendance.summary.totalPresent || 0;
         totalAbsent = attendance.summary.totalAbsent || 0;
         totalLate = attendance.summary.totalLate || 0;
       } else {
-        avgAttendance = attendance.averageAttendance || 0;
+        avgAttendance = parseFloat(attendance.averageAttendance) || 0;
+        if (!avgAttendance && attendance.overallAttendance) {
+          avgAttendance = parseFloat(attendance.overallAttendance) || 0;
+        }
         totalPresent = attendance.totalPresent || 0;
         totalAbsent = attendance.totalAbsent || 0;
         totalLate = attendance.totalLate || 0;
       }
+
+      console.log("Attendance stats:", { avgAttendance, totalPresent, totalAbsent, totalLate });
 
       setStats({
         students: {
@@ -205,8 +216,8 @@ export default function SchoolDashboard() {
           passRate: parseFloat(analytics.passRate) || 0,
           gradeDistribution: gradeDistribution
         },
-        attendance: {
-          rate: parseFloat(avgAttendance) || 0,
+         attendance: {
+          rate: avgAttendance || 0,
           present: totalPresent || 0,
           absent: totalAbsent || 0,
           late: totalLate || 0
