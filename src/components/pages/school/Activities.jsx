@@ -10,6 +10,45 @@ import {
   getCourses
 } from "../../services/schoolService";
 import DownloadButton from "../../DownloadButton";
+import {
+  Activity,
+  Plus,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Search,
+  Filter,
+  Download,
+  Eye,
+  Edit,
+  Trash2,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  Clock,
+  Calendar,
+  Users,
+  BarChart,
+  PieChart,
+  TrendingUp,
+  TrendingDown,
+  Award,
+  Star,
+  BookOpen,
+  GraduationCap,
+  ClipboardList,
+  FileText,
+  UserCheck,
+  UserX,
+  RefreshCw,
+  Settings,
+  MoreHorizontal,
+  ChevronDown,
+  Zap,
+  Target,
+  Brain,
+  Lightbulb
+} from "lucide-react";
 
 // --- Error Boundary ---
 class ActivitiesErrorBoundary extends React.Component {
@@ -64,7 +103,7 @@ function ActivitiesComponent() {
   const [trendData, setTrendData] = useState(null);
   const [editingScore, setEditingScore] = useState(null);
   
-  // Filters - Initialize with default values so data loads immediately
+  // Filters
   const [filterGrade, setFilterGrade] = useState("P1");
   const [filterClass, setFilterClass] = useState("A");
   const [filterTerm, setFilterTerm] = useState("TERM1");
@@ -73,13 +112,12 @@ function ActivitiesComponent() {
   const classes = ["A", "B", "C", "D"];
   const terms = ["TERM1", "TERM2", "TERM3"];
   const activityTypes = [
-    { value: "EXERCISE", label: "Exercise", icon: "✏️", color: "bg-blue-100 text-blue-700" },
-    { value: "QUIZ", label: "Quiz", icon: "📝", color: "bg-purple-100 text-purple-700" },
-    { value: "HOMEWORK", label: "Homework", icon: "📚", color: "bg-emerald-100 text-emerald-700" },
-    { value: "EXAM", label: "Exam", icon: "📋", color: "bg-amber-100 text-amber-700" }
+    { value: "EXERCISE", label: "Exercise", icon: FileText, color: "bg-blue-100 text-blue-700" },
+    { value: "QUIZ", label: "Quiz", icon: ClipboardList, color: "bg-purple-100 text-purple-700" },
+    { value: "HOMEWORK", label: "Homework", icon: BookOpen, color: "bg-emerald-100 text-emerald-700" },
+    { value: "EXAM", label: "Exam", icon: GraduationCap, color: "bg-amber-100 text-amber-700" }
   ];
 
-  // Form state for assigning activity to class
   const [form, setForm] = useState({
     grade: "P1",
     className: "A",
@@ -92,16 +130,11 @@ function ActivitiesComponent() {
     term: "TERM1"
   });
 
-  // Fetch data
   const fetchData = useCallback(async () => {
-    // Always fetch courses first
     setLoading(true);
     setError(null);
     try {
-      // Fetch courses
       const coursesRes = await getCourses();
-      console.log("Courses response:", coursesRes);
-      
       let coursesData = [];
       if (Array.isArray(coursesRes.data)) {
         coursesData = coursesRes.data;
@@ -110,10 +143,7 @@ function ActivitiesComponent() {
       }
       setCourses(coursesData);
 
-      // If filters are set to specific values, fetch activities
       if (filterGrade !== "ALL" && filterClass !== "ALL") {
-        console.log("Fetching activities for:", filterGrade, filterClass, filterTerm);
-        
         const [studentsRes, activitiesRes] = await Promise.all([
           getStudents(),
           getClassActivities({ 
@@ -129,10 +159,6 @@ function ActivitiesComponent() {
         setStudents(studentsData.filter(s => s?.grade === filterGrade && s?.className === filterClass));
         setActivities(activitiesData.activities || []);
         setGroupedBatches(activitiesData.groupedByBatch || []);
-        
-        if (activitiesData.groupedByBatch?.length === 0) {
-          console.log("No activities found for this class");
-        }
       } else {
         setActivities([]);
         setGroupedBatches([]);
@@ -153,7 +179,6 @@ function ActivitiesComponent() {
     fetchData();
   }, [fetchData]);
 
-  // Fetch dashboard
   const fetchDashboard = async () => {
     if (filterGrade === "ALL" || filterClass === "ALL") {
       setError("Please select a specific grade and class to view dashboard");
@@ -178,7 +203,6 @@ function ActivitiesComponent() {
     }
   };
 
-  // Fetch trends
   const fetchTrends = async () => {
     if (filterGrade === "ALL" || filterClass === "ALL") {
       setError("Please select a specific grade and class to view trends");
@@ -202,7 +226,6 @@ function ActivitiesComponent() {
     }
   };
 
-  // Handle assign activity to class
   const handleAssign = async (e) => {
     e.preventDefault();
     setError(null);
@@ -215,12 +238,9 @@ function ActivitiesComponent() {
     
     setLoading(true);
     try {
-      console.log("Assigning activity with form:", form);
       await assignActivityToClass(form);
       setSuccess(`Activity assigned to ${form.grade} ${form.className} successfully!`);
       setShowAssignForm(false);
-      
-      // Reset form but keep grade and class
       setForm({
         grade: form.grade,
         className: form.className,
@@ -232,8 +252,6 @@ function ActivitiesComponent() {
         date: new Date().toISOString().split('T')[0],
         term: filterTerm
       });
-      
-      // Refresh data after assignment
       await fetchData();
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
@@ -244,7 +262,6 @@ function ActivitiesComponent() {
     }
   };
 
-  // Handle update student score
   const handleUpdateScore = async (e) => {
     e.preventDefault();
     if (!editingScore) return;
@@ -252,7 +269,6 @@ function ActivitiesComponent() {
     setLoading(true);
     setError(null);
     try {
-      console.log("Updating score:", editingScore);
       await updateStudentScore({
         activityId: editingScore.activityId,
         studentId: editingScore.studentId,
@@ -270,12 +286,10 @@ function ActivitiesComponent() {
     }
   };
 
-  // Get activity type info
   const getActivityTypeInfo = (type) => {
     return activityTypes.find(a => a.value === type) || activityTypes[0];
   };
 
-  // Get status color for scores
   const getScoreColor = (percentage) => {
     if (percentage >= 80) return "bg-emerald-100 text-emerald-700";
     if (percentage >= 70) return "bg-blue-100 text-blue-700";
@@ -284,7 +298,6 @@ function ActivitiesComponent() {
     return "bg-rose-100 text-rose-700";
   };
 
-  // Export data
   const exportData = activities.map(a => ({
     studentName: a?.studentName || "-",
     studentId: a?.studentId || "-",
@@ -319,22 +332,31 @@ function ActivitiesComponent() {
         </div>
       )}
 
-      {/* Hero Section */}
+      {/* Hero Section - Dark Gradient */}
       <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-orange-900 to-slate-900 rounded-2xl shadow-xl">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-amber-500/20 to-orange-500/20 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-indigo-500/10 to-purple-500/10 rounded-full blur-3xl"></div>
+        
         <div className="relative px-5 py-6 md:p-6">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-white mb-1 tracking-tight">
-                📝 Class Activities
-              </h1>
-              <p className="text-slate-300 text-sm">
-                Assign activities to classes and track student performance
-              </p>
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-white/10 backdrop-blur rounded-xl">
+                  <Activity className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-2xl md:text-3xl font-bold text-white mb-1 tracking-tight">
+                    Class Activities
+                  </h1>
+                  <p className="text-slate-300 text-sm">
+                    Assign activities to classes and track student performance
+                  </p>
+                </div>
+              </div>
             </div>
             <div className="flex gap-2 flex-wrap">
               <button
                 onClick={() => {
-                  // Set form defaults based on current filters
                   setForm({
                     ...form,
                     grade: filterGrade !== "ALL" ? filterGrade : "P1",
@@ -345,19 +367,22 @@ function ActivitiesComponent() {
                 }}
                 className="bg-white/10 backdrop-blur-md hover:bg-white/20 text-white px-4 py-2 rounded-xl transition-all flex items-center gap-2 font-semibold border border-white/20 text-sm"
               >
-                <span>➕</span> Assign Activity
+                <Plus className="w-4 h-4" />
+                Assign Activity
               </button>
               <button
                 onClick={fetchDashboard}
                 className="bg-white/10 backdrop-blur-md hover:bg-white/20 text-white px-4 py-2 rounded-xl transition-all flex items-center gap-2 font-semibold border border-white/20 text-sm"
               >
-                <span>📊</span> Dashboard
+                <BarChart className="w-4 h-4" />
+                Dashboard
               </button>
               <button
                 onClick={fetchTrends}
                 className="bg-white/10 backdrop-blur-md hover:bg-white/20 text-white px-4 py-2 rounded-xl transition-all flex items-center gap-2 font-semibold border border-white/20 text-sm"
               >
-                <span>📈</span> Trends
+                <TrendingUp className="w-4 h-4" />
+                Trends
               </button>
             </div>
           </div>
@@ -396,8 +421,11 @@ function ActivitiesComponent() {
       {/* Export Section */}
       {activities.length > 0 && (
         <div className="bg-white rounded-xl shadow-lg p-4">
-          <div className="flex justify-between items-center">
-            <h3 className="font-semibold text-slate-800 text-sm">📥 Export Activities</h3>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Download className="w-4 h-4 text-indigo-600" />
+              <h3 className="font-semibold text-slate-800 text-sm">Export Activities</h3>
+            </div>
             <DownloadButton 
               data={exportData} 
               columns={exportColumns} 
@@ -430,27 +458,37 @@ function ActivitiesComponent() {
         <div className="space-y-4">
           {groupedBatches.map((batch) => {
             const typeInfo = getActivityTypeInfo(batch.activityType);
+            const IconComponent = typeInfo.icon || FileText;
             return (
               <div key={batch.batchId} className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all">
                 {/* Batch Header */}
                 <div className="bg-gradient-to-r from-slate-50 to-slate-100 px-4 py-3 border-b border-slate-200 flex flex-wrap justify-between items-center gap-2">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 flex-wrap">
                     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${typeInfo.color}`}>
-                      {typeInfo.icon} {typeInfo.label}
+                      <IconComponent className="w-3 h-3" />
+                      {typeInfo.label}
                     </span>
-                    <h3 className="font-semibold text-slate-800">{batch.title}</h3>
+                    <h3 className="font-semibold text-slate-800 text-sm">{batch.title}</h3>
                     <span className="text-xs text-slate-400">{batch.courseName}</span>
                   </div>
-                  <div className="flex items-center gap-3 text-xs">
-                    <span className="text-slate-500">📅 {new Date(batch.date).toLocaleDateString()}</span>
-                    <span className="text-slate-500">Max: {batch.maxScore}pts</span>
-                    <span className="text-emerald-600">✅ {batch.statistics?.completionRate || 0}%</span>
-                    <span className="text-indigo-600">📊 {batch.statistics?.averageScore || 0}%</span>
+                  <div className="flex items-center gap-3 text-xs flex-wrap">
+                    <span className="text-slate-500 flex items-center gap-1">
+                      <Calendar className="w-3 h-3" /> {new Date(batch.date).toLocaleDateString()}
+                    </span>
+                    <span className="text-slate-500 flex items-center gap-1">
+                      <Target className="w-3 h-3" /> Max: {batch.maxScore}pts
+                    </span>
+                    <span className="text-emerald-600 flex items-center gap-1">
+                      <CheckCircle className="w-3 h-3" /> {batch.statistics?.completionRate || 0}%
+                    </span>
+                    <span className="text-indigo-600 flex items-center gap-1">
+                      <BarChart className="w-3 h-3" /> {batch.statistics?.averageScore || 0}%
+                    </span>
                   </div>
                 </div>
                 
-                {/* Student Scores */}
-                <div className="overflow-x-auto">
+                {/* Student Scores - Desktop Table */}
+                <div className="hidden md:block overflow-x-auto">
                   <table className="min-w-full divide-y divide-slate-200 text-sm">
                     <thead className="bg-white">
                       <tr>
@@ -483,9 +521,9 @@ function ActivitiesComponent() {
                                   maxScore: batch.maxScore
                                 });
                               }}
-                              className="px-2 py-1 bg-indigo-600 text-white rounded-lg text-xs font-medium hover:bg-indigo-700 transition"
+                              className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-600 text-white rounded-lg text-xs font-medium hover:bg-indigo-700 transition"
                             >
-                              ✏️ Update Score
+                              <Edit className="w-3 h-3" /> Update Score
                             </button>
                           </td>
                         </tr>
@@ -493,13 +531,56 @@ function ActivitiesComponent() {
                     </tbody>
                   </table>
                 </div>
+
+                {/* Student Scores - Mobile Cards */}
+                <div className="block md:hidden divide-y divide-slate-100">
+                  {batch.students?.map((student) => (
+                    <div key={student.studentId} className="p-3 hover:bg-slate-50 transition">
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <p className="font-medium text-slate-800 text-sm">{student.studentName}</p>
+                          <p className="text-xs text-slate-400">{student.studentId}</p>
+                        </div>
+                        <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-bold ${getScoreColor(student.percentage || 0)}`}>
+                          {student.percentage || 0}%
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <div className="flex gap-3">
+                          <div>
+                            <p className="text-[10px] text-slate-400">Score</p>
+                            <p className="text-sm font-medium text-slate-800">{student.score || 0}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-slate-400">Max</p>
+                            <p className="text-sm font-medium text-slate-800">{batch.maxScore}</p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setEditingScore({
+                              activityId: student.activityId || batch.batchId,
+                              studentId: student.studentId,
+                              studentName: student.studentName,
+                              score: student.score || 0,
+                              maxScore: batch.maxScore
+                            });
+                          }}
+                          className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-600 text-white rounded-lg text-xs font-medium hover:bg-indigo-700 transition"
+                        >
+                          <Edit className="w-3 h-3" /> Update
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
                 
                 {/* Batch Stats */}
-                <div className="bg-slate-50 px-4 py-2 border-t border-slate-200 text-xs text-slate-500 flex justify-between items-center">
-                  <span>Total Students: {batch.statistics?.totalStudents || 0}</span>
-                  <span>Submitted: {batch.statistics?.submitted || 0}</span>
-                  <span>Average: {batch.statistics?.averageScore || 0}%</span>
-                  <span>Pass Rate: {batch.statistics?.passRate || 0}%</span>
+                <div className="bg-slate-50 px-4 py-2 border-t border-slate-200 text-xs text-slate-500 flex flex-wrap justify-between items-center gap-2">
+                  <span className="flex items-center gap-1"><Users className="w-3 h-3" /> Total: {batch.statistics?.totalStudents || 0}</span>
+                  <span className="flex items-center gap-1"><CheckCircle className="w-3 h-3" /> Submitted: {batch.statistics?.submitted || 0}</span>
+                  <span className="flex items-center gap-1"><BarChart className="w-3 h-3" /> Average: {batch.statistics?.averageScore || 0}%</span>
+                  <span className="flex items-center gap-1"><Award className="w-3 h-3" /> Pass Rate: {batch.statistics?.passRate || 0}%</span>
                 </div>
               </div>
             );
@@ -511,9 +592,14 @@ function ActivitiesComponent() {
       {showAssignForm && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto" onClick={() => setShowAssignForm(false)}>
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md my-8 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="sticky top-0 bg-gradient-to-r from-orange-500 to-amber-500 px-5 py-3 flex justify-between items-center rounded-t-xl">
-              <h2 className="text-lg font-bold text-white">📝 Assign Activity to Class</h2>
-              <button onClick={() => setShowAssignForm(false)} className="text-white text-2xl hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center transition">×</button>
+            <div className="sticky top-0 bg-gradient-to-r from-orange-500 to-amber-500 px-5 py-4 flex justify-between items-center rounded-t-xl">
+              <div className="flex items-center gap-2">
+                <Activity className="w-5 h-5 text-white" />
+                <h2 className="text-lg font-bold text-white">Assign Activity to Class</h2>
+              </div>
+              <button onClick={() => setShowAssignForm(false)} className="text-white/70 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10">
+                <X className="w-5 h-5" />
+              </button>
             </div>
             <form onSubmit={handleAssign} className="p-5 space-y-4">
               <div className="grid grid-cols-2 gap-3">
@@ -573,7 +659,9 @@ function ActivitiesComponent() {
                     className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none"
                   >
                     {activityTypes.map(a => (
-                      <option key={a.value} value={a.value}>{a.icon} {a.label}</option>
+                      <option key={a.value} value={a.value}>
+                        {a.label}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -635,16 +723,18 @@ function ActivitiesComponent() {
               </div>
 
               {error && (
-                <div className="bg-rose-50 text-rose-700 p-3 rounded-lg text-sm border border-rose-200">
-                  ⚠️ {error}
+                <div className="bg-rose-50 border-l-4 border-rose-500 text-rose-700 p-3 rounded-lg text-sm flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  <span>{error}</span>
                 </div>
               )}
 
-              <div className="flex gap-3 pt-2">
-                <button type="submit" disabled={loading} className="flex-1 bg-gradient-to-r from-orange-500 to-amber-500 text-white py-2 rounded-lg font-semibold text-sm hover:shadow-lg transition-all disabled:opacity-50">
+              <div className="flex gap-3 pt-2 border-t border-slate-100">
+                <button type="submit" disabled={loading} className="flex-1 bg-gradient-to-r from-orange-500 to-amber-500 text-white py-2.5 rounded-lg font-semibold text-sm hover:shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+                  <Activity className="w-4 h-4" />
                   {loading ? "Assigning..." : "Assign Activity"}
                 </button>
-                <button type="button" onClick={() => setShowAssignForm(false)} className="flex-1 bg-slate-100 text-slate-700 py-2 rounded-lg font-semibold text-sm hover:bg-slate-200 transition-all">
+                <button type="button" onClick={() => setShowAssignForm(false)} className="flex-1 bg-slate-100 text-slate-700 py-2.5 rounded-lg font-semibold text-sm hover:bg-slate-200 transition-all">
                   Cancel
                 </button>
               </div>
@@ -657,14 +747,19 @@ function ActivitiesComponent() {
       {editingScore && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setEditingScore(null)}>
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
-            <div className="sticky top-0 bg-gradient-to-r from-indigo-500 to-purple-500 px-5 py-3 flex justify-between items-center rounded-t-xl">
-              <h2 className="text-lg font-bold text-white">✏️ Update Score</h2>
-              <button onClick={() => setEditingScore(null)} className="text-white text-2xl hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center transition">×</button>
+            <div className="sticky top-0 bg-gradient-to-r from-indigo-500 to-purple-500 px-5 py-4 flex justify-between items-center rounded-t-xl">
+              <div className="flex items-center gap-2">
+                <Edit className="w-5 h-5 text-white" />
+                <h2 className="text-lg font-bold text-white">Update Score</h2>
+              </div>
+              <button onClick={() => setEditingScore(null)} className="text-white/70 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10">
+                <X className="w-5 h-5" />
+              </button>
             </div>
             <form onSubmit={handleUpdateScore} className="p-5 space-y-4">
               <div>
-                <p className="text-sm font-medium text-slate-700">Student</p>
-                <p className="text-lg font-semibold text-slate-800">{editingScore.studentName}</p>
+                <p className="text-xs font-semibold text-slate-700">Student</p>
+                <p className="text-base font-bold text-slate-800">{editingScore.studentName}</p>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Score (0 - {editingScore.maxScore})</label>
@@ -679,15 +774,17 @@ function ActivitiesComponent() {
                 />
               </div>
               {error && (
-                <div className="bg-rose-50 text-rose-700 p-3 rounded-lg text-sm border border-rose-200">
-                  ⚠️ {error}
+                <div className="bg-rose-50 border-l-4 border-rose-500 text-rose-700 p-3 rounded-lg text-sm flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  <span>{error}</span>
                 </div>
               )}
-              <div className="flex gap-3 pt-2">
-                <button type="submit" disabled={loading} className="flex-1 bg-gradient-to-r from-indigo-500 to-purple-500 text-white py-2 rounded-lg font-semibold text-sm hover:shadow-lg transition-all disabled:opacity-50">
+              <div className="flex gap-3 pt-2 border-t border-slate-100">
+                <button type="submit" disabled={loading} className="flex-1 bg-gradient-to-r from-indigo-500 to-purple-500 text-white py-2.5 rounded-lg font-semibold text-sm hover:shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+                  <CheckCircle className="w-4 h-4" />
                   {loading ? "Saving..." : "Update Score"}
                 </button>
-                <button type="button" onClick={() => setEditingScore(null)} className="flex-1 bg-slate-100 text-slate-700 py-2 rounded-lg font-semibold text-sm hover:bg-slate-200 transition-all">
+                <button type="button" onClick={() => setEditingScore(null)} className="flex-1 bg-slate-100 text-slate-700 py-2.5 rounded-lg font-semibold text-sm hover:bg-slate-200 transition-all">
                   Cancel
                 </button>
               </div>
@@ -700,40 +797,46 @@ function ActivitiesComponent() {
       {showDashboard && dashboardData && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto" onClick={() => setShowDashboard(false)}>
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl my-8 max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="sticky top-0 bg-gradient-to-r from-orange-600 to-amber-600 px-5 py-3 flex justify-between items-center text-white rounded-t-xl">
-              <h2 className="text-base font-bold">📊 Class Performance Dashboard</h2>
-              <button onClick={() => setShowDashboard(false)} className="text-white text-2xl hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center transition">×</button>
+            <div className="sticky top-0 bg-gradient-to-r from-orange-600 to-amber-600 px-5 py-4 flex justify-between items-center text-white rounded-t-xl">
+              <div className="flex items-center gap-2">
+                <BarChart className="w-5 h-5" />
+                <h2 className="text-lg font-bold">Class Performance Dashboard</h2>
+              </div>
+              <button onClick={() => setShowDashboard(false)} className="text-white/70 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10">
+                <X className="w-5 h-5" />
+              </button>
             </div>
             <div className="p-5 space-y-4">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div className="bg-blue-50 rounded-lg p-3 text-center">
-                  <p className="text-xs text-blue-600">Total Students</p>
+                  <p className="text-xs text-blue-600 flex items-center justify-center gap-1"><Users className="w-3 h-3" /> Total Students</p>
                   <p className="text-xl font-bold text-blue-700">{dashboardData?.classInfo?.totalStudents || 0}</p>
                 </div>
                 <div className="bg-purple-50 rounded-lg p-3 text-center">
-                  <p className="text-xs text-purple-600">Total Activities</p>
+                  <p className="text-xs text-purple-600 flex items-center justify-center gap-1"><Activity className="w-3 h-3" /> Total Activities</p>
                   <p className="text-xl font-bold text-purple-700">{dashboardData?.classInfo?.totalActivities || 0}</p>
                 </div>
                 <div className="bg-emerald-50 rounded-lg p-3 text-center">
-                  <p className="text-xs text-emerald-600">Overall Average</p>
+                  <p className="text-xs text-emerald-600 flex items-center justify-center gap-1"><BarChart className="w-3 h-3" /> Overall Average</p>
                   <p className="text-xl font-bold text-emerald-700">{dashboardData?.summary?.overallAverage || 0}%</p>
                 </div>
                 <div className="bg-amber-50 rounded-lg p-3 text-center">
-                  <p className="text-xs text-amber-600">Pass Rate</p>
+                  <p className="text-xs text-amber-600 flex items-center justify-center gap-1"><Award className="w-3 h-3" /> Pass Rate</p>
                   <p className="text-xl font-bold text-amber-700">{dashboardData?.summary?.passRate || 0}%</p>
                 </div>
               </div>
 
               <div>
-                <p className="text-sm font-semibold text-slate-700 mb-2">Activity Type Performance</p>
+                <p className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2"><PieChart className="w-4 h-4" /> Activity Type Performance</p>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                   {Object.entries(dashboardData?.activityTypeStats || {}).map(([type, data]) => {
                     const info = getActivityTypeInfo(type);
+                    const IconComp = info.icon || FileText;
                     return (
                       <div key={type} className={`${info.color} rounded-lg p-2 text-center`}>
-                        <p className="text-xs font-medium">{info.icon} {info.label}</p>
+                        <p className="text-xs font-medium flex items-center justify-center gap-1"><IconComp className="w-3 h-3" /> {info.label}</p>
                         <p className="text-lg font-bold">{data?.average || 0}%</p>
-                        <p className="text-xs opacity-75">{data?.count || 0} activities</p>
+                        <p className="text-[10px] opacity-75">{data?.count || 0} activities</p>
                       </div>
                     );
                   })}
@@ -741,7 +844,7 @@ function ActivitiesComponent() {
               </div>
 
               <div>
-                <p className="text-sm font-semibold text-slate-700 mb-2">🏆 Top Performers</p>
+                <p className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2"><Award className="w-4 h-4" /> Top Performers</p>
                 <div className="space-y-2 max-h-48 overflow-y-auto">
                   {(dashboardData?.studentRanking || []).slice(0, 10).map((student, idx) => (
                     <div key={idx} className="flex justify-between items-center p-2 bg-slate-50 rounded-lg">
@@ -750,8 +853,8 @@ function ActivitiesComponent() {
                         <span className="text-sm font-medium">{student?.studentName || "Unknown"}</span>
                       </div>
                       <div className="flex gap-3 text-xs">
-                        <span className="text-emerald-600">📊 {student?.average || 0}%</span>
-                        <span className="text-blue-600">📝 {student?.totalActivities || 0}</span>
+                        <span className="text-emerald-600 flex items-center gap-1"><BarChart className="w-3 h-3" /> {student?.average || 0}%</span>
+                        <span className="text-blue-600 flex items-center gap-1"><Activity className="w-3 h-3" /> {student?.totalActivities || 0}</span>
                       </div>
                     </div>
                   ))}
@@ -766,36 +869,41 @@ function ActivitiesComponent() {
       {showTrends && trendData && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto" onClick={() => setShowTrends(false)}>
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl my-8 max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="sticky top-0 bg-gradient-to-r from-indigo-600 to-purple-600 px-5 py-3 flex justify-between items-center text-white rounded-t-xl">
-              <h2 className="text-base font-bold">📈 Activity Trends</h2>
-              <button onClick={() => setShowTrends(false)} className="text-white text-2xl hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center transition">×</button>
+            <div className="sticky top-0 bg-gradient-to-r from-indigo-600 to-purple-600 px-5 py-4 flex justify-between items-center text-white rounded-t-xl">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="w-5 h-5" />
+                <h2 className="text-lg font-bold">Activity Trends</h2>
+              </div>
+              <button onClick={() => setShowTrends(false)} className="text-white/70 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10">
+                <X className="w-5 h-5" />
+              </button>
             </div>
             <div className="p-5 space-y-4">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div className="bg-blue-50 rounded-lg p-3 text-center">
-                  <p className="text-xs text-blue-600">Total Activities</p>
+                  <p className="text-xs text-blue-600 flex items-center justify-center gap-1"><Activity className="w-3 h-3" /> Total Activities</p>
                   <p className="text-xl font-bold text-blue-700">{trendData?.summary?.totalActivities || 0}</p>
                 </div>
                 <div className="bg-emerald-50 rounded-lg p-3 text-center">
-                  <p className="text-xs text-emerald-600">Overall Average</p>
+                  <p className="text-xs text-emerald-600 flex items-center justify-center gap-1"><BarChart className="w-3 h-3" /> Overall Average</p>
                   <p className="text-xl font-bold text-emerald-700">{trendData?.summary?.overallAverage || 0}%</p>
                 </div>
                 <div className="bg-amber-50 rounded-lg p-3 text-center">
-                  <p className="text-xs text-amber-600">Improvement</p>
+                  <p className="text-xs text-amber-600 flex items-center justify-center gap-1"><TrendingUp className="w-3 h-3" /> Improvement</p>
                   <p className="text-xl font-bold text-amber-700">{trendData?.summary?.improvement || 0}%</p>
                 </div>
                 <div className="bg-purple-50 rounded-lg p-3 text-center">
-                  <p className="text-xs text-purple-600">Days Tracked</p>
+                  <p className="text-xs text-purple-600 flex items-center justify-center gap-1"><Calendar className="w-3 h-3" /> Days Tracked</p>
                   <p className="text-xl font-bold text-purple-700">{trendData?.summary?.totalDays || 0}</p>
                 </div>
               </div>
 
               <div>
-                <p className="text-sm font-semibold text-slate-700 mb-2">Daily Performance Trend</p>
+                <p className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2"><TrendingUp className="w-4 h-4" /> Daily Performance Trend</p>
                 <div className="space-y-1 max-h-60 overflow-y-auto">
                   {(trendData?.trendData || []).slice(-30).map((day) => (
-                    <div key={day.date} className="flex items-center gap-2">
-                      <span className="text-xs text-slate-500 w-24 truncate">{day.date}</span>
+                    <div key={day.date} className="flex items-center gap-2 p-1 hover:bg-slate-50 rounded">
+                      <span className="text-xs text-slate-500 w-20 truncate">{day.date}</span>
                       <div className="flex-1 h-4 bg-slate-100 rounded-full overflow-hidden">
                         <div 
                           className={`h-full ${day.average >= 70 ? 'bg-emerald-500' : day.average >= 50 ? 'bg-amber-500' : 'bg-rose-500'} rounded-full transition-all`}
@@ -803,18 +911,18 @@ function ActivitiesComponent() {
                         />
                       </div>
                       <span className="text-xs font-medium w-12 text-right">{day.average || 0}%</span>
-                      <span className="text-xs text-slate-400 w-12">{day.count || 0} acts</span>
+                      <span className="text-xs text-slate-400 w-12 flex items-center gap-1"><Activity className="w-3 h-3" /> {day.count || 0}</span>
                     </div>
                   ))}
                 </div>
               </div>
 
               <div>
-                <p className="text-sm font-semibold text-slate-700 mb-2">7-Day Moving Average</p>
+                <p className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2"><Star className="w-4 h-4" /> 7-Day Moving Average</p>
                 <div className="grid grid-cols-3 md:grid-cols-7 gap-2">
                   {(trendData?.trendData || []).slice(-7).map((day) => (
                     <div key={day.date} className="bg-slate-50 rounded-lg p-2 text-center">
-                      <p className="text-xs text-slate-500 truncate">{day.date}</p>
+                      <p className="text-[10px] text-slate-500 truncate">{day.date}</p>
                       <p className="text-sm font-bold text-indigo-600">{day.movingAverage || 0}%</p>
                     </div>
                   ))}

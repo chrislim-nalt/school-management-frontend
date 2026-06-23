@@ -6,6 +6,54 @@ import {
   getStudents 
 } from "../../services/schoolService";
 import DownloadButton from "../../DownloadButton";
+import {
+  Languages,
+  Plus,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Search,
+  Filter,
+  Download,
+  Eye,
+  Edit,
+  Trash2,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  Clock,
+  Calendar,
+  Users,
+  BarChart,
+  PieChart,
+  TrendingUp,
+  TrendingDown,
+  Award,
+  Star,
+  BookOpen,
+  GraduationCap,
+  ClipboardList,
+  FileText,
+  UserCheck,
+  UserX,
+  RefreshCw,
+  Settings,
+  MoreHorizontal,
+  ChevronDown,
+  Zap,
+  Target,
+  Brain,
+  Lightbulb,
+  MessageSquare,
+  MapPin,
+  AlertTriangle,
+  Check,
+  User,
+  School,
+  Flag,
+  Gauge,
+  Activity
+} from "lucide-react";
 
 export default function EnglishPerformance() {
   const [students, setStudents] = useState([]);
@@ -197,10 +245,10 @@ export default function EnglishPerformance() {
   };
 
   const getStatusBadge = (violationCount) => {
-    if (violationCount === 0) return { label: "Excellent", color: "bg-emerald-100 text-emerald-700", icon: "🟢", description: "No violations" };
-    if (violationCount <= 2) return { label: "Good", color: "bg-blue-100 text-blue-700", icon: "🔵", description: "Minor violations" };
-    if (violationCount <= 4) return { label: "Needs Attention", color: "bg-amber-100 text-amber-700", icon: "🟡", description: "Multiple violations" };
-    return { label: "Critical", color: "bg-red-100 text-red-700", icon: "🔴", description: "Frequent violations" };
+    if (violationCount === 0) return { label: "Excellent", color: "bg-emerald-100 text-emerald-700", icon: CheckCircle, description: "No violations" };
+    if (violationCount <= 2) return { label: "Good", color: "bg-blue-100 text-blue-700", icon: CheckCircle, description: "Minor violations" };
+    if (violationCount <= 4) return { label: "Needs Attention", color: "bg-amber-100 text-amber-700", icon: AlertCircle, description: "Multiple violations" };
+    return { label: "Critical", color: "bg-rose-100 text-rose-700", icon: AlertTriangle, description: "Frequent violations" };
   };
 
   const calculateSchoolMetrics = () => {
@@ -213,7 +261,6 @@ export default function EnglishPerformance() {
     
     const complianceRate = totalStudents > 0 ? ((cleanStudents / totalStudents) * 100).toFixed(1) : 0;
     
-    // Determine performance level
     let performanceLevel = "Excellent";
     let performanceColor = "text-emerald-600";
     let performanceBg = "bg-emerald-50";
@@ -236,8 +283,8 @@ export default function EnglishPerformance() {
       recommendation = "Average performance. Need targeted interventions.";
     } else {
       performanceLevel = "Critical";
-      performanceColor = "text-red-600";
-      performanceBg = "bg-red-50";
+      performanceColor = "text-rose-600";
+      performanceBg = "bg-rose-50";
       recommendation = "Critical situation. Immediate school-wide intervention required.";
     }
     
@@ -257,7 +304,6 @@ export default function EnglishPerformance() {
 
   const schoolMetrics = calculateSchoolMetrics();
 
-  // Prepare trend data for simple display
   const getTrendAnalysis = () => {
     if (!dashboardData?.weeklyTrend || dashboardData.weeklyTrend.length < 4) return null;
     
@@ -275,15 +321,15 @@ export default function EnglishPerformance() {
         message: `Violations are DECREASING by ${Math.abs(percentChange)}% compared to previous period`,
         color: "text-emerald-600",
         bg: "bg-emerald-50",
-        icon: "📉"
+        icon: TrendingDown
       };
     } else if (recentAvg > previousAvg) {
       return {
         direction: "worsening",
         message: `Violations are INCREASING by ${percentChange}% compared to previous period`,
-        color: "text-red-600",
-        bg: "bg-red-50",
-        icon: "📈"
+        color: "text-rose-600",
+        bg: "bg-rose-50",
+        icon: TrendingUp
       };
     } else {
       return {
@@ -291,7 +337,7 @@ export default function EnglishPerformance() {
         message: "Violations are STABLE compared to previous period",
         color: "text-blue-600",
         bg: "bg-blue-50",
-        icon: "➡️"
+        icon: Activity
       };
     }
   };
@@ -313,26 +359,37 @@ export default function EnglishPerformance() {
 
   return (
     <div className="space-y-4">
+      {/* Toast Messages */}
       {(success || error) && (
-        <div className={`fixed top-20 right-4 z-50 animate-slide-in ${success ? "bg-emerald-500" : "bg-rose-500"} text-white px-4 py-2 rounded-xl shadow-2xl flex items-center gap-2 text-sm`}>
-          <span className="text-lg">{success ? "✓" : "⚠"}</span>
+        <div className={`fixed top-20 right-4 z-50 animate-slide-in ${success ? "bg-emerald-500" : "bg-rose-500"} text-white px-4 py-2 rounded-xl shadow-2xl flex items-center gap-2 text-sm max-w-md`}>
+          <span className="text-lg flex-shrink-0">{success ? "✓" : "⚠"}</span>
           <p className="font-medium">{success || error}</p>
         </div>
       )}
 
-      {/* Hero Section */}
+      {/* Hero Section - Dark Gradient */}
       <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl shadow-xl">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-emerald-500/10 to-teal-500/10 rounded-full blur-3xl"></div>
+        
         <div className="relative px-5 py-6 md:p-6">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-white mb-1 tracking-tight">
-                🇬🇧 English Speaking Performance
-              </h1>
-              <p className="text-slate-300 text-sm">
-                Track and improve English speaking compliance across the school
-              </p>
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-white/10 backdrop-blur rounded-xl">
+                  <Languages className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-2xl md:text-3xl font-bold text-white mb-1 tracking-tight">
+                    🇬🇧 English Speaking Performance
+                  </h1>
+                  <p className="text-slate-300 text-sm">
+                    Track and improve English speaking compliance across the school
+                  </p>
+                </div>
+              </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <button
                 onClick={() => {
                   setSelectedGrade("ALL");
@@ -342,57 +399,61 @@ export default function EnglishPerformance() {
                 }}
                 className="bg-white/10 backdrop-blur-md hover:bg-white/20 text-white px-4 py-2 rounded-xl transition-all flex items-center gap-2 font-semibold border border-white/20 text-sm"
               >
-                <span>🔴</span> Record Violation
+                <Plus className="w-4 h-4" />
+                Record Violation
               </button>
               <button
                 onClick={fetchReport}
                 className="bg-white/10 backdrop-blur-md hover:bg-white/20 text-white px-4 py-2 rounded-xl transition-all flex items-center gap-2 font-semibold border border-white/20 text-sm"
               >
-                <span>📊</span> Full Report
+                <BarChart className="w-4 h-4" />
+                Full Report
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Executive Summary Card - Easy to understand */}
+      {/* Executive Summary Card */}
       {schoolMetrics && (
         <div className={`rounded-xl shadow-lg overflow-hidden ${schoolMetrics.performanceBg}`}>
-          <div className="p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-gray-800">📋 Executive Summary</h2>
+          <div className="p-4 md:p-5">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-2">
+              <h2 className="text-base md:text-lg font-bold text-gray-800 flex items-center gap-2">
+                <ClipboardList className="w-5 h-5" /> Executive Summary
+              </h2>
               <span className={`text-sm font-bold ${schoolMetrics.performanceColor}`}>
                 Performance: {schoolMetrics.performanceLevel}
               </span>
             </div>
             
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
               <div className="text-center">
-                <p className="text-2xl font-bold text-gray-800">{schoolMetrics.totalStudents}</p>
-                <p className="text-xs text-gray-500">Total Students</p>
+                <p className="text-xl md:text-2xl font-bold text-gray-800">{schoolMetrics.totalStudents}</p>
+                <p className="text-[10px] md:text-xs text-gray-500">Total Students</p>
               </div>
               <div className="text-center">
-                <p className="text-2xl font-bold text-red-600">{schoolMetrics.totalViolations}</p>
-                <p className="text-xs text-gray-500">Total Violations</p>
+                <p className="text-xl md:text-2xl font-bold text-rose-600">{schoolMetrics.totalViolations}</p>
+                <p className="text-[10px] md:text-xs text-gray-500">Total Violations</p>
               </div>
               <div className="text-center">
-                <p className="text-2xl font-bold text-emerald-600">{schoolMetrics.cleanStudents}</p>
-                <p className="text-xs text-gray-500">Clean Students</p>
-                <p className="text-[10px] text-gray-400">(0 violations)</p>
+                <p className="text-xl md:text-2xl font-bold text-emerald-600">{schoolMetrics.cleanStudents}</p>
+                <p className="text-[10px] md:text-xs text-gray-500">Clean Students</p>
+                <p className="text-[8px] md:text-[10px] text-gray-400">(0 violations)</p>
               </div>
               <div className="text-center">
-                <p className="text-2xl font-bold text-amber-600">{schoolMetrics.atRiskStudents}</p>
-                <p className="text-xs text-gray-500">At Risk Students</p>
-                <p className="text-[10px] text-gray-400">(1+ violations)</p>
+                <p className="text-xl md:text-2xl font-bold text-amber-600">{schoolMetrics.atRiskStudents}</p>
+                <p className="text-[10px] md:text-xs text-gray-500">At Risk Students</p>
+                <p className="text-[8px] md:text-[10px] text-gray-400">(1+ violations)</p>
               </div>
               <div className="text-center">
-                <p className="text-2xl font-bold text-purple-600">{schoolMetrics.averageViolationsPerStudent}</p>
-                <p className="text-xs text-gray-500">Avg Violations/Student</p>
+                <p className="text-xl md:text-2xl font-bold text-purple-600">{schoolMetrics.averageViolationsPerStudent}</p>
+                <p className="text-[10px] md:text-xs text-gray-500">Avg Violations/Student</p>
               </div>
             </div>
             
             <div className="mt-3">
-              <div className="flex justify-between text-sm mb-1">
+              <div className="flex justify-between text-xs md:text-sm mb-1">
                 <span className="font-medium text-gray-700">Compliance Rate</span>
                 <span className={`font-bold ${schoolMetrics.performanceColor}`}>{schoolMetrics.complianceRate}%</span>
               </div>
@@ -402,8 +463,8 @@ export default function EnglishPerformance() {
                   style={{ width: `${schoolMetrics.complianceRate}%` }}
                 />
               </div>
-              <p className="text-sm text-gray-600 mt-3 flex items-start gap-2">
-                <span className="text-lg">💡</span>
+              <p className="text-xs md:text-sm text-gray-600 mt-3 flex items-start gap-2">
+                <Lightbulb className="w-4 h-4 mt-0.5 flex-shrink-0" />
                 <span>{schoolMetrics.recommendation}</span>
               </p>
             </div>
@@ -411,40 +472,45 @@ export default function EnglishPerformance() {
         </div>
       )}
 
-      {/* Trend Analysis Card - Clear direction */}
+      {/* Trend Analysis Card */}
       {trendAnalysis && (
-        <div className={`rounded-xl shadow-lg p-5 ${trendAnalysis.bg}`}>
-          <div className="flex items-center justify-between">
+        <div className={`rounded-xl shadow-lg p-4 md:p-5 ${trendAnalysis.bg}`}>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
             <div>
-              <h3 className="font-bold text-gray-800 mb-1">📈 Trend Analysis</h3>
-              <p className={`text-sm font-medium ${trendAnalysis.color}`}>
-                {trendAnalysis.icon} {trendAnalysis.message}
+              <h3 className="font-bold text-gray-800 mb-1 flex items-center gap-2">
+                <TrendingUp className="w-4 h-4" /> Trend Analysis
+              </h3>
+              <p className={`text-xs md:text-sm font-medium ${trendAnalysis.color}`}>
+                <trendAnalysis.icon className="w-4 h-4 inline mr-1" />
+                {trendAnalysis.message}
               </p>
             </div>
             <div className="text-right">
-              <p className="text-2xl font-bold">
+              <p className="text-xl md:text-2xl font-bold">
                 {dashboardData?.weeklyTrend?.slice(-4).reduce((sum, w) => sum + w.count, 0) || 0}
               </p>
-              <p className="text-xs text-gray-500">Last 4 weeks violations</p>
+              <p className="text-[10px] md:text-xs text-gray-500">Last 4 weeks violations</p>
             </div>
           </div>
         </div>
       )}
 
-      {/* Simple Weekly Trend Table - Easy to read */}
+      {/* Weekly Trend Table */}
       {dashboardData?.weeklyTrend && dashboardData.weeklyTrend.length > 0 && (
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-slate-50 to-slate-100">
-            <h3 className="font-semibold text-gray-800">📅 Weekly Violation Trend</h3>
+          <div className="px-4 py-3 border-b border-gray-100 bg-gradient-to-r from-slate-50 to-slate-100">
+            <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+              <Calendar className="w-4 h-4" /> Weekly Violation Trend
+            </h3>
             <p className="text-xs text-gray-500 mt-0.5">Number of violations recorded each week</p>
           </div>
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
+            <table className="min-w-full divide-y divide-gray-200 text-sm">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Week</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Violations</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Week</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Violations</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -457,7 +523,7 @@ export default function EnglishPerformance() {
                       statusColor = "text-emerald-600";
                       statusIcon = "↓";
                     } else if (week.count > prevCount) {
-                      statusColor = "text-red-600";
+                      statusColor = "text-rose-600";
                       statusIcon = "↑";
                     } else {
                       statusColor = "text-blue-600";
@@ -466,9 +532,9 @@ export default function EnglishPerformance() {
                   }
                   return (
                     <tr key={idx} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm font-medium text-gray-800">{week.week}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{week.count} violation{week.count !== 1 ? 's' : ''}</td>
-                      <td className="px-4 py-3 text-sm">
+                      <td className="px-3 py-2 text-sm font-medium text-gray-800">{week.week}</td>
+                      <td className="px-3 py-2 text-sm text-gray-600">{week.count} violation{week.count !== 1 ? 's' : ''}</td>
+                      <td className="px-3 py-2 text-sm">
                         <span className={`font-medium ${statusColor}`}>
                           {idx > 0 ? `${statusIcon} ${week.count > dashboardData.weeklyTrend[idx - 1].count ? 'Increase' : week.count < dashboardData.weeklyTrend[idx - 1].count ? 'Decrease' : 'Stable'}` : '-'}
                         </span>
@@ -482,29 +548,31 @@ export default function EnglishPerformance() {
         </div>
       )}
 
-      {/* Location Summary - Simple percentages */}
+      {/* Location Summary */}
       {dashboardData?.locationDistribution && (
-        <div className="bg-white rounded-xl shadow-lg p-5">
-          <h3 className="font-semibold text-gray-800 mb-4">📍 Where Violations Happen</h3>
+        <div className="bg-white rounded-xl shadow-lg p-4 md:p-5">
+          <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+            <MapPin className="w-4 h-4" /> Where Violations Happen
+          </h3>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             {Object.entries(dashboardData.locationDistribution).map(([location, count]) => {
               const total = Object.values(dashboardData.locationDistribution).reduce((a, b) => a + b, 0);
               const percentage = total > 0 ? ((count / total) * 100).toFixed(1) : 0;
               let barColor = "bg-blue-500";
-              if (percentage > 40) barColor = "bg-red-500";
+              if (percentage > 40) barColor = "bg-rose-500";
               else if (percentage > 20) barColor = "bg-amber-500";
               
               return (
                 <div key={location} className="text-center">
-                  <div className="text-3xl mb-1">
+                  <div className="text-2xl md:text-3xl mb-1">
                     {location === "CLASSROOM" ? "📚" : 
                      location === "HALL" ? "🏛️" :
                      location === "PLAYGROUND" ? "⚽" :
                      location === "DORMITORY" ? "🛏️" : "📍"}
                   </div>
-                  <p className="text-sm font-medium text-gray-700">{location}</p>
-                  <p className="text-xl font-bold text-gray-800">{count}</p>
-                  <p className="text-xs text-gray-400">{percentage}%</p>
+                  <p className="text-xs md:text-sm font-medium text-gray-700">{location}</p>
+                  <p className="text-lg md:text-xl font-bold text-gray-800">{count}</p>
+                  <p className="text-[10px] md:text-xs text-gray-400">{percentage}%</p>
                   <div className="mt-1 w-full bg-gray-100 rounded-full h-1">
                     <div className={`${barColor} h-1 rounded-full`} style={{ width: `${percentage}%` }}></div>
                   </div>
@@ -513,11 +581,12 @@ export default function EnglishPerformance() {
             })}
           </div>
           <div className="mt-4 pt-3 border-t border-gray-100">
-            <p className="text-sm text-gray-600">
-              <span className="font-semibold">⚠️ Focus Area:</span> Most violations occur in {
+            <p className="text-xs md:text-sm text-gray-600 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-500" />
+              <span><span className="font-semibold">Focus Area:</span> Most violations occur in {
                 Object.entries(dashboardData.locationDistribution)
                   .sort((a, b) => b[1] - a[1])[0]?.[0]
-              }. Increase monitoring in this area.
+              }. Increase monitoring in this area.</span>
             </p>
           </div>
         </div>
@@ -553,17 +622,20 @@ export default function EnglishPerformance() {
             onClick={fetchDashboard}
             className="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg font-semibold text-sm transition flex items-center justify-center gap-2"
           >
-            🔄 Refresh
+            <RefreshCw className="w-4 h-4" /> Refresh
           </button>
         </div>
       </div>
 
       {/* Export Section */}
       {dashboardData?.performances && dashboardData.performances.length > 0 && (
-        <div className="bg-white rounded-xl shadow-lg p-4 flex justify-between items-center">
-          <div>
-            <h3 className="font-semibold text-gray-800 text-sm">📥 Export Data</h3>
-            <p className="text-xs text-gray-500">Download report in CSV, Excel, or PDF</p>
+        <div className="bg-white rounded-xl shadow-lg p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Download className="w-4 h-4 text-indigo-600" />
+            <div>
+              <h3 className="font-semibold text-gray-800 text-sm">Export Data</h3>
+              <p className="text-xs text-gray-500">Download report in CSV, Excel, or PDF</p>
+            </div>
           </div>
           <DownloadButton 
             data={exportData} 
@@ -575,74 +647,76 @@ export default function EnglishPerformance() {
         </div>
       )}
 
-      {/* Student Performance Table */}
+      {/* Student Performance Table - Desktop */}
       {dashboardData?.performances && dashboardData.performances.length > 0 && (
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-slate-50 to-slate-100">
-            <h3 className="font-semibold text-gray-800">👨‍🎓 Student Performance Details</h3>
+          <div className="px-4 py-3 border-b border-gray-100 bg-gradient-to-r from-slate-50 to-slate-100">
+            <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+              <Users className="w-4 h-4" /> Student Performance Details
+            </h3>
             <p className="text-xs text-gray-500 mt-0.5">Individual student violation records and status</p>
           </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
+          
+          {/* Desktop Table View */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 text-sm">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Student</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">ID</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Class</th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Violations</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Last Violation</th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Action</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Student</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase">ID</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Class</th>
+                  <th className="px-3 py-2 text-center text-xs font-semibold text-gray-600 uppercase">Violations</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Last Violation</th>
+                  <th className="px-3 py-2 text-center text-xs font-semibold text-gray-600 uppercase">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {dashboardData.performances.slice(0, 50).map((student, idx) => {
                   const status = getStatusBadge(student.violationCount);
+                  const StatusIcon = status.icon;
                   return (
                     <tr key={idx} className="hover:bg-gray-50 transition">
-                      <td className="px-4 py-3 text-sm font-medium text-gray-800">{student.studentName}</td>
-                      <td className="px-4 py-3 text-sm font-mono text-indigo-600">{student.studentId}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{student.grade} {student.className}</td>
-                      <td className="px-4 py-3 text-center">
-                        <span className={`inline-flex px-2 py-1 rounded-full text-xs font-bold ${
-                          student.violationCount === 0 ? "bg-emerald-100 text-emerald-700" :
-                          student.violationCount <= 2 ? "bg-blue-100 text-blue-700" :
-                          student.violationCount <= 4 ? "bg-amber-100 text-amber-700" :
-                          "bg-red-100 text-red-700"
-                        }`}>
+                      <td className="px-3 py-2 text-sm font-medium text-gray-800">{student.studentName}</td>
+                      <td className="px-3 py-2 text-sm font-mono text-indigo-600">{student.studentId}</td>
+                      <td className="px-3 py-2 text-sm text-gray-600">{student.grade} {student.className}</td>
+                      <td className="px-3 py-2 text-center">
+                        <span className={`inline-flex px-2 py-1 rounded-full text-xs font-bold ${student.violationCount === 0 ? "bg-emerald-100 text-emerald-700" : student.violationCount <= 2 ? "bg-blue-100 text-blue-700" : student.violationCount <= 4 ? "bg-amber-100 text-amber-700" : "bg-rose-100 text-rose-700"}`}>
                           {student.violationCount}
                         </span>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-2">
                         <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${status.color}`}>
-                          {status.icon} {status.label}
+                          <StatusIcon className="w-3 h-3" /> {status.label}
                         </span>
                         <p className="text-[10px] text-gray-400 mt-0.5">{status.description}</p>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-2 max-w-[200px]">
                         {student.violationCount > 0 ? (
                           <div>
-                            <p className="text-xs text-gray-600 max-w-xs truncate" title={student.recentViolationContext}>
+                            <p className="text-xs text-gray-600 truncate" title={student.recentViolationContext}>
                               "{student.recentViolationContext?.substring(0, 40)}..."
                             </p>
-                            <p className="text-[10px] text-gray-400 mt-0.5">
-                              📍 {student.recentViolationLocation} • {student.recentViolationDate}
+                            <p className="text-[10px] text-gray-400 mt-0.5 flex items-center gap-1">
+                              <MapPin className="w-3 h-3" /> {student.recentViolationLocation} • {student.recentViolationDate}
                             </p>
                           </div>
                         ) : (
-                          <span className="text-xs text-emerald-600">✨ No violations</span>
+                          <span className="text-xs text-emerald-600 flex items-center gap-1">
+                            <Check className="w-3 h-3" /> No violations
+                          </span>
                         )}
-                       </td>
-                      <td className="px-4 py-3 text-center">
+                      </td>
+                      <td className="px-3 py-2 text-center">
                         <button
                           onClick={() => {
                             setSelectedStudentDetails(student);
                             setShowViolationDetails(true);
                           }}
-                          className="text-indigo-600 hover:text-indigo-800 text-xs font-medium"
+                          className="text-indigo-600 hover:text-indigo-800 text-xs font-medium flex items-center gap-1 mx-auto"
                           disabled={student.violationCount === 0}
                         >
-                          {student.violationCount > 0 ? "View Details →" : "-"}
+                          <Eye className="w-3 h-3" /> {student.violationCount > 0 ? "View Details" : "-"}
                         </button>
                       </td>
                     </tr>
@@ -651,6 +725,51 @@ export default function EnglishPerformance() {
               </tbody>
             </table>
           </div>
+
+          {/* Mobile Card View */}
+          <div className="block md:hidden divide-y divide-gray-100">
+            {dashboardData.performances.slice(0, 50).map((student, idx) => {
+              const status = getStatusBadge(student.violationCount);
+              const StatusIcon = status.icon;
+              return (
+                <div key={idx} className="p-4 hover:bg-gray-50 transition">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <p className="font-medium text-gray-800">{student.studentName}</p>
+                      <p className="text-xs text-gray-500">{student.studentId}</p>
+                      <p className="text-xs text-gray-500">{student.grade} {student.className}</p>
+                    </div>
+                    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${status.color}`}>
+                      <StatusIcon className="w-3 h-3" /> {status.label}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <span className={`inline-flex px-2 py-1 rounded-full text-xs font-bold ${student.violationCount === 0 ? "bg-emerald-100 text-emerald-700" : student.violationCount <= 2 ? "bg-blue-100 text-blue-700" : student.violationCount <= 4 ? "bg-amber-100 text-amber-700" : "bg-rose-100 text-rose-700"}`}>
+                        {student.violationCount} violations
+                      </span>
+                      {student.violationCount > 0 && (
+                        <p className="text-xs text-gray-500 mt-1 truncate max-w-[200px]">
+                          "{student.recentViolationContext?.substring(0, 30)}..."
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => {
+                        setSelectedStudentDetails(student);
+                        setShowViolationDetails(true);
+                      }}
+                      className="text-indigo-600 hover:text-indigo-800 text-xs font-medium flex items-center gap-1"
+                      disabled={student.violationCount === 0}
+                    >
+                      <Eye className="w-3 h-3" /> {student.violationCount > 0 ? "Details" : "-"}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
           {dashboardData.performances.length > 50 && (
             <div className="px-4 py-3 border-t border-gray-100 bg-gray-50 text-center">
               <p className="text-xs text-gray-500">Showing first 50 students. Use filters to narrow results.</p>
@@ -662,46 +781,48 @@ export default function EnglishPerformance() {
       {/* Critical Cases Section */}
       {dashboardData?.topViolators && dashboardData.topViolators.length > 0 && (
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-red-50 to-amber-50">
-            <h3 className="font-semibold text-red-800 flex items-center gap-2">
-              <span>⚠️</span> Students Needing Immediate Attention
+          <div className="px-4 py-3 border-b border-gray-100 bg-gradient-to-r from-rose-50 to-amber-50">
+            <h3 className="font-semibold text-rose-800 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4" /> Students Needing Immediate Attention
             </h3>
-            <p className="text-xs text-red-600 mt-0.5">Students with 3 or more violations require intervention</p>
+            <p className="text-xs text-rose-600 mt-0.5">Students with 3 or more violations require intervention</p>
           </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
+          
+          {/* Desktop Table */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 text-sm">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Student</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">ID</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Class</th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Violations</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">What Was Said</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Location</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Recommended Action</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Student</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase">ID</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Class</th>
+                  <th className="px-3 py-2 text-center text-xs font-semibold text-gray-600 uppercase">Violations</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase">What Was Said</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Location</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Recommended Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {dashboardData.topViolators.map((student, idx) => (
                   <tr key={idx} className="hover:bg-gray-50 transition">
-                    <td className="px-4 py-3 text-sm font-medium text-gray-800">{student.studentName}</td>
-                    <td className="px-4 py-3 text-sm font-mono text-indigo-600">{student.studentId}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{student.grade} {student.className}</td>
-                    <td className="px-4 py-3 text-center">
-                      <span className="inline-flex px-2 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700">
+                    <td className="px-3 py-2 text-sm font-medium text-gray-800">{student.studentName}</td>
+                    <td className="px-3 py-2 text-sm font-mono text-indigo-600">{student.studentId}</td>
+                    <td className="px-3 py-2 text-sm text-gray-600">{student.grade} {student.className}</td>
+                    <td className="px-3 py-2 text-center">
+                      <span className="inline-flex px-2 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-700">
                         {student.violationCount}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
-                      <p className="text-xs text-gray-600 max-w-xs" title={student.recentViolations?.[0]?.context}>
+                    <td className="px-3 py-2 max-w-xs">
+                      <p className="text-xs text-gray-600 truncate" title={student.recentViolations?.[0]?.context}>
                         "{student.recentViolations?.[0]?.context?.substring(0, 50)}..."
                       </p>
                     </td>
-                    <td className="px-4 py-3 text-xs text-gray-500">
+                    <td className="px-3 py-2 text-xs text-gray-500">
                       {student.recentViolations?.[0]?.location || "-"}
                     </td>
-                    <td className="px-4 py-3">
-                      <span className="text-xs font-medium text-red-600">
+                    <td className="px-3 py-2">
+                      <span className={`text-xs font-medium ${student.violationCount >= 5 ? "text-rose-600" : student.violationCount >= 3 ? "text-amber-600" : "text-blue-600"}`}>
                         {student.violationCount >= 5 ? "📞 Schedule parent meeting immediately" : 
                          student.violationCount >= 3 ? "📝 Refer to counselor for intervention" : 
                          "👁️ Monitor closely"}
@@ -712,13 +833,42 @@ export default function EnglishPerformance() {
               </tbody>
             </table>
           </div>
+
+          {/* Mobile Cards */}
+          <div className="block md:hidden divide-y divide-gray-100">
+            {dashboardData.topViolators.map((student, idx) => (
+              <div key={idx} className="p-4 hover:bg-gray-50 transition">
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <p className="font-medium text-gray-800">{student.studentName}</p>
+                    <p className="text-xs text-gray-500">{student.studentId}</p>
+                    <p className="text-xs text-gray-500">{student.grade} {student.className}</p>
+                  </div>
+                  <span className="inline-flex px-2 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-700">
+                    {student.violationCount} violations
+                  </span>
+                </div>
+                <p className="text-xs text-gray-600 mt-1 truncate">
+                  "{student.recentViolations?.[0]?.context?.substring(0, 50)}..."
+                </p>
+                <div className="flex justify-between items-center mt-2 text-xs">
+                  <span className="text-gray-500">📍 {student.recentViolations?.[0]?.location || "-"}</span>
+                  <span className={`font-medium ${student.violationCount >= 5 ? "text-rose-600" : student.violationCount >= 3 ? "text-amber-600" : "text-blue-600"}`}>
+                    {student.violationCount >= 5 ? "⚠️ Parent meeting" : 
+                     student.violationCount >= 3 ? "📝 Counselor" : 
+                     "👁️ Monitor"}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
       {/* No Data State */}
       {(!dashboardData?.performances || dashboardData.performances.length === 0) && !loading && (
-        <div className="bg-white rounded-xl shadow-lg p-12 text-center">
-          <div className="text-5xl mb-4">📊</div>
+        <div className="bg-white rounded-xl shadow-lg p-8 md:p-12 text-center">
+          <div className="text-5xl md:text-6xl mb-4">📊</div>
           <h3 className="text-lg font-semibold text-gray-800 mb-1">No Data Available</h3>
           <p className="text-sm text-gray-500">No English performance records found for the selected filters.</p>
           <button
@@ -730,22 +880,30 @@ export default function EnglishPerformance() {
         </div>
       )}
 
-      {/* Add Violation Modal - Keep as is */}
+      {/* Add Violation Modal */}
       {showAddForm && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto" onClick={() => setShowAddForm(false)}>
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md my-8" onClick={(e) => e.stopPropagation()}>
-            <div className="border-b border-slate-100 px-5 py-3 flex justify-between items-center bg-gradient-to-r from-rose-50 to-amber-50 rounded-t-xl">
-              <h2 className="text-lg font-bold text-slate-800">🔴 Record English Violation</h2>
-              <button onClick={() => setShowAddForm(false)} className="text-slate-400 text-2xl">&times;</button>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md my-8 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 bg-gradient-to-r from-rose-500 to-amber-500 px-5 py-4 flex justify-between items-center rounded-t-xl">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-white" />
+                <h2 className="text-lg font-bold text-white">Record English Violation</h2>
+              </div>
+              <button onClick={() => setShowAddForm(false)} className="text-white/70 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10">
+                <X className="w-5 h-5" />
+              </button>
             </div>
             <form onSubmit={handleRecordViolation} className="p-5 space-y-4">
+              {/* Student Selection */}
               <div className="bg-slate-50 rounded-lg p-3">
-                <h3 className="text-sm font-semibold text-slate-700 mb-3">Select Student</h3>
-                <div className="grid grid-cols-2 gap-3 mb-3">
+                <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                  <Users className="w-4 h-4" /> Select Student
+                </h3>
+                <div className="grid grid-cols-2 gap-2 mb-3">
                   <select
                     value={selectedGrade}
                     onChange={(e) => setSelectedGrade(e.target.value)}
-                    className="border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                    className="border border-slate-200 rounded-lg px-2 py-1.5 text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none"
                   >
                     <option value="ALL">All Grades</option>
                     {grades.map(g => <option key={g} value={g}>{g}</option>)}
@@ -753,35 +911,31 @@ export default function EnglishPerformance() {
                   <select
                     value={selectedClass}
                     onChange={(e) => setSelectedClass(e.target.value)}
-                    className="border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                    className="border border-slate-200 rounded-lg px-2 py-1.5 text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none"
                   >
                     <option value="ALL">All Classes</option>
                     {classes.map(c => <option key={c} value={c}>Class {c}</option>)}
                   </select>
                 </div>
                 <div className="relative mb-3">
-                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400">🔍</span>
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-3 h-3" />
                   <input
                     type="text"
                     placeholder="Search by name or ID..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm"
+                    className="w-full pl-8 pr-3 py-1.5 border border-slate-200 rounded-lg text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none"
                   />
                 </div>
-                <div className="max-h-48 overflow-y-auto border border-slate-200 rounded-lg">
+                <div className="max-h-36 overflow-y-auto border border-slate-200 rounded-lg">
                   {filteredStudents.length === 0 ? (
-                    <div className="p-4 text-center text-slate-500 text-sm">No students found</div>
+                    <div className="p-3 text-center text-slate-500 text-sm">No students found</div>
                   ) : (
                     filteredStudents.map(student => (
                       <div
                         key={student._id}
                         onClick={() => handleSelectStudent(student)}
-                        className={`p-2 cursor-pointer transition-colors border-b border-slate-100 last:border-0 ${
-                          form.studentId === student._id
-                            ? "bg-indigo-50 border-l-4 border-l-indigo-500"
-                            : "hover:bg-slate-50"
-                        }`}
+                        className={`p-2 cursor-pointer transition-colors border-b border-slate-100 last:border-0 ${form.studentId === student._id ? "bg-indigo-50 border-l-4 border-l-indigo-500" : "hover:bg-slate-50"}`}
                       >
                         <div className="flex justify-between items-center">
                           <div>
@@ -810,7 +964,7 @@ export default function EnglishPerformance() {
                 <select
                   value={form.location}
                   onChange={(e) => setForm({...form, location: e.target.value})}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none"
                 >
                   {locations.map(l => (<option key={l} value={l}>{l}</option>))}
                 </select>
@@ -822,7 +976,7 @@ export default function EnglishPerformance() {
                   value={form.context}
                   onChange={(e) => setForm({...form, context: e.target.value})}
                   rows="3"
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none"
                   placeholder="Record exactly what the student said..."
                   required
                 />
@@ -833,7 +987,7 @@ export default function EnglishPerformance() {
                 <select
                   value={form.actionTaken}
                   onChange={(e) => setForm({...form, actionTaken: e.target.value})}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none"
                 >
                   <option value="Red Card">🔴 Red Card</option>
                   <option value="Warning">⚠️ Warning</option>
@@ -842,17 +996,19 @@ export default function EnglishPerformance() {
                 </select>
               </div>
 
-              <div className="bg-amber-50 rounded-lg p-3">
-                <p className="text-xs text-amber-700">
-                  ⚠️ This will be recorded as an English policy violation.
-                </p>
-              </div>
+              {error && (
+                <div className="bg-rose-50 border-l-4 border-rose-500 text-rose-700 p-3 rounded-lg text-sm flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  <span>{error}</span>
+                </div>
+              )}
 
-              <div className="flex gap-3 pt-2">
-                <button type="submit" disabled={loading || !form.studentId} className="flex-1 bg-gradient-to-r from-indigo-500 to-purple-500 text-white py-2 rounded-lg font-semibold text-sm hover:shadow-lg transition-all disabled:opacity-50">
+              <div className="flex gap-3 pt-2 border-t border-slate-100">
+                <button type="submit" disabled={loading} className="flex-1 bg-gradient-to-r from-indigo-500 to-purple-500 text-white py-2.5 rounded-lg font-semibold text-sm hover:shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+                  <AlertTriangle className="w-4 h-4" />
                   {loading ? "Recording..." : "Record Violation"}
                 </button>
-                <button type="button" onClick={() => setShowAddForm(false)} className="flex-1 bg-slate-100 text-slate-700 py-2 rounded-lg font-semibold text-sm hover:bg-slate-200 transition-all">
+                <button type="button" onClick={() => setShowAddForm(false)} className="flex-1 bg-slate-100 text-slate-700 py-2.5 rounded-lg font-semibold text-sm hover:bg-slate-200 transition-all">
                   Cancel
                 </button>
               </div>
@@ -864,10 +1020,15 @@ export default function EnglishPerformance() {
       {/* Report Modal */}
       {showReport && reportData && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto" onClick={() => setShowReport(false)}>
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl my-8" onClick={(e) => e.stopPropagation()}>
-            <div className="sticky top-0 bg-gradient-to-r from-indigo-600 to-purple-600 px-5 py-3 flex justify-between items-center text-white rounded-t-xl">
-              <h2 className="text-base font-bold">📊 English Performance Report</h2>
-              <button onClick={() => setShowReport(false)} className="text-white text-2xl">&times;</button>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl my-8 max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 bg-gradient-to-r from-indigo-600 to-purple-600 px-5 py-4 flex justify-between items-center text-white rounded-t-xl">
+              <div className="flex items-center gap-2">
+                <BarChart className="w-5 h-5" />
+                <h2 className="text-lg font-bold">English Performance Report</h2>
+              </div>
+              <button onClick={() => setShowReport(false)} className="text-white/70 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10">
+                <X className="w-5 h-5" />
+              </button>
             </div>
             <div className="p-5 space-y-4">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -895,30 +1056,37 @@ export default function EnglishPerformance() {
 
       {/* Violation Details Modal */}
       {showViolationDetails && selectedStudentDetails && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowViolationDetails(false)}>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto" onClick={() => setShowViolationDetails(false)}>
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="sticky top-0 bg-gradient-to-r from-indigo-600 to-purple-600 px-5 py-3 flex justify-between items-center text-white rounded-t-xl">
-              <h2 className="text-base font-bold">Violation History - {selectedStudentDetails.studentName}</h2>
-              <button onClick={() => setShowViolationDetails(false)} className="text-white text-2xl">&times;</button>
+            <div className="sticky top-0 bg-gradient-to-r from-indigo-600 to-purple-600 px-5 py-4 flex justify-between items-center text-white rounded-t-xl">
+              <div className="flex items-center gap-2">
+                <FileText className="w-5 h-5" />
+                <h2 className="text-lg font-bold">Violation History - {selectedStudentDetails.studentName}</h2>
+              </div>
+              <button onClick={() => setShowViolationDetails(false)} className="text-white/70 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10">
+                <X className="w-5 h-5" />
+              </button>
             </div>
             <div className="p-5 space-y-4">
               <div className="grid grid-cols-3 gap-3">
                 <div className="bg-slate-50 p-3 rounded-lg text-center">
-                  <p className="text-xs text-slate-500">Student ID</p>
+                  <p className="text-[10px] text-slate-500">Student ID</p>
                   <p className="text-sm font-semibold">{selectedStudentDetails.studentId}</p>
                 </div>
                 <div className="bg-slate-50 p-3 rounded-lg text-center">
-                  <p className="text-xs text-slate-500">Class</p>
+                  <p className="text-[10px] text-slate-500">Class</p>
                   <p className="text-sm font-semibold">{selectedStudentDetails.grade} {selectedStudentDetails.className}</p>
                 </div>
                 <div className="bg-slate-50 p-3 rounded-lg text-center">
-                  <p className="text-xs text-slate-500">Total Violations</p>
+                  <p className="text-[10px] text-slate-500">Total Violations</p>
                   <p className="text-2xl font-bold text-rose-600">{selectedStudentDetails.violationCount}</p>
                 </div>
               </div>
               
               <div className="space-y-3">
-                <h3 className="font-semibold text-slate-800">Violation Records</h3>
+                <h3 className="font-semibold text-slate-800 flex items-center gap-2">
+                  <ClipboardList className="w-4 h-4" /> Violation Records
+                </h3>
                 {selectedStudentDetails.recentViolations?.map((violation, idx) => (
                   <div key={idx} className="border border-slate-200 rounded-lg p-3">
                     <div className="flex justify-between items-start mb-2">
