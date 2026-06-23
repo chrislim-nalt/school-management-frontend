@@ -70,58 +70,58 @@ export default function SchoolDashboard() {
   };
 
   const fetchData = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const currentYear = new Date().getFullYear();
-      
-      console.log("=== Fetching Dashboard Data ===");
-      
-      // Fetch all data with proper error handling
-      const [
-        studentsRes, 
-        teachersRes, 
-        coursesRes, 
-        marksAnalyticsRes,
-        transportRes,
-        attendanceRes
-      ] = await Promise.all([
-        getStudents().catch(() => ({ data: [] })),
-        getTeachers().catch(() => ({ data: [] })),
-        getCourses().catch(() => ({ data: [] })),
-        getMarksAnalytics("TERM1", currentYear).catch(() => ({ 
-          data: { 
-            totalStudents: 0, 
-            totalMarks: 0, 
-            averageScore: 0, 
-            passRate: 0, 
-            gradeDistribution: { A: 0, B: 0, C: 0, D: 0, F: 0 } 
-          } 
-        })),
-        getTransportFinancialSummary(currentYear).catch(() => ({ 
-          data: { 
-            totalExpected: 0, 
-            totalPaid: 0, 
-            totalBalance: 0, 
-            collectionRate: 0, 
-            studentsSummary: { paid: 0, partial: 0, unpaid: 0, total: 0 } 
-          } 
-        })),
-        getStudentAttendanceReport({ 
-          startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          endDate: new Date().toISOString().split('T')[0]
-        }).catch(() => ({ 
-          data: { 
-            summary: { 
-              averageAttendance: 0, 
-              totalPresent: 0, 
-              totalAbsent: 0, 
-              totalLate: 0 
-            }, 
-            records: [] 
-          } 
-        }))
-      ]);
+  setLoading(true);
+  setError(null);
+  try {
+    const currentYear = new Date().getFullYear();
+    
+    console.log("=== Fetching Dashboard Data ===");
+    
+    const [
+      studentsRes, 
+      teachersRes, 
+      coursesRes, 
+      marksAnalyticsRes,
+      transportRes,
+      attendanceRes
+    ] = await Promise.all([
+      getStudents().catch(() => ({ data: [] })),
+      getTeachers().catch(() => ({ data: [] })),
+      getCourses().catch(() => ({ data: [] })),
+      // FIXED: Pass term and year as separate arguments, not as an object
+      getMarksAnalytics("TERM1", currentYear).catch(() => ({ 
+        data: { 
+          totalStudents: 0, 
+          totalMarks: 0, 
+          averageScore: 0, 
+          passRate: 0, 
+          gradeDistribution: { A: 0, B: 0, C: 0, D: 0, F: 0 } 
+        } 
+      })),
+      getTransportFinancialSummary(currentYear).catch(() => ({ 
+        data: { 
+          totalExpected: 0, 
+          totalPaid: 0, 
+          totalBalance: 0, 
+          collectionRate: 0, 
+          studentsSummary: { paid: 0, partial: 0, unpaid: 0, total: 0 } 
+        } 
+      })),
+      getStudentAttendanceReport({ 
+        startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        endDate: new Date().toISOString().split('T')[0]
+      }).catch(() => ({ 
+        data: { 
+          summary: { 
+            averageAttendance: 0, 
+            totalPresent: 0, 
+            totalAbsent: 0, 
+            totalLate: 0 
+          }, 
+          records: [] 
+        } 
+      }))
+    ]);
 
       // Safely extract data arrays
       const students = safeGetArray(studentsRes.data);
