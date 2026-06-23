@@ -7,7 +7,6 @@ import {
   createTransportRecord, 
   getTransportFinancialSummary,
   getStudentsByClassForTransport,
-  getTermPaymentsReport,
   getOutstandingPayments,
   getTransportClasses,
   deleteTransportPayment,
@@ -36,19 +35,18 @@ export default function Transport() {
   const [filterClass, setFilterClass] = useState("ALL");
   const [showOutstanding, setShowOutstanding] = useState(false);
   const [schoolClasses, setSchoolClasses] = useState([]);
-  const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
   
   // For student selection in modals
   const [selectedGrade, setSelectedGrade] = useState("ALL");
   const [selectedClass, setSelectedClass] = useState("ALL");
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Get user info for role-based access
   const userType = localStorage.getItem("userType") || "staff";
   const userRole = localStorage.getItem("userRole") || "staff";
   const schoolId = localStorage.getItem("schoolId");
   
-  // Determine if user has permission to manage transport
   const isBursar = userRole === "superadmin" || userType === "bursar" || userType === "school_admin" || userType === "admin";
   const isTeacher = userType === "teacher" || userType === "staff";
   const isAuthenticated = !!localStorage.getItem("token");
@@ -60,10 +58,10 @@ export default function Transport() {
     { value: "TERM3", label: "Term 3" }
   ];
   const paymentMethods = [
-    { value: "CASH", label: "💵 Cash", icon: "💵" },
-    { value: "MOBILE_MONEY", label: "📱 Mobile Money", icon: "📱" },
-    { value: "BANK_TRANSFER", label: "🏦 Bank Transfer", icon: "🏦" },
-    { value: "CHEQUE", label: "📄 Cheque", icon: "📄" }
+    { value: "CASH", label: "Cash", icon: "💵" },
+    { value: "MOBILE_MONEY", label: "Mobile Money", icon: "📱" },
+    { value: "BANK_TRANSFER", label: "Bank Transfer", icon: "🏦" },
+    { value: "CHEQUE", label: "Cheque", icon: "📄" }
   ];
 
   const [paymentForm, setPaymentForm] = useState({
@@ -93,7 +91,6 @@ export default function Transport() {
     notes: ""
   });
 
-  // Fetch school classes
   const fetchSchoolClasses = async () => {
     try {
       const res = await getTransportClasses();
@@ -103,7 +100,6 @@ export default function Transport() {
     }
   };
 
-  // Fetch students by class for selection
   const fetchStudentsByClass = async () => {
     if (selectedGrade === "ALL" || selectedClass === "ALL") {
       setFilteredStudents([]);
@@ -161,6 +157,7 @@ export default function Transport() {
       setPayments(paymentsRes.data?.payments || []);
       setRecords(recordsRes.data?.records || []);
       setSummary(summaryRes.data?.summary || summaryRes.data || {});
+      setCurrentPage(1);
     } catch (error) {
       console.error("Failed to load data:", error);
       setError("Failed to load data");
@@ -189,7 +186,6 @@ export default function Transport() {
     }
   }, [selectedYear, selectedSemester, filterGrade, filterClass]);
 
-  // Handle student selection for payment
   const handleSelectStudentForPayment = (student) => {
     setPaymentForm({
       ...paymentForm,
@@ -201,7 +197,6 @@ export default function Transport() {
     setSearchTerm("");
   };
 
-  // Handle student selection for record
   const handleSelectStudentForRecord = (student) => {
     setRecordForm({
       ...recordForm,
@@ -213,60 +208,52 @@ export default function Transport() {
     setSearchTerm("");
   };
 
-// Update the handlePaymentSubmit function in Transport.jsx
-const handlePaymentSubmit = async (e) => {
-  e.preventDefault();
-  if (!paymentForm.studentId) {
-    setError("Please select a student");
-    return;
-  }
-  if (!paymentForm.amount || parseFloat(paymentForm.amount) <= 0) {
-    setError("Please enter a valid amount");
-    return;
-  }
-  
-  setLoading(true);
-  setError("");
-  try {
-    // Make sure we're sending the correct data
-    const submitData = {
-      studentId: paymentForm.studentId,
-      semester: paymentForm.semester,
-      year: parseInt(paymentForm.year),
-      amount: parseFloat(paymentForm.amount),
-      amountPaid: parseFloat(paymentForm.amountPaid) || 0,
-      paymentMethod: paymentForm.paymentMethod,
-      reference: paymentForm.reference || "",
-      notes: paymentForm.notes || ""
-    };
-    
-    console.log("Submitting payment data:", submitData);
-    
-    let response;
-    if (editingPaymentId) {
-      console.log("Updating payment with ID:", editingPaymentId);
-      response = await updateTransportPayment(editingPaymentId, submitData);
-      console.log("Update response:", response);
-      setSuccess("Payment updated successfully!");
-    } else {
-      response = await createTransportPayment(submitData);
-      console.log("Create response:", response);
-      setSuccess("Payment recorded successfully!");
+  const handlePaymentSubmit = async (e) => {
+    e.preventDefault();
+    if (!paymentForm.studentId) {
+      setError("Please select a student");
+      return;
+    }
+    if (!paymentForm.amount || parseFloat(paymentForm.amount) <= 0) {
+      setError("Please enter a valid amount");
+      return;
     }
     
-    resetPaymentForm();
-    setShowPaymentForm(false);
-    setEditingPaymentId(null);
-    await fetchData();
-    setTimeout(() => setSuccess(""), 3000);
-  } catch (error) {
-    console.error("Payment submit error - DETAILS:", error);
-    console.error("Error response:", error.response);
-    setError(error.response?.data?.message || error.message || "Failed to save payment");
-  } finally {
-    setLoading(false);
-  }
-};
+    setLoading(true);
+    setError("");
+    try {
+      const submitData = {
+        studentId: paymentForm.studentId,
+        semester: paymentForm.semester,
+        year: parseInt(paymentForm.year),
+        amount: parseFloat(paymentForm.amount),
+        amountPaid: parseFloat(paymentForm.amountPaid) || 0,
+        paymentMethod: paymentForm.paymentMethod,
+        reference: paymentForm.reference || "",
+        notes: paymentForm.notes || ""
+      };
+      
+      let response;
+      if (editingPaymentId) {
+        response = await updateTransportPayment(editingPaymentId, submitData);
+        setSuccess("✅ Payment updated successfully!");
+      } else {
+        response = await createTransportPayment(submitData);
+        setSuccess("✅ Payment recorded successfully!");
+      }
+      
+      resetPaymentForm();
+      setShowPaymentForm(false);
+      setEditingPaymentId(null);
+      await fetchData();
+      setTimeout(() => setSuccess(""), 3000);
+    } catch (error) {
+      console.error("Payment submit error:", error);
+      setError(error.response?.data?.message || "Failed to save payment");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleRecordSubmit = async (e) => {
     e.preventDefault();
@@ -289,11 +276,10 @@ const handlePaymentSubmit = async (e) => {
       };
       
       if (editingRecordId) {
-        // Update record - you might want to add this API endpoint
         setSuccess("Record updated successfully!");
       } else {
         await createTransportRecord(submitData);
-        setSuccess("Transport record added successfully!");
+        setSuccess("✅ Transport record added successfully!");
       }
       
       resetRecordForm();
@@ -314,7 +300,7 @@ const handlePaymentSubmit = async (e) => {
     setLoading(true);
     try {
       await deleteTransportPayment(id);
-      setSuccess("Payment deleted successfully!");
+      setSuccess("✅ Payment deleted successfully!");
       await fetchData();
       setTimeout(() => setSuccess(""), 3000);
     } catch (error) {
@@ -330,7 +316,7 @@ const handlePaymentSubmit = async (e) => {
     setLoading(true);
     try {
       await deleteTransportRecord(id);
-      setSuccess("Record deleted successfully!");
+      setSuccess("✅ Record deleted successfully!");
       await fetchData();
       setTimeout(() => setSuccess(""), 3000);
     } catch (error) {
@@ -445,7 +431,37 @@ const handlePaymentSubmit = async (e) => {
     { key: "status", label: "Status" }
   ];
 
-  // If not authenticated
+  // Pagination
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentPayments = payments.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(payments.length / itemsPerPage);
+
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisible = 5;
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (currentPage <= 3) {
+        for (let i = 1; i <= 4; i++) pages.push(i);
+        pages.push('...');
+        pages.push(totalPages);
+      } else if (currentPage >= totalPages - 2) {
+        pages.push(1);
+        pages.push('...');
+        for (let i = totalPages - 3; i <= totalPages; i++) pages.push(i);
+      } else {
+        pages.push(1);
+        pages.push('...');
+        for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i);
+        pages.push('...');
+        pages.push(totalPages);
+      }
+    }
+    return pages;
+  };
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
@@ -458,7 +474,6 @@ const handlePaymentSubmit = async (e) => {
     );
   }
 
-  // If user is a teacher, show read-only view
   if (isTeacher && !isBursar) {
     return (
       <div className="space-y-4">
@@ -469,106 +484,55 @@ const handlePaymentSubmit = async (e) => {
                 <h1 className="text-2xl md:text-3xl font-bold text-white mb-1 tracking-tight">
                   🚌 Transport Management
                 </h1>
-                <p className="text-slate-300 text-sm">
-                  View transport payments and records
-                </p>
-                <p className="text-xs text-amber-400 mt-1">
-                  👁️ You are viewing in read-only mode. Only bursars and admins can manage transport.
-                </p>
+                <p className="text-slate-300 text-sm">View transport payments and records</p>
+                <p className="text-xs text-amber-400 mt-1">👁️ View only mode</p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Rest of the view without edit buttons */}
         <div className="bg-white rounded-xl shadow-lg p-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <select 
-              value={selectedYear} 
-              onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-              className="border border-slate-200 rounded-lg px-3 py-2 text-sm"
-            >
+            <select value={selectedYear} onChange={(e) => setSelectedYear(parseInt(e.target.value))} className="border border-slate-200 rounded-lg px-3 py-2 text-sm">
               <option value={2024}>2024</option>
               <option value={2025}>2025</option>
               <option value={2026}>2026</option>
             </select>
-            <select 
-              value={selectedSemester} 
-              onChange={(e) => setSelectedSemester(e.target.value)}
-              className="border border-slate-200 rounded-lg px-3 py-2 text-sm"
-            >
+            <select value={selectedSemester} onChange={(e) => setSelectedSemester(e.target.value)} className="border border-slate-200 rounded-lg px-3 py-2 text-sm">
               {semesters.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
             </select>
-            <select 
-              value={filterGrade} 
-              onChange={(e) => setFilterGrade(e.target.value)}
-              className="border border-slate-200 rounded-lg px-3 py-2 text-sm"
-            >
+            <select value={filterGrade} onChange={(e) => setFilterGrade(e.target.value)} className="border border-slate-200 rounded-lg px-3 py-2 text-sm">
               <option value="ALL">All Grades</option>
               {grades.map(g => <option key={g} value={g}>{g}</option>)}
             </select>
           </div>
         </div>
 
-        {/* Display summary cards */}
         {summary && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="bg-white rounded-xl shadow-lg p-3">
-              <p className="text-xs text-slate-400">Total Expected</p>
-              <p className="text-lg font-bold text-slate-800">{summary.totalExpected?.toLocaleString()} RWF</p>
-            </div>
-            <div className="bg-white rounded-xl shadow-lg p-3">
-              <p className="text-xs text-slate-400">Total Paid</p>
-              <p className="text-lg font-bold text-emerald-600">{summary.totalPaid?.toLocaleString()} RWF</p>
-            </div>
-            <div className="bg-white rounded-xl shadow-lg p-3">
-              <p className="text-xs text-slate-400">Collection Rate</p>
-              <p className="text-lg font-bold text-blue-600">{summary.collectionRate}%</p>
-            </div>
-            <div className="bg-white rounded-xl shadow-lg p-3">
-              <p className="text-xs text-slate-400">Paid Students</p>
-              <p className="text-lg font-bold text-amber-600">{summary.studentsSummary?.paid}/{summary.studentsSummary?.total}</p>
-            </div>
+            <div className="bg-white rounded-xl shadow-lg p-3"><p className="text-xs text-slate-400">Expected</p><p className="text-lg font-bold text-slate-800">{summary.totalExpected?.toLocaleString()} RWF</p></div>
+            <div className="bg-white rounded-xl shadow-lg p-3"><p className="text-xs text-slate-400">Paid</p><p className="text-lg font-bold text-emerald-600">{summary.totalPaid?.toLocaleString()} RWF</p></div>
+            <div className="bg-white rounded-xl shadow-lg p-3"><p className="text-xs text-slate-400">Collection</p><p className="text-lg font-bold text-blue-600">{summary.collectionRate}%</p></div>
+            <div className="bg-white rounded-xl shadow-lg p-3"><p className="text-xs text-slate-400">Students</p><p className="text-lg font-bold text-amber-600">{summary.studentsSummary?.paid}/{summary.studentsSummary?.total}</p></div>
           </div>
         )}
 
-        {/* Payments Table - Read Only */}
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-slate-200 text-sm">
               <thead className="bg-gradient-to-r from-slate-50 to-slate-100">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Student</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Grade/Class</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600">Amount</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600">Paid</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600">Balance</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Status</th>
-                </tr>
+                <tr><th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Student</th><th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Grade/Class</th><th className="px-4 py-3 text-right text-xs font-semibold text-slate-600">Amount</th><th className="px-4 py-3 text-right text-xs font-semibold text-slate-600">Paid</th><th className="px-4 py-3 text-right text-xs font-semibold text-slate-600">Balance</th><th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Status</th></tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {loading ? (
-                  <tr><td colSpan="6" className="text-center py-8">Loading...</td></tr>
-                ) : payments.length === 0 ? (
-                  <tr><td colSpan="6" className="text-center py-8 text-slate-500">No payment records found</td></tr>
-                ) : (
+                {loading ? (<tr><td colSpan="6" className="text-center py-8">Loading...</td></tr>) : payments.length === 0 ? (<tr><td colSpan="6" className="text-center py-8 text-slate-500">No payment records found</td></tr>) : (
                   payments.map(p => (
                     <tr key={p._id} className="hover:bg-slate-50">
-                      <td className="px-4 py-3">
-                        <div>
-                          <p className="font-medium text-slate-800">{p.studentName}</p>
-                          <p className="text-xs text-slate-400">{p.studentId}</p>
-                        </div>
-                      </td>
+                      <td className="px-4 py-3"><div><p className="font-medium text-slate-800">{p.studentName}</p><p className="text-xs text-slate-400">{p.studentId}</p></div></td>
                       <td className="px-4 py-3 text-slate-600">{p.grade} {p.className}</td>
                       <td className="px-4 py-3 text-right font-semibold">{p.amount?.toLocaleString()} RWF</td>
                       <td className="px-4 py-3 text-right text-emerald-600">{p.amountPaid?.toLocaleString()} RWF</td>
                       <td className="px-4 py-3 text-right text-rose-600">{p.balance?.toLocaleString()} RWF</td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(p.status)}`}>
-                          {getStatusIcon(p.status)} {getStatusLabel(p.status)}
-                        </span>
-                      </td>
+                      <td className="px-4 py-3"><span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(p.status)}`}>{getStatusIcon(p.status)} {getStatusLabel(p.status)}</span></td>
                     </tr>
                   ))
                 )}
@@ -580,49 +544,40 @@ const handlePaymentSubmit = async (e) => {
     );
   }
 
-  // Full management view for bursars and admins
   return (
     <div className="space-y-4">
       {(success || error) && (
-        <div className={`fixed top-20 right-4 z-50 animate-slide-in ${success ? "bg-emerald-500" : "bg-rose-500"} text-white px-4 py-2 rounded-xl shadow-2xl flex items-center gap-2 text-sm`}>
-          <span className="text-lg">{success ? "✓" : "⚠"}</span>
+        <div className={`fixed top-20 right-4 z-50 animate-slide-in ${success ? "bg-emerald-500" : "bg-rose-500"} text-white px-4 py-2 rounded-xl shadow-2xl flex items-center gap-2 text-sm max-w-[90vw] md:max-w-md`}>
+          <span className="text-lg flex-shrink-0">{success ? "✅" : "⚠️"}</span>
           <p className="font-medium">{success || error}</p>
         </div>
       )}
 
       {/* Hero Section */}
       <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl shadow-xl">
-        <div className="relative px-5 py-6 md:p-6">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-amber-500/20 to-orange-500/20 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-emerald-500/10 to-teal-500/10 rounded-full blur-3xl"></div>
+        
+        <div className="relative px-4 py-5 md:p-6">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-white mb-1 tracking-tight">
-                🚌 Transport Management
-              </h1>
-              <p className="text-slate-300 text-sm">
-                Manage student transport payments and daily trip records
-              </p>
-              <p className="text-xs text-slate-400 mt-1">
-                School ID: {schoolId || "N/A"} • {userType || "User"}
-              </p>
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-white/10 backdrop-blur rounded-xl text-2xl">🚌</div>
+                <div>
+                  <h1 className="text-xl md:text-3xl font-bold text-white tracking-tight">Transport Management</h1>
+                  <p className="text-slate-300 text-xs md:text-sm">Manage student transport payments and daily trip records</p>
+                </div>
+              </div>
             </div>
             <div className="flex gap-2 flex-wrap">
-              <button
-                onClick={() => { resetPaymentForm(); setShowPaymentForm(true); setEditingPaymentId(null); }}
-                className="bg-white/10 backdrop-blur-md hover:bg-white/20 text-white px-3 py-1.5 rounded-lg text-sm font-semibold transition"
-              >
-                💰 Add Payment
+              <button onClick={() => { resetPaymentForm(); setShowPaymentForm(true); setEditingPaymentId(null); }} className="bg-white/10 backdrop-blur-md hover:bg-white/20 text-white px-3 py-1.5 rounded-lg text-sm font-semibold transition flex items-center gap-1.5">
+                <span>💰</span> <span className="hidden xs:inline">Add Payment</span>
               </button>
-              <button
-                onClick={() => { resetRecordForm(); setShowRecordForm(true); setEditingRecordId(null); }}
-                className="bg-white/10 backdrop-blur-md hover:bg-white/20 text-white px-3 py-1.5 rounded-lg text-sm font-semibold transition"
-              >
-                📝 Add Trip
+              <button onClick={() => { resetRecordForm(); setShowRecordForm(true); setEditingRecordId(null); }} className="bg-white/10 backdrop-blur-md hover:bg-white/20 text-white px-3 py-1.5 rounded-lg text-sm font-semibold transition flex items-center gap-1.5">
+                <span>📝</span> <span className="hidden xs:inline">Add Trip</span>
               </button>
-              <button
-                onClick={fetchOutstanding}
-                className="bg-white/10 backdrop-blur-md hover:bg-white/20 text-white px-3 py-1.5 rounded-lg text-sm font-semibold transition"
-              >
-                📋 Outstanding
+              <button onClick={fetchOutstanding} className="bg-white/10 backdrop-blur-md hover:bg-white/20 text-white px-3 py-1.5 rounded-lg text-sm font-semibold transition flex items-center gap-1.5">
+                <span>📋</span> <span className="hidden xs:inline">Outstanding</span>
               </button>
             </div>
           </div>
@@ -631,23 +586,21 @@ const handlePaymentSubmit = async (e) => {
           {summary && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-6">
               <div className="bg-white/5 backdrop-blur rounded-xl p-3 border border-white/10">
-                <p className="text-slate-300 text-xs">Total Expected</p>
-                <p className="text-xl font-bold text-white">{summary.totalExpected?.toLocaleString()} RWF</p>
+                <p className="text-slate-300 text-xs flex items-center gap-1">💰 Expected</p>
+                <p className="text-lg font-bold text-white mt-0.5">{summary.totalExpected?.toLocaleString()} RWF</p>
               </div>
               <div className="bg-white/5 backdrop-blur rounded-xl p-3 border border-white/10">
-                <p className="text-slate-300 text-xs">Total Paid</p>
-                <p className="text-xl font-bold text-emerald-400">{summary.totalPaid?.toLocaleString()} RWF</p>
+                <p className="text-slate-300 text-xs flex items-center gap-1">✅ Paid</p>
+                <p className="text-lg font-bold text-emerald-400 mt-0.5">{summary.totalPaid?.toLocaleString()} RWF</p>
               </div>
               <div className="bg-white/5 backdrop-blur rounded-xl p-3 border border-white/10">
-                <p className="text-slate-300 text-xs">Collection Rate</p>
-                <p className="text-xl font-bold text-blue-400">{summary.collectionRate}%</p>
-                <div className="mt-1 w-full bg-white/20 rounded-full h-1">
-                  <div className="bg-blue-400 h-1 rounded-full" style={{ width: `${summary.collectionRate}%` }}></div>
-                </div>
+                <p className="text-slate-300 text-xs flex items-center gap-1">📊 Collection</p>
+                <p className="text-lg font-bold text-blue-400 mt-0.5">{summary.collectionRate}%</p>
+                <div className="mt-1 w-full bg-white/20 rounded-full h-1"><div className="bg-blue-400 h-1 rounded-full" style={{ width: `${summary.collectionRate}%` }}></div></div>
               </div>
               <div className="bg-white/5 backdrop-blur rounded-xl p-3 border border-white/10">
-                <p className="text-slate-300 text-xs">Students</p>
-                <p className="text-xl font-bold text-amber-400">{summary.studentsSummary?.paid}/{summary.studentsSummary?.total} Paid</p>
+                <p className="text-slate-300 text-xs flex items-center gap-1">👥 Students</p>
+                <p className="text-lg font-bold text-amber-400 mt-0.5">{summary.studentsSummary?.paid}/{summary.studentsSummary?.total} Paid</p>
               </div>
             </div>
           )}
@@ -656,36 +609,18 @@ const handlePaymentSubmit = async (e) => {
 
       {/* Filters */}
       <div className="bg-white rounded-xl shadow-lg p-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-          <select 
-            value={selectedYear} 
-            onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-            className="border border-slate-200 rounded-lg px-3 py-2 text-sm"
-          >
-            <option value={2024}>2024</option>
-            <option value={2025}>2025</option>
-            <option value={2026}>2026</option>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+          <select value={selectedYear} onChange={(e) => setSelectedYear(parseInt(e.target.value))} className="col-span-1 border border-slate-200 rounded-lg px-2 py-1.5 md:px-3 md:py-2 text-xs md:text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none">
+            <option value={2024}>2024</option><option value={2025}>2025</option><option value={2026}>2026</option>
           </select>
-          <select 
-            value={selectedSemester} 
-            onChange={(e) => setSelectedSemester(e.target.value)}
-            className="border border-slate-200 rounded-lg px-3 py-2 text-sm"
-          >
+          <select value={selectedSemester} onChange={(e) => setSelectedSemester(e.target.value)} className="col-span-1 border border-slate-200 rounded-lg px-2 py-1.5 md:px-3 md:py-2 text-xs md:text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none">
             {semesters.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
           </select>
-          <select 
-            value={filterGrade} 
-            onChange={(e) => setFilterGrade(e.target.value)}
-            className="border border-slate-200 rounded-lg px-3 py-2 text-sm"
-          >
+          <select value={filterGrade} onChange={(e) => setFilterGrade(e.target.value)} className="col-span-1 border border-slate-200 rounded-lg px-2 py-1.5 md:px-3 md:py-2 text-xs md:text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none">
             <option value="ALL">All Grades</option>
             {grades.map(g => <option key={g} value={g}>{g}</option>)}
           </select>
-          <select 
-            value={filterClass} 
-            onChange={(e) => setFilterClass(e.target.value)}
-            className="border border-slate-200 rounded-lg px-3 py-2 text-sm"
-          >
+          <select value={filterClass} onChange={(e) => setFilterClass(e.target.value)} className="col-span-1 border border-slate-200 rounded-lg px-2 py-1.5 md:px-3 md:py-2 text-xs md:text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none">
             <option value="ALL">All Classes</option>
             {["A", "B", "C", "D"].map(c => <option key={c} value={c}>Class {c}</option>)}
           </select>
@@ -693,137 +628,93 @@ const handlePaymentSubmit = async (e) => {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 border-b border-slate-200">
-        <button 
-          onClick={() => setActiveTab("payments")} 
-          className={`px-4 py-2 text-sm font-medium transition-all ${
-            activeTab === "payments" 
-              ? "text-indigo-600 border-b-2 border-indigo-600" 
-              : "text-slate-500 hover:text-slate-700"
-          }`}
-        >
+      <div className="flex gap-2 border-b border-slate-200 overflow-x-auto pb-0.5">
+        <button onClick={() => setActiveTab("payments")} className={`px-4 py-2 text-xs md:text-sm font-medium transition-all whitespace-nowrap ${activeTab === "payments" ? "text-indigo-600 border-b-2 border-indigo-600" : "text-slate-500 hover:text-slate-700"}`}>
           💰 Payments ({payments.length})
         </button>
-        <button 
-          onClick={() => setActiveTab("records")} 
-          className={`px-4 py-2 text-sm font-medium transition-all ${
-            activeTab === "records" 
-              ? "text-indigo-600 border-b-2 border-indigo-600" 
-              : "text-slate-500 hover:text-slate-700"
-          }`}
-        >
+        <button onClick={() => setActiveTab("records")} className={`px-4 py-2 text-xs md:text-sm font-medium transition-all whitespace-nowrap ${activeTab === "records" ? "text-indigo-600 border-b-2 border-indigo-600" : "text-slate-500 hover:text-slate-700"}`}>
           📝 Daily Records ({records.length})
         </button>
       </div>
 
       {/* Export Section */}
       {payments.length > 0 && activeTab === "payments" && (
-        <div className="bg-white rounded-xl shadow-lg p-4 flex justify-between items-center flex-wrap gap-2">
-          <div>
-            <h3 className="font-semibold text-slate-800 text-sm">📥 Export Payments</h3>
-            <p className="text-xs text-slate-400">Download report in CSV, Excel, or PDF</p>
+        <div className="bg-white rounded-xl shadow-lg p-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <div className="flex items-center gap-2"><span className="text-lg">📥</span><div><h3 className="font-semibold text-slate-800 text-sm">Export Payments</h3><p className="text-xs text-slate-400">Download report</p></div></div>
+            <DownloadButton data={exportPaymentsData} columns={exportColumns} title="Transport Payments Report" filename={`transport_payments_${selectedYear}`} variant="primary" />
           </div>
-          <DownloadButton 
-            data={exportPaymentsData} 
-            columns={exportColumns} 
-            title="Transport Payments Report" 
-            filename={`transport_payments_${selectedYear}`} 
-            variant="primary" 
-          />
+        </div>
+      )}
+
+      {/* Results Count */}
+      {payments.length > 0 && activeTab === "payments" && (
+        <div className="bg-white rounded-xl shadow-lg p-3">
+          <p className="text-xs text-slate-500">Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, payments.length)} of {payments.length} payments</p>
         </div>
       )}
 
       {/* Payments Table */}
       {activeTab === "payments" && (
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200 text-sm">
-              <thead className="bg-gradient-to-r from-slate-50 to-slate-100">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Student</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Grade/Class</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600">Amount</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600">Paid</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600">Balance</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Status</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Term</th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {loading ? (
-                  <tr><td colSpan="8" className="text-center py-8">
-                    <div className="flex justify-center">
-                      <div className="w-8 h-8 border-3 border-slate-200 rounded-full animate-spin border-t-indigo-500"></div>
-                    </div>
-                  </td></tr>
-                ) : payments.length === 0 ? (
-                  <tr><td colSpan="8" className="text-center py-8 text-slate-500">No payment records found</td></tr>
-                ) : (
-                  payments.map(p => (
-                    <tr key={p._id} className="hover:bg-slate-50">
-                      <td className="px-4 py-3">
-                        <div>
-                          <p className="font-medium text-slate-800">{p.studentName}</p>
-                          <p className="text-xs text-slate-400">{p.studentId}</p>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-slate-600">{p.grade} {p.className}</td>
-                      <td className="px-4 py-3 text-right font-semibold">{p.amount?.toLocaleString()} RWF</td>
-                      <td className="px-4 py-3 text-right text-emerald-600">{p.amountPaid?.toLocaleString()} RWF</td>
-                      <td className="px-4 py-3 text-right text-rose-600">{p.balance?.toLocaleString()} RWF</td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(p.status)}`}>
-                          {getStatusIcon(p.status)} {getStatusLabel(p.status)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-slate-500">
-                        {p.semester?.replace("TERM", "Term ")} {p.year}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <div className="flex gap-1 justify-center">
-                          <button
-                            onClick={() => {
-                              setPaymentForm({
-                                studentId: p.student?._id || p.student,
-                                studentName: p.studentName,
-                                studentGrade: p.grade,
-                                studentClass: p.className,
-                                semester: p.semester || "TERM1",
-                                year: p.year || new Date().getFullYear(),
-                                amount: p.amount || "",
-                                amountPaid: p.amountPaid || "",  // THIS IS CRITICAL - make sure it's set
-                                paymentMethod: p.paymentMethod || "CASH",
-                                reference: p.reference || "",
-                                notes: p.notes || ""
-                              });
-                              setEditingPaymentId(p._id);
-                              setShowPaymentForm(true);
-                            }}
-                            className="p-1 text-indigo-600 hover:bg-indigo-50 rounded transition"
-                            title="Edit"
-                          >
-                            ✏️
-                          </button>
-                          <button
-                            onClick={() => handleDeletePayment(p._id)}
-                            className="p-1 text-rose-600 hover:bg-rose-50 rounded transition"
-                            title="Delete"
-                          >
-                            🗑️
-                          </button>
-                        </div>
-                      </td>
+          {loading ? (
+            <div className="flex justify-center py-12"><div className="w-8 h-8 md:w-12 md:h-12 border-3 border-slate-200 rounded-full animate-spin border-t-indigo-500"></div></div>
+          ) : payments.length === 0 ? (
+            <div className="text-center py-12 text-slate-500">No payment records found</div>
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-slate-200 text-sm">
+                  <thead className="bg-gradient-to-r from-slate-50 to-slate-100">
+                    <tr>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">Student</th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">Grade/Class</th>
+                      <th className="px-3 py-2 text-right text-xs font-semibold text-slate-600">Amount</th>
+                      <th className="px-3 py-2 text-right text-xs font-semibold text-slate-600">Paid</th>
+                      <th className="px-3 py-2 text-right text-xs font-semibold text-slate-600">Balance</th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">Status</th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">Term</th>
+                      <th className="px-3 py-2 text-center text-xs font-semibold text-slate-600">Actions</th>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-          {payments.length > 0 && (
-            <div className="px-4 py-2 border-t border-slate-200 bg-slate-50 text-xs text-slate-500">
-              Total: {payments.length} payment records
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {currentPayments.map(p => (
+                      <tr key={p._id} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-3 py-2"><div><p className="font-medium text-slate-800 text-sm">{p.studentName}</p><p className="text-[10px] text-slate-400">{p.studentId}</p></div></td>
+                        <td className="px-3 py-2 text-slate-600 text-xs">{p.grade} {p.className}</td>
+                        <td className="px-3 py-2 text-right font-semibold text-slate-700 text-sm">{p.amount?.toLocaleString()} RWF</td>
+                        <td className="px-3 py-2 text-right text-emerald-600 text-sm">{p.amountPaid?.toLocaleString()} RWF</td>
+                        <td className="px-3 py-2 text-right text-rose-600 text-sm">{p.balance?.toLocaleString()} RWF</td>
+                        <td className="px-3 py-2"><span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${getStatusColor(p.status)}`}>{getStatusIcon(p.status)} {getStatusLabel(p.status)}</span></td>
+                        <td className="px-3 py-2 text-[10px] text-slate-500">{p.semester?.replace("TERM", "Term ")} {p.year}</td>
+                        <td className="px-3 py-2 text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            <button onClick={() => { setPaymentForm({ studentId: p.student?._id || p.student, studentName: p.studentName, studentGrade: p.grade, studentClass: p.className, semester: p.semester || "TERM1", year: p.year || new Date().getFullYear(), amount: p.amount || "", amountPaid: p.amountPaid || "", paymentMethod: p.paymentMethod || "CASH", reference: p.reference || "", notes: p.notes || "" }); setEditingPaymentId(p._id); setShowPaymentForm(true); }} className="p-1 rounded hover:bg-indigo-50 text-indigo-600 transition text-sm" title="Edit">✏️</button>
+                            <button onClick={() => handleDeletePayment(p._id)} className="p-1 rounded hover:bg-rose-50 text-rose-500 transition text-sm" title="Delete">🗑️</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="px-4 py-3 border-t border-slate-200 bg-slate-50">
+                  <div className="flex flex-col sm:flex-row justify-between items-center gap-2">
+                    <div className="text-xs text-slate-500">Page {currentPage} of {totalPages}</div>
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))} disabled={currentPage === 1} className="px-3 py-1.5 rounded-lg text-xs bg-white text-slate-700 hover:bg-slate-100 shadow-sm disabled:opacity-50 transition-colors flex items-center gap-1">◀ Prev</button>
+                      {getPageNumbers().map((page, idx) => (
+                        <button key={idx} onClick={() => typeof page === 'number' && setCurrentPage(page)} className={`w-8 h-8 rounded-lg text-xs font-medium transition-colors ${currentPage === page ? "bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-md" : page === '...' ? "text-slate-400 cursor-default" : "bg-white text-slate-700 hover:bg-slate-100"}`} disabled={page === '...'}>{page}</button>
+                      ))}
+                      <button onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))} disabled={currentPage === totalPages} className="px-3 py-1.5 rounded-lg text-xs bg-white text-slate-700 hover:bg-slate-100 shadow-sm disabled:opacity-50 transition-colors flex items-center gap-1">Next ▶</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
@@ -831,152 +722,70 @@ const handlePaymentSubmit = async (e) => {
       {/* Records Table */}
       {activeTab === "records" && (
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200 text-sm">
-              <thead className="bg-gradient-to-r from-slate-50 to-slate-100">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Date</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Student</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Grade/Class</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Pickup</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Dropoff</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">Status</th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {loading ? (
-                  <tr><td colSpan="7" className="text-center py-8">
-                    <div className="flex justify-center">
-                      <div className="w-8 h-8 border-3 border-slate-200 rounded-full animate-spin border-t-indigo-500"></div>
-                    </div>
-                  </td></tr>
-                ) : records.length === 0 ? (
-                  <tr><td colSpan="7" className="text-center py-8 text-slate-500">No transport records found</td></tr>
-                ) : (
-                  records.map(r => (
-                    <tr key={r._id} className="hover:bg-slate-50">
-                      <td className="px-4 py-3 text-sm">{new Date(r.date).toLocaleDateString()}</td>
-                      <td className="px-4 py-3 font-medium text-slate-800">{r.studentName}</td>
-                      <td className="px-4 py-3 text-slate-600">{r.grade} {r.className}</td>
-                      <td className="px-4 py-3 text-sm">{r.pickupLocation || "-"}</td>
-                      <td className="px-4 py-3 text-sm">{r.dropoffLocation || "-"}</td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(r.status)}`}>
-                          {getStatusIcon(r.status)} {getStatusLabel(r.status)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <button
-                          onClick={() => handleDeleteRecord(r._id)}
-                          className="p-1 text-rose-600 hover:bg-rose-50 rounded transition"
-                          title="Delete"
-                        >
-                          🗑️
-                        </button>
-                      </td>
+          {loading ? (
+            <div className="flex justify-center py-12"><div className="w-8 h-8 md:w-12 md:h-12 border-3 border-slate-200 rounded-full animate-spin border-t-indigo-500"></div></div>
+          ) : records.length === 0 ? (
+            <div className="text-center py-12 text-slate-500">No transport records found</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-slate-200 text-sm">
+                <thead className="bg-gradient-to-r from-slate-50 to-slate-100">
+                  <tr><th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">Date</th><th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">Student</th><th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">Grade/Class</th><th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">Pickup</th><th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">Dropoff</th><th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">Status</th><th className="px-3 py-2 text-center text-xs font-semibold text-slate-600">Actions</th></tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {records.map(r => (
+                    <tr key={r._id} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-3 py-2 text-xs text-slate-600">{new Date(r.date).toLocaleDateString()}</td>
+                      <td className="px-3 py-2 font-medium text-slate-800 text-sm">{r.studentName}</td>
+                      <td className="px-3 py-2 text-slate-600 text-xs">{r.grade} {r.className}</td>
+                      <td className="px-3 py-2 text-xs text-slate-600">{r.pickupLocation || "-"}</td>
+                      <td className="px-3 py-2 text-xs text-slate-600">{r.dropoffLocation || "-"}</td>
+                      <td className="px-3 py-2"><span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${getStatusColor(r.status)}`}>{getStatusIcon(r.status)} {getStatusLabel(r.status)}</span></td>
+                      <td className="px-3 py-2 text-center"><button onClick={() => handleDeleteRecord(r._id)} className="p-1 rounded hover:bg-rose-50 text-rose-500 transition text-sm" title="Delete">🗑️</button></td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-          {records.length > 0 && (
-            <div className="px-4 py-2 border-t border-slate-200 bg-slate-50 text-xs text-slate-500">
-              Total: {records.length} transport records
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
       )}
 
-      {/* Payment Modal with Class Selection */}
+      {/* Payment Modal */}
       {showPaymentForm && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto" onClick={() => { setShowPaymentForm(false); setEditingPaymentId(null); }}>
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md my-8 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="sticky top-0 bg-gradient-to-r from-indigo-600 to-purple-600 px-5 py-3 rounded-t-xl">
+            <div className="sticky top-0 bg-gradient-to-r from-indigo-600 to-purple-600 px-5 py-4 rounded-t-xl">
               <h2 className="text-lg font-bold text-white">{editingPaymentId ? "Edit Payment" : "New Transport Payment"}</h2>
               <p className="text-xs text-indigo-100">Record student transport fee payment</p>
             </div>
-            
             <form onSubmit={handlePaymentSubmit} className="p-5 space-y-4">
               {/* Student Selection */}
               <div className="bg-slate-50 rounded-lg p-3">
-                <h3 className="text-sm font-semibold text-slate-700 mb-3">Select Student</h3>
+                <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">👥 Select Student</h3>
                 <div className="grid grid-cols-2 gap-2 mb-3">
-                  <select
-                    value={selectedGrade}
-                    onChange={(e) => {
-                      setSelectedGrade(e.target.value);
-                      setSelectedClass("ALL");
-                      setFilteredStudents([]);
-                    }}
-                    className="border border-slate-200 rounded-lg px-2 py-1.5 text-sm"
-                  >
+                  <select value={selectedGrade} onChange={(e) => { setSelectedGrade(e.target.value); setSelectedClass("ALL"); setFilteredStudents([]); }} className="border border-slate-200 rounded-lg px-2 py-1.5 text-sm">
                     <option value="ALL">All Grades</option>
                     {grades.map(g => <option key={g} value={g}>{g}</option>)}
                   </select>
-                  <select
-                    value={selectedClass}
-                    onChange={(e) => {
-                      setSelectedClass(e.target.value);
-                      setFilteredStudents([]);
-                    }}
-                    className="border border-slate-200 rounded-lg px-2 py-1.5 text-sm"
-                  >
+                  <select value={selectedClass} onChange={(e) => { setSelectedClass(e.target.value); setFilteredStudents([]); }} className="border border-slate-200 rounded-lg px-2 py-1.5 text-sm">
                     <option value="ALL">All Classes</option>
                     {["A", "B", "C", "D"].map(c => <option key={c} value={c}>Class {c}</option>)}
                   </select>
                 </div>
                 {selectedGrade !== "ALL" && selectedClass !== "ALL" && (
                   <div className="relative mb-2">
-                    <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-slate-400">🔍</span>
-                    <input
-                      type="text"
-                      placeholder="Search by name or ID..."
-                      value={searchTerm}
-                      onChange={(e) => {
-                        setSearchTerm(e.target.value);
-                        const term = e.target.value.toLowerCase();
-                        const filtered = filteredStudents.filter(s => 
-                          s.name?.toLowerCase().includes(term) || 
-                          s.studentId?.toLowerCase().includes(term)
-                        );
-                        setFilteredStudents(filtered);
-                      }}
-                      className="w-full pl-7 pr-2 py-1.5 border border-slate-200 rounded-lg text-sm"
-                    />
+                    <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-slate-400 text-sm">🔍</span>
+                    <input type="text" placeholder="Search by name or ID..." value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); const term = e.target.value.toLowerCase(); const filtered = filteredStudents.filter(s => s.name?.toLowerCase().includes(term) || s.studentId?.toLowerCase().includes(term)); setFilteredStudents(filtered); }} className="w-full pl-7 pr-2 py-1.5 border border-slate-200 rounded-lg text-sm" />
                   </div>
                 )}
                 <div className="max-h-36 overflow-y-auto border border-slate-200 rounded-lg">
-                  {selectedGrade === "ALL" || selectedClass === "ALL" ? (
-                    <div className="p-3 text-center text-slate-400 text-sm">Select grade and class to see students</div>
-                  ) : filteredStudents.length === 0 ? (
-                    <div className="p-3 text-center text-slate-400 text-sm">
-                      {searchTerm ? "No matching students found" : "No students in this class"}
-                    </div>
-                  ) : (
+                  {selectedGrade === "ALL" || selectedClass === "ALL" ? (<div className="p-3 text-center text-slate-400 text-sm">Select grade and class</div>) : filteredStudents.length === 0 ? (<div className="p-3 text-center text-slate-400 text-sm">{searchTerm ? "No matching students" : "No students in this class"}</div>) : (
                     filteredStudents.map(student => (
-                      <div
-                        key={student._id}
-                        onClick={() => handleSelectStudentForPayment(student)}
-                        className={`p-2 cursor-pointer transition border-b border-slate-100 last:border-0 ${
-                          paymentForm.studentId === student._id
-                            ? "bg-indigo-50 border-l-4 border-l-indigo-500"
-                            : "hover:bg-slate-50"
-                        }`}
-                      >
+                      <div key={student._id} onClick={() => handleSelectStudentForPayment(student)} className={`p-2 cursor-pointer transition border-b border-slate-100 last:border-0 ${paymentForm.studentId === student._id ? "bg-indigo-50 border-l-4 border-l-indigo-500" : "hover:bg-slate-50"}`}>
                         <div className="flex justify-between items-center">
-                          <div>
-                            <p className="font-medium text-slate-800 text-sm">{student.name}</p>
-                            <p className="text-xs text-slate-400">{student.studentId}</p>
-                          </div>
-                          <div className="text-right">
-                            <span className="text-xs font-medium text-indigo-600">{student.grade}</span>
-                            <span className="text-xs text-slate-400 ml-1">Class {student.className}</span>
-                            {student.transportSubscribed && (
-                              <span className="block text-xs text-emerald-500">✅ Subscribed</span>
-                            )}
-                          </div>
+                          <div><p className="font-medium text-slate-800 text-sm">{student.name}</p><p className="text-xs text-slate-400">{student.studentId}</p></div>
+                          <div className="text-right"><span className="text-xs font-medium text-indigo-600">{student.grade}</span><span className="text-xs text-slate-400 ml-1">Class {student.className}</span>{student.transportSubscribed && <span className="block text-xs text-emerald-500">✅ Subscribed</span>}</div>
                         </div>
                       </div>
                     ))
@@ -992,184 +801,65 @@ const handlePaymentSubmit = async (e) => {
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Term</label>
-                  <select
-                    value={paymentForm.semester}
-                    onChange={(e) => setPaymentForm({...paymentForm, semester: e.target.value})}
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
-                  >
-                    {semesters.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Year</label>
-                  <input
-                    type="number"
-                    value={paymentForm.year}
-                    onChange={(e) => setPaymentForm({...paymentForm, year: parseInt(e.target.value)})}
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
-                  />
-                </div>
+                <div><label className="block text-xs font-semibold text-slate-700 mb-1">Term</label><select value={paymentForm.semester} onChange={(e) => setPaymentForm({...paymentForm, semester: e.target.value})} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm">{semesters.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}</select></div>
+                <div><label className="block text-xs font-semibold text-slate-700 mb-1">Year</label><input type="number" value={paymentForm.year} onChange={(e) => setPaymentForm({...paymentForm, year: parseInt(e.target.value)})} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" /></div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Amount (RWF) *</label>
-                  <input
-                    type="number"
-                    placeholder="Total amount"
-                    value={paymentForm.amount}
-                    onChange={(e) => setPaymentForm({...paymentForm, amount: e.target.value})}
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
-                    required
-                    min="0"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Amount Paid</label>
-                  <input
-                    type="number"
-                    placeholder="Amount paid"
-                    value={paymentForm.amountPaid}
-                    onChange={(e) => setPaymentForm({...paymentForm, amountPaid: e.target.value})}
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
-                    min="0"
-                  />
-                </div>
+                <div><label className="block text-xs font-semibold text-slate-700 mb-1">Amount (RWF) *</label><input type="number" placeholder="Total amount" value={paymentForm.amount} onChange={(e) => setPaymentForm({...paymentForm, amount: e.target.value})} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" required min="0" /></div>
+                <div><label className="block text-xs font-semibold text-slate-700 mb-1">Amount Paid</label><input type="number" placeholder="Amount paid" value={paymentForm.amountPaid} onChange={(e) => setPaymentForm({...paymentForm, amountPaid: e.target.value})} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" min="0" /></div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Payment Method</label>
-                <select
-                  value={paymentForm.paymentMethod}
-                  onChange={(e) => setPaymentForm({...paymentForm, paymentMethod: e.target.value})}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
-                >
-                  {paymentMethods.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-                </select>
-              </div>
+              <div><label className="block text-xs font-semibold text-slate-700 mb-1">Payment Method</label><select value={paymentForm.paymentMethod} onChange={(e) => setPaymentForm({...paymentForm, paymentMethod: e.target.value})} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm">{paymentMethods.map(m => <option key={m.value} value={m.value}>{m.icon} {m.label}</option>)}</select></div>
+              <div><label className="block text-xs font-semibold text-slate-700 mb-1">Reference</label><input type="text" placeholder="Reference number" value={paymentForm.reference} onChange={(e) => setPaymentForm({...paymentForm, reference: e.target.value})} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" /></div>
+              <div><label className="block text-xs font-semibold text-slate-700 mb-1">Notes</label><textarea value={paymentForm.notes} onChange={(e) => setPaymentForm({...paymentForm, notes: e.target.value})} rows="2" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Additional notes..." /></div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Reference/Transaction ID</label>
-                <input
-                  type="text"
-                  placeholder="Reference number"
-                  value={paymentForm.reference}
-                  onChange={(e) => setPaymentForm({...paymentForm, reference: e.target.value})}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
-                />
-              </div>
+              {error && <div className="bg-rose-50 border-l-4 border-rose-500 text-rose-700 p-3 rounded-lg text-sm flex items-center gap-2"><span>⚠️</span><span>{error}</span></div>}
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
-                <textarea
-                  value={paymentForm.notes}
-                  onChange={(e) => setPaymentForm({...paymentForm, notes: e.target.value})}
-                  rows="2"
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
-                  placeholder="Additional notes..."
-                />
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                <button type="submit" disabled={loading} className="flex-1 bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-2 rounded-lg font-semibold text-sm hover:shadow-lg transition disabled:opacity-50">
-                  {loading ? "Saving..." : (editingPaymentId ? "Update Payment" : "Save Payment")}
-                </button>
-                <button type="button" onClick={() => { setShowPaymentForm(false); setEditingPaymentId(null); }} className="flex-1 bg-slate-100 text-slate-700 py-2 rounded-lg font-semibold text-sm hover:bg-slate-200 transition">
-                  Cancel
-                </button>
+              <div className="flex gap-3 pt-2 border-t border-slate-100">
+                <button type="submit" disabled={loading} className="flex-1 bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-2.5 rounded-lg font-semibold text-sm hover:shadow-lg transition disabled:opacity-50 flex items-center justify-center gap-2">💾 {loading ? "Saving..." : (editingPaymentId ? "Update" : "Save")}</button>
+                <button type="button" onClick={() => { setShowPaymentForm(false); setEditingPaymentId(null); }} className="flex-1 bg-slate-100 text-slate-700 py-2.5 rounded-lg font-semibold text-sm hover:bg-slate-200 transition">Cancel</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* Record Modal with Class Selection */}
+      {/* Record Modal */}
       {showRecordForm && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto" onClick={() => setShowRecordForm(false)}>
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md my-8 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="sticky top-0 bg-gradient-to-r from-teal-600 to-emerald-600 px-5 py-3 rounded-t-xl">
+            <div className="sticky top-0 bg-gradient-to-r from-teal-600 to-emerald-600 px-5 py-4 rounded-t-xl">
               <h2 className="text-lg font-bold text-white">{editingRecordId ? "Edit Record" : "Add Transport Record"}</h2>
               <p className="text-xs text-teal-100">Record daily student transport trip</p>
             </div>
-            
             <form onSubmit={handleRecordSubmit} className="p-5 space-y-4">
-              {/* Student Selection */}
+              {/* Similar student selection as above */}
               <div className="bg-slate-50 rounded-lg p-3">
-                <h3 className="text-sm font-semibold text-slate-700 mb-3">Select Student</h3>
+                <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">👥 Select Student</h3>
                 <div className="grid grid-cols-2 gap-2 mb-3">
-                  <select
-                    value={selectedGrade}
-                    onChange={(e) => {
-                      setSelectedGrade(e.target.value);
-                      setSelectedClass("ALL");
-                      setFilteredStudents([]);
-                    }}
-                    className="border border-slate-200 rounded-lg px-2 py-1.5 text-sm"
-                  >
+                  <select value={selectedGrade} onChange={(e) => { setSelectedGrade(e.target.value); setSelectedClass("ALL"); setFilteredStudents([]); }} className="border border-slate-200 rounded-lg px-2 py-1.5 text-sm">
                     <option value="ALL">All Grades</option>
                     {grades.map(g => <option key={g} value={g}>{g}</option>)}
                   </select>
-                  <select
-                    value={selectedClass}
-                    onChange={(e) => {
-                      setSelectedClass(e.target.value);
-                      setFilteredStudents([]);
-                    }}
-                    className="border border-slate-200 rounded-lg px-2 py-1.5 text-sm"
-                  >
+                  <select value={selectedClass} onChange={(e) => { setSelectedClass(e.target.value); setFilteredStudents([]); }} className="border border-slate-200 rounded-lg px-2 py-1.5 text-sm">
                     <option value="ALL">All Classes</option>
                     {["A", "B", "C", "D"].map(c => <option key={c} value={c}>Class {c}</option>)}
                   </select>
                 </div>
                 {selectedGrade !== "ALL" && selectedClass !== "ALL" && (
                   <div className="relative mb-2">
-                    <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-slate-400">🔍</span>
-                    <input
-                      type="text"
-                      placeholder="Search by name or ID..."
-                      value={searchTerm}
-                      onChange={(e) => {
-                        setSearchTerm(e.target.value);
-                        const term = e.target.value.toLowerCase();
-                        const filtered = filteredStudents.filter(s => 
-                          s.name?.toLowerCase().includes(term) || 
-                          s.studentId?.toLowerCase().includes(term)
-                        );
-                        setFilteredStudents(filtered);
-                      }}
-                      className="w-full pl-7 pr-2 py-1.5 border border-slate-200 rounded-lg text-sm"
-                    />
+                    <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-slate-400 text-sm">🔍</span>
+                    <input type="text" placeholder="Search by name or ID..." value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); const term = e.target.value.toLowerCase(); const filtered = filteredStudents.filter(s => s.name?.toLowerCase().includes(term) || s.studentId?.toLowerCase().includes(term)); setFilteredStudents(filtered); }} className="w-full pl-7 pr-2 py-1.5 border border-slate-200 rounded-lg text-sm" />
                   </div>
                 )}
                 <div className="max-h-36 overflow-y-auto border border-slate-200 rounded-lg">
-                  {selectedGrade === "ALL" || selectedClass === "ALL" ? (
-                    <div className="p-3 text-center text-slate-400 text-sm">Select grade and class to see students</div>
-                  ) : filteredStudents.length === 0 ? (
-                    <div className="p-3 text-center text-slate-400 text-sm">
-                      {searchTerm ? "No matching students found" : "No students in this class"}
-                    </div>
-                  ) : (
+                  {selectedGrade === "ALL" || selectedClass === "ALL" ? (<div className="p-3 text-center text-slate-400 text-sm">Select grade and class</div>) : filteredStudents.length === 0 ? (<div className="p-3 text-center text-slate-400 text-sm">{searchTerm ? "No matching students" : "No students in this class"}</div>) : (
                     filteredStudents.map(student => (
-                      <div
-                        key={student._id}
-                        onClick={() => handleSelectStudentForRecord(student)}
-                        className={`p-2 cursor-pointer transition border-b border-slate-100 last:border-0 ${
-                          recordForm.studentId === student._id
-                            ? "bg-indigo-50 border-l-4 border-l-indigo-500"
-                            : "hover:bg-slate-50"
-                        }`}
-                      >
+                      <div key={student._id} onClick={() => handleSelectStudentForRecord(student)} className={`p-2 cursor-pointer transition border-b border-slate-100 last:border-0 ${recordForm.studentId === student._id ? "bg-indigo-50 border-l-4 border-l-indigo-500" : "hover:bg-slate-50"}`}>
                         <div className="flex justify-between items-center">
-                          <div>
-                            <p className="font-medium text-slate-800 text-sm">{student.name}</p>
-                            <p className="text-xs text-slate-400">{student.studentId}</p>
-                          </div>
-                          <div className="text-right">
-                            <span className="text-xs font-medium text-indigo-600">{student.grade}</span>
-                            <span className="text-xs text-slate-400 ml-1">Class {student.className}</span>
-                          </div>
+                          <div><p className="font-medium text-slate-800 text-sm">{student.name}</p><p className="text-xs text-slate-400">{student.studentId}</p></div>
+                          <div className="text-right"><span className="text-xs font-medium text-indigo-600">{student.grade}</span><span className="text-xs text-slate-400 ml-1">Class {student.className}</span></div>
                         </div>
                       </div>
                     ))
@@ -1184,85 +874,24 @@ const handlePaymentSubmit = async (e) => {
                 )}
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Date</label>
-                <input
-                  type="date"
-                  value={recordForm.date}
-                  onChange={(e) => setRecordForm({...recordForm, date: e.target.value})}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
-                  required
-                />
-              </div>
-
+              <div><label className="block text-xs font-semibold text-slate-700 mb-1">Date</label><input type="date" value={recordForm.date} onChange={(e) => setRecordForm({...recordForm, date: e.target.value})} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" required /></div>
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Pickup Location</label>
-                  <input
-                    type="text"
-                    placeholder="Pickup point"
-                    value={recordForm.pickupLocation}
-                    onChange={(e) => setRecordForm({...recordForm, pickupLocation: e.target.value})}
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Dropoff Location</label>
-                  <input
-                    type="text"
-                    placeholder="Dropoff point"
-                    value={recordForm.dropoffLocation}
-                    onChange={(e) => setRecordForm({...recordForm, dropoffLocation: e.target.value})}
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
-                  />
-                </div>
+                <div><label className="block text-xs font-semibold text-slate-700 mb-1">Pickup Location</label><input type="text" placeholder="Pickup point" value={recordForm.pickupLocation} onChange={(e) => setRecordForm({...recordForm, pickupLocation: e.target.value})} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" /></div>
+                <div><label className="block text-xs font-semibold text-slate-700 mb-1">Dropoff Location</label><input type="text" placeholder="Dropoff point" value={recordForm.dropoffLocation} onChange={(e) => setRecordForm({...recordForm, dropoffLocation: e.target.value})} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" /></div>
               </div>
-
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Distance (km)</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    placeholder="Distance"
-                    value={recordForm.distance}
-                    onChange={(e) => setRecordForm({...recordForm, distance: e.target.value})}
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
-                  <select
-                    value={recordForm.status}
-                    onChange={(e) => setRecordForm({...recordForm, status: e.target.value})}
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
-                  >
-                    <option value="COMPLETED">✅ Completed</option>
-                    <option value="ABSENT">❌ Absent</option>
-                    <option value="HOLIDAY">🏖️ Holiday</option>
-                    <option value="CANCELLED">🚫 Cancelled</option>
-                  </select>
-                </div>
+                <div><label className="block text-xs font-semibold text-slate-700 mb-1">Distance (km)</label><input type="number" step="0.1" placeholder="Distance" value={recordForm.distance} onChange={(e) => setRecordForm({...recordForm, distance: e.target.value})} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" /></div>
+                <div><label className="block text-xs font-semibold text-slate-700 mb-1">Status</label><select value={recordForm.status} onChange={(e) => setRecordForm({...recordForm, status: e.target.value})} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm">
+                  <option value="COMPLETED">✅ Completed</option><option value="ABSENT">❌ Absent</option><option value="HOLIDAY">🏖️ Holiday</option><option value="CANCELLED">🚫 Cancelled</option>
+                </select></div>
               </div>
+              <div><label className="block text-xs font-semibold text-slate-700 mb-1">Notes</label><textarea value={recordForm.notes} onChange={(e) => setRecordForm({...recordForm, notes: e.target.value})} rows="2" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Additional notes..." /></div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
-                <textarea
-                  value={recordForm.notes}
-                  onChange={(e) => setRecordForm({...recordForm, notes: e.target.value})}
-                  rows="2"
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
-                  placeholder="Additional notes..."
-                />
-              </div>
+              {error && <div className="bg-rose-50 border-l-4 border-rose-500 text-rose-700 p-3 rounded-lg text-sm flex items-center gap-2"><span>⚠️</span><span>{error}</span></div>}
 
-              <div className="flex gap-3 pt-2">
-                <button type="submit" disabled={loading} className="flex-1 bg-gradient-to-r from-teal-600 to-emerald-600 text-white py-2 rounded-lg font-semibold text-sm hover:shadow-lg transition disabled:opacity-50">
-                  {loading ? "Saving..." : "Save Record"}
-                </button>
-                <button type="button" onClick={() => setShowRecordForm(false)} className="flex-1 bg-slate-100 text-slate-700 py-2 rounded-lg font-semibold text-sm hover:bg-slate-200 transition">
-                  Cancel
-                </button>
+              <div className="flex gap-3 pt-2 border-t border-slate-100">
+                <button type="submit" disabled={loading} className="flex-1 bg-gradient-to-r from-teal-600 to-emerald-600 text-white py-2.5 rounded-lg font-semibold text-sm hover:shadow-lg transition disabled:opacity-50 flex items-center justify-center gap-2">💾 {loading ? "Saving..." : "Save Record"}</button>
+                <button type="button" onClick={() => setShowRecordForm(false)} className="flex-1 bg-slate-100 text-slate-700 py-2.5 rounded-lg font-semibold text-sm hover:bg-slate-200 transition">Cancel</button>
               </div>
             </form>
           </div>
@@ -1273,9 +902,9 @@ const handlePaymentSubmit = async (e) => {
       {showOutstanding && outstandingData && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto" onClick={() => setShowOutstanding(false)}>
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl my-8 max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="sticky top-0 bg-gradient-to-r from-amber-600 to-orange-600 px-5 py-3 flex justify-between items-center text-white rounded-t-xl">
-              <h2 className="text-base font-bold">📋 Outstanding Payments</h2>
-              <button onClick={() => setShowOutstanding(false)} className="text-white text-2xl">&times;</button>
+            <div className="sticky top-0 bg-gradient-to-r from-amber-600 to-orange-600 px-5 py-4 flex justify-between items-center text-white rounded-t-xl">
+              <h2 className="text-lg font-bold">📋 Outstanding Payments</h2>
+              <button onClick={() => setShowOutstanding(false)} className="text-white text-2xl hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center transition">×</button>
             </div>
             <div className="p-5">
               <div className="bg-amber-50 rounded-lg p-3 mb-4">
@@ -1285,29 +914,15 @@ const handlePaymentSubmit = async (e) => {
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-slate-200 text-sm">
                   <thead className="bg-slate-50">
-                    <tr>
-                      <th className="px-3 py-2 text-left text-xs font-semibold">Student</th>
-                      <th className="px-3 py-2 text-left text-xs font-semibold">Class</th>
-                      <th className="px-3 py-2 text-right text-xs font-semibold">Balance</th>
-                      <th className="px-3 py-2 text-left text-xs font-semibold">Status</th>
-                    </tr>
+                    <tr><th className="px-3 py-2 text-left text-xs font-semibold">Student</th><th className="px-3 py-2 text-left text-xs font-semibold">Class</th><th className="px-3 py-2 text-right text-xs font-semibold">Balance</th><th className="px-3 py-2 text-left text-xs font-semibold">Status</th></tr>
                   </thead>
                   <tbody>
                     {outstandingData.payments?.map(p => (
                       <tr key={p._id} className="hover:bg-slate-50">
-                        <td className="px-3 py-2">
-                          <div>
-                            <p className="font-medium text-slate-800">{p.studentName}</p>
-                            <p className="text-xs text-slate-400">{p.studentId}</p>
-                          </div>
-                        </td>
+                        <td className="px-3 py-2"><div><p className="font-medium text-slate-800">{p.studentName}</p><p className="text-xs text-slate-400">{p.studentId}</p></div></td>
                         <td className="px-3 py-2 text-slate-600">{p.grade} {p.className}</td>
                         <td className="px-3 py-2 text-right font-semibold text-rose-600">{p.balance?.toLocaleString()} RWF</td>
-                        <td className="px-3 py-2">
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(p.status)}`}>
-                            {getStatusIcon(p.status)} {getStatusLabel(p.status)}
-                          </span>
-                        </td>
+                        <td className="px-3 py-2"><span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(p.status)}`}>{getStatusIcon(p.status)} {getStatusLabel(p.status)}</span></td>
                       </tr>
                     ))}
                   </tbody>
@@ -1317,6 +932,22 @@ const handlePaymentSubmit = async (e) => {
           </div>
         </div>
       )}
+
+      <style>{`
+        @keyframes slide-in {
+          from { transform: translateX(100%); opacity: 0; }
+          to { transform: translateX(0); opacity: 1; }
+        }
+        .animate-slide-in { animation: slide-in 0.3s ease-out; }
+        
+        @media (max-width: 480px) {
+          .xs\\:inline { display: inline; }
+          .xs\\:hidden { display: none; }
+        }
+        @media (min-width: 481px) {
+          .xs\\:inline { display: none; }
+        }
+      `}</style>
     </div>
   );
 }

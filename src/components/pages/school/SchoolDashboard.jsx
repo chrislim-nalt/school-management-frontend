@@ -250,19 +250,19 @@ export default function SchoolDashboard() {
 
   const getGradeColor = (grade) => {
     const colors = {
-      A: "from-emerald-400 to-emerald-500",
-      B: "from-blue-400 to-blue-500",
-      C: "from-amber-400 to-amber-500",
-      D: "from-orange-400 to-orange-500",
-      F: "from-rose-400 to-rose-500"
+      A: "bg-emerald-500",
+      B: "bg-blue-500",
+      C: "bg-amber-500",
+      D: "bg-orange-500",
+      F: "bg-rose-500"
     };
-    return colors[grade] || "from-gray-400 to-gray-500";
+    return colors[grade] || "bg-gray-500";
   };
 
   const totalStudents = stats.students.total || 0;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {error && (
         <div className="bg-amber-50 border-l-4 border-amber-500 text-amber-700 px-4 py-3 rounded-lg flex items-center gap-2">
           <span>⚠️</span>
@@ -270,305 +270,267 @@ export default function SchoolDashboard() {
         </div>
       )}
 
-      {/* ===== HERO SECTION - STUNNING ===== */}
-      <div className="relative overflow-hidden rounded-2xl shadow-2xl">
-        <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600"></div>
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTM2IDM0djItSDI0di0yaDEyek0zNiAyNHYySDI0di0yaDEyeiIvPjwvZz48L2c+PC9zdmc+')] opacity-20"></div>
-        <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-white/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
+      {/* Hero Section - Dark Gradient */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl shadow-xl">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-0 left-0 w-64 h-64 bg-gradient-to-tr from-emerald-500/10 to-teal-500/10 rounded-full blur-3xl"></div>
         
-        <div className="relative px-5 py-7 md:py-8 md:px-8">
+        <div className="relative px-5 py-6 md:p-6">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 md:w-14 md:h-14 bg-white/20 backdrop-blur rounded-2xl flex items-center justify-center shadow-lg border border-white/20">
-                  <span className="text-2xl md:text-3xl">🏫</span>
-                </div>
+                <div className="p-2 bg-white/10 backdrop-blur rounded-xl text-2xl">🎓</div>
                 <div>
-                  <h1 className="text-2xl md:text-4xl font-bold text-white tracking-tight drop-shadow-lg">
-                    School Dashboard
+                  <h1 className="text-2xl md:text-3xl font-bold text-white mb-1 tracking-tight">
+                    School Management Dashboard
                   </h1>
-                  <p className="text-indigo-100 text-sm md:text-base font-medium">
+                  <p className="text-slate-300 text-sm">
                     Track academic performance, attendance, and school operations
                   </p>
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-3 bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/20 shadow-lg">
-              <span className="text-lg">📅</span>
-              <span className="text-white text-sm font-medium">
-                {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}
-              </span>
-            </div>
-          </div>
-
-          {/* Quick Stats in Hero */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-6">
-            <div className="bg-white/10 backdrop-blur-md rounded-xl p-3 border border-white/20 hover:bg-white/20 transition-all group">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-indigo-200 text-xs font-medium uppercase tracking-wider">Students</p>
-                  <p className="text-2xl font-bold text-white mt-0.5">{stats.students.total}</p>
-                </div>
-                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <span className="text-xl">👨‍🎓</span>
-                </div>
-              </div>
-              <div className="flex gap-3 mt-1.5 text-xs">
-                <span className="text-emerald-300">👦 {stats.students.boys}</span>
-                <span className="text-pink-300">👧 {stats.students.girls}</span>
-                <span className="text-indigo-300">✅ {stats.students.active}</span>
-              </div>
-            </div>
-            <div className="bg-white/10 backdrop-blur-md rounded-xl p-3 border border-white/20 hover:bg-white/20 transition-all group">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-indigo-200 text-xs font-medium uppercase tracking-wider">Teachers</p>
-                  <p className="text-2xl font-bold text-white mt-0.5">{stats.teachers.active}/{stats.teachers.total}</p>
-                </div>
-                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <span className="text-xl">👨‍🏫</span>
-                </div>
-              </div>
-              <p className="text-indigo-300 text-xs mt-1.5">Active / Total</p>
-            </div>
-            <div className="bg-white/10 backdrop-blur-md rounded-xl p-3 border border-white/20 hover:bg-white/20 transition-all group">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-indigo-200 text-xs font-medium uppercase tracking-wider">Courses</p>
-                  <p className="text-2xl font-bold text-white mt-0.5">{stats.courses.total}</p>
-                </div>
-                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <span className="text-xl">📚</span>
-                </div>
-              </div>
-              <p className="text-indigo-300 text-xs mt-1.5">Subjects Offered</p>
-            </div>
-            <div className="bg-white/10 backdrop-blur-md rounded-xl p-3 border border-white/20 hover:bg-white/20 transition-all group">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-indigo-200 text-xs font-medium uppercase tracking-wider">Revenue</p>
-                  <p className="text-xl font-bold text-emerald-300 mt-0.5">{stats.transport.revenue.toLocaleString()} RWF</p>
-                </div>
-                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <span className="text-xl">💰</span>
-                </div>
-              </div>
-              {stats.transport.totalExpected > 0 && (
-                <p className="text-indigo-300 text-xs mt-1.5">Expected: {stats.transport.totalExpected.toLocaleString()} RWF</p>
-              )}
+            <div className="flex items-center gap-2 text-sm text-slate-300 bg-white/5 backdrop-blur px-3 py-1.5 rounded-lg border border-white/10">
+              <span>📅</span>
+              <span>{new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* ===== PERFORMANCE & ATTENDANCE ===== */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        
-        {/* Academic Performance Card */}
-        <div className="bg-white rounded-2xl shadow-xl overflow-hidden hover:shadow-2xl transition-shadow duration-300">
-          <div className="bg-gradient-to-r from-indigo-50 to-purple-50 px-5 py-4 border-b border-indigo-100">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center shadow-md">
-                  <span className="text-white text-lg">📊</span>
-                </div>
-                <div>
-                  <h2 className="font-bold text-slate-800 text-base">Academic Performance</h2>
-                  <p className="text-xs text-slate-500">Current Term Overview</p>
-                </div>
-              </div>
-              <span className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-semibold">TERM 1</span>
+      {/* Stats Cards Row 1 - Dark Theme Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white rounded-xl shadow-lg p-4 hover:shadow-xl transition-all group border border-slate-100">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <span className="text-2xl">👨‍🎓</span>
             </div>
+            <span className="text-xs text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Active</span>
           </div>
-          
-          <div className="p-5">
-            {/* Score Display */}
-            <div className="flex items-center gap-6 mb-5">
-              <div className="relative w-28 h-28 flex-shrink-0">
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-indigo-600">{stats.performance.averageScore}%</p>
-                    <p className="text-[10px] text-slate-500">Avg Score</p>
-                  </div>
-                </div>
-                <svg className="w-28 h-28 transform -rotate-90">
-                  <circle cx="56" cy="56" r="48" fill="none" stroke="#e5e7eb" strokeWidth="10" />
-                  <circle 
-                    cx="56" cy="56" r="48" fill="none" 
-                    stroke="#6366f1" strokeWidth="10" 
-                    strokeDasharray={`${(stats.performance.averageScore / 100) * 301.6} 301.6`}
-                    strokeLinecap="round"
-                    className="transition-all duration-1000"
-                  />
-                </svg>
-              </div>
-              <div className="flex-1">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-emerald-50 rounded-xl p-3 text-center border border-emerald-100">
-                    <p className="text-xs text-slate-500 font-medium">Pass Rate</p>
-                    <p className="text-xl font-bold text-emerald-600">{stats.performance.passRate}%</p>
-                  </div>
-                  <div className="bg-indigo-50 rounded-xl p-3 text-center border border-indigo-100">
-                    <p className="text-xs text-slate-500 font-medium">Students</p>
-                    <p className="text-xl font-bold text-indigo-600">{totalStudents}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Grade Distribution */}
-            <div className="space-y-2.5">
-              <p className="text-xs font-semibold text-slate-600 flex items-center gap-2">
-                <span>📈</span> Grade Distribution
-              </p>
-              {Object.entries(stats.performance.gradeDistribution || {}).map(([grade, count]) => (
-                <div key={grade} className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-lg bg-gradient-to-r ${getGradeColor(grade)} flex items-center justify-center text-sm font-bold text-white shadow-sm`}>
-                    {grade}
-                  </div>
-                  <div className="flex-1 h-3 bg-slate-100 rounded-full overflow-hidden">
-                    <div 
-                      className={`h-full bg-gradient-to-r ${getGradeColor(grade)} rounded-full transition-all duration-700 ease-out`}
-                      style={{ width: `${totalStudents > 0 ? (count / totalStudents * 100) : 0}%` }}
-                    />
-                  </div>
-                  <div className="w-10 text-xs font-bold text-slate-600 text-right">{count}</div>
-                </div>
-              ))}
-              {Object.values(stats.performance.gradeDistribution || {}).reduce((a, b) => a + b, 0) === 0 && (
-                <p className="text-xs text-slate-400 italic text-center py-3">No grades recorded yet</p>
-              )}
-            </div>
+          <p className="text-2xl font-bold text-slate-800">{stats.students.total}</p>
+          <p className="text-xs text-slate-500 mt-1">Total Students</p>
+          <div className="mt-3 flex gap-3 text-xs">
+            <span className="text-emerald-600 flex items-center gap-1">👦 {stats.students.boys}</span>
+            <span className="text-pink-600 flex items-center gap-1">👧 {stats.students.girls}</span>
           </div>
         </div>
 
-        {/* Attendance Overview Card */}
-        <div className="bg-white rounded-2xl shadow-xl overflow-hidden hover:shadow-2xl transition-shadow duration-300">
-          <div className="bg-gradient-to-r from-emerald-50 to-teal-50 px-5 py-4 border-b border-emerald-100">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center shadow-md">
-                  <span className="text-white text-lg">✅</span>
-                </div>
-                <div>
-                  <h2 className="font-bold text-slate-800 text-base">Attendance Overview</h2>
-                  <p className="text-xs text-slate-500">Last 30 Days</p>
-                </div>
-              </div>
-              <span className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-semibold">{stats.attendance.rate}%</span>
+        <div className="bg-white rounded-xl shadow-lg p-4 hover:shadow-xl transition-all group border border-slate-100">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <span className="text-2xl">👨‍🏫</span>
+            </div>
+            <span className="text-xs text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Active</span>
+          </div>
+          <p className="text-2xl font-bold text-slate-800">{stats.teachers.active} / {stats.teachers.total}</p>
+          <p className="text-xs text-slate-500 mt-1">Teachers (Active/Total)</p>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-lg p-4 hover:shadow-xl transition-all group border border-slate-100">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <span className="text-2xl">📚</span>
             </div>
           </div>
-          
-          <div className="p-5">
-            {/* Attendance Ring */}
-            <div className="flex items-center gap-6 mb-5">
-              <div className="relative w-28 h-28 flex-shrink-0">
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-emerald-600">{stats.attendance.rate}%</p>
-                    <p className="text-[10px] text-slate-500">Rate</p>
-                  </div>
-                </div>
-                <svg className="w-28 h-28 transform -rotate-90">
-                  <circle cx="56" cy="56" r="48" fill="none" stroke="#e5e7eb" strokeWidth="10" />
-                  <circle 
-                    cx="56" cy="56" r="48" fill="none" 
-                    stroke="#10b981" strokeWidth="10" 
-                    strokeDasharray={`${(stats.attendance.rate / 100) * 301.6} 301.6`}
-                    strokeLinecap="round"
-                    className="transition-all duration-1000"
-                  />
-                </svg>
-              </div>
-              <div className="flex-1 grid grid-cols-3 gap-2">
-                <div className="bg-emerald-50 rounded-xl p-3 text-center border border-emerald-100">
-                  <p className="text-lg font-bold text-emerald-600">{stats.attendance.present}</p>
-                  <p className="text-[10px] text-slate-500">Present</p>
-                </div>
-                <div className="bg-amber-50 rounded-xl p-3 text-center border border-amber-100">
-                  <p className="text-lg font-bold text-amber-600">{stats.attendance.late}</p>
-                  <p className="text-[10px] text-slate-500">Late</p>
-                </div>
-                <div className="bg-rose-50 rounded-xl p-3 text-center border border-rose-100">
-                  <p className="text-lg font-bold text-rose-600">{stats.attendance.absent}</p>
-                  <p className="text-[10px] text-slate-500">Absent</p>
-                </div>
-              </div>
-            </div>
+          <p className="text-2xl font-bold text-slate-800">{stats.courses.total}</p>
+          <p className="text-xs text-slate-500 mt-1">Courses Offered</p>
+        </div>
 
-            {/* Attendance Progress */}
-            <div className="mt-2">
-              <div className="flex justify-between text-xs text-slate-500 mb-1">
-                <span>Attendance Rate</span>
-                <span className="font-bold text-emerald-600">{stats.attendance.rate}%</span>
+        <div className="bg-white rounded-xl shadow-lg p-4 hover:shadow-xl transition-all group border border-slate-100">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <span className="text-2xl">💰</span>
+            </div>
+            <span className="text-xs text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">{stats.transport.collectionRate}%</span>
+          </div>
+          <p className="text-xl font-bold text-slate-800">{stats.transport.revenue.toLocaleString()} RWF</p>
+          <p className="text-xs text-slate-500 mt-1">Transport Revenue</p>
+          {stats.transport.totalExpected > 0 && (
+            <p className="text-xs text-slate-400 mt-1">Expected: {stats.transport.totalExpected.toLocaleString()} RWF</p>
+          )}
+        </div>
+      </div>
+
+      {/* Stats Cards Row 2 - Performance & Attendance */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Academic Performance */}
+        <div className="bg-white rounded-xl shadow-lg p-5 hover:shadow-xl transition-all border border-slate-100">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">
+                <span className="text-indigo-600 text-sm">📊</span>
               </div>
-              <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-gradient-to-r from-emerald-400 to-teal-500 rounded-full transition-all duration-700"
-                  style={{ width: `${stats.attendance.rate}%` }}
+              <h2 className="font-bold text-slate-800">Academic Performance</h2>
+            </div>
+            <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">Current Term</span>
+          </div>
+          
+          {/* Average Score Ring */}
+          <div className="flex flex-col md:flex-row items-center gap-4 md:gap-6 mb-4">
+            <div className="relative w-28 h-28 md:w-32 md:h-32 flex-shrink-0">
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="text-center">
+                  <p className="text-2xl md:text-3xl font-bold text-indigo-600">{stats.performance.averageScore}%</p>
+                  <p className="text-[10px] md:text-xs text-slate-500">Avg Score</p>
+                </div>
+              </div>
+              <svg className="w-28 h-28 md:w-32 md:h-32 transform -rotate-90">
+                <circle cx="56" cy="56" r="48" fill="none" stroke="#e2e8f0" strokeWidth="10" />
+                <circle 
+                  cx="56" cy="56" r="48" fill="none" 
+                  stroke="#6366f1" strokeWidth="10" 
+                  strokeDasharray={`${(stats.performance.averageScore / 100) * 301.6} 301.6`}
+                  strokeLinecap="round"
+                  className="transition-all duration-1000"
                 />
+              </svg>
+            </div>
+            <div className="flex-1 grid grid-cols-2 gap-2 w-full">
+              <div className="bg-emerald-50 rounded-lg p-2 text-center">
+                <p className="text-xs text-slate-500">Pass Rate</p>
+                <p className="text-lg font-bold text-emerald-600">{stats.performance.passRate}%</p>
               </div>
-              <div className="flex justify-between text-[10px] text-slate-400 mt-1">
-                <span>Goal: 100%</span>
-                <span>{stats.attendance.present + stats.attendance.late + stats.attendance.absent} total records</span>
+              <div className="bg-indigo-50 rounded-lg p-2 text-center">
+                <p className="text-xs text-slate-500">Students</p>
+                <p className="text-lg font-bold text-indigo-600">{totalStudents}</p>
               </div>
             </div>
           </div>
+
+          {/* Grade Distribution Bars */}
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-slate-600 mb-2">📈 Grade Distribution</p>
+            {Object.entries(stats.performance.gradeDistribution || {}).map(([grade, count]) => (
+              <div key={grade} className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-md bg-gradient-to-r from-slate-200 to-slate-300 flex items-center justify-center text-xs font-bold text-slate-700">
+                  {grade}
+                </div>
+                <div className="flex-1 h-4 bg-slate-100 rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full ${getGradeColor(grade)} rounded-full transition-all duration-700 ease-out`}
+                    style={{ width: `${totalStudents > 0 ? (count / totalStudents * 100) : 0}%` }}
+                  />
+                </div>
+                <div className="w-10 text-xs font-semibold text-slate-600 text-right">{count}</div>
+              </div>
+            ))}
+            {Object.values(stats.performance.gradeDistribution || {}).reduce((a, b) => a + b, 0) === 0 && (
+              <p className="text-xs text-slate-400 italic text-center py-3">No grades recorded yet</p>
+            )}
+          </div>
+        </div>
+
+        {/* Attendance Overview */}
+        <div className="bg-white rounded-xl shadow-lg p-5 hover:shadow-xl transition-all border border-slate-100">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
+                <span className="text-emerald-600 text-sm">✅</span>
+              </div>
+              <h2 className="font-bold text-slate-800">Attendance Overview</h2>
+            </div>
+            <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">Last 30 Days</span>
+          </div>
+
+          {/* Attendance Circle */}
+          <div className="flex flex-col md:flex-row items-center gap-4 md:gap-6 mb-4">
+            <div className="relative w-28 h-28 md:w-32 md:h-32 flex-shrink-0">
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="text-center">
+                  <p className="text-2xl md:text-3xl font-bold text-emerald-600">{stats.attendance.rate}%</p>
+                  <p className="text-[10px] md:text-xs text-slate-500">Rate</p>
+                </div>
+              </div>
+              <svg className="w-28 h-28 md:w-32 md:h-32 transform -rotate-90">
+                <circle cx="56" cy="56" r="48" fill="none" stroke="#e2e8f0" strokeWidth="10" />
+                <circle 
+                  cx="56" cy="56" r="48" fill="none" 
+                  stroke="#10b981" strokeWidth="10" 
+                  strokeDasharray={`${(stats.attendance.rate / 100) * 301.6} 301.6`}
+                  strokeLinecap="round"
+                  className="transition-all duration-1000"
+                />
+              </svg>
+            </div>
+            <div className="flex-1 grid grid-cols-3 gap-2 w-full">
+              <div className="bg-emerald-50 rounded-lg p-2 text-center">
+                <p className="text-lg font-bold text-emerald-600">{stats.attendance.present}</p>
+                <p className="text-[10px] text-slate-500">Present</p>
+              </div>
+              <div className="bg-amber-50 rounded-lg p-2 text-center">
+                <p className="text-lg font-bold text-amber-600">{stats.attendance.late}</p>
+                <p className="text-[10px] text-slate-500">Late</p>
+              </div>
+              <div className="bg-rose-50 rounded-lg p-2 text-center">
+                <p className="text-lg font-bold text-rose-600">{stats.attendance.absent}</p>
+                <p className="text-[10px] text-slate-500">Absent</p>
+              </div>
+            </div>
+          </div>
+          
+          {/* Attendance Progress Bar */}
+          <div className="mt-2">
+            <div className="flex justify-between text-xs text-slate-500 mb-1">
+              <span>Attendance Rate</span>
+              <span className="font-bold text-emerald-600">{stats.attendance.rate}%</span>
+            </div>
+            <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-gradient-to-r from-emerald-400 to-teal-500 rounded-full transition-all duration-700"
+                style={{ width: `${stats.attendance.rate}%` }}
+              />
+            </div>
+          </div>
+
+          {stats.attendance.present === 0 && stats.attendance.absent === 0 && stats.attendance.late === 0 && (
+            <p className="text-xs text-slate-400 italic text-center mt-3">No attendance records found</p>
+          )}
         </div>
       </div>
 
-      {/* ===== QUICK ACTIONS - STUNNING ===== */}
+      {/* Quick Actions - Dark Gradient Buttons */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <button 
           onClick={() => window.location.href = "/students"}
-          className="group relative overflow-hidden bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-600 text-white p-4 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+          className="bg-gradient-to-r from-slate-800 to-slate-700 text-white p-3 rounded-xl text-sm font-semibold hover:shadow-lg transition-all flex items-center justify-center gap-2 hover:scale-105 hover:from-slate-700 hover:to-slate-600"
         >
-          <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
-          <div className="relative flex flex-col items-center gap-1">
-            <span className="text-3xl">👨‍🎓</span>
-            <span className="text-sm font-semibold">Manage Students</span>
-          </div>
+          <span>👨‍🎓</span>
+          <span className="hidden xs:inline">Manage Students</span>
+          <span className="xs:hidden">Students</span>
         </button>
         <button 
           onClick={() => window.location.href = "/teachers"}
-          className="group relative overflow-hidden bg-gradient-to-r from-purple-500 via-purple-600 to-pink-600 text-white p-4 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+          className="bg-gradient-to-r from-slate-800 to-slate-700 text-white p-3 rounded-xl text-sm font-semibold hover:shadow-lg transition-all flex items-center justify-center gap-2 hover:scale-105 hover:from-slate-700 hover:to-slate-600"
         >
-          <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
-          <div className="relative flex flex-col items-center gap-1">
-            <span className="text-3xl">👨‍🏫</span>
-            <span className="text-sm font-semibold">Manage Teachers</span>
-          </div>
+          <span>👨‍🏫</span>
+          <span className="hidden xs:inline">Manage Teachers</span>
+          <span className="xs:hidden">Teachers</span>
         </button>
         <button 
           onClick={() => window.location.href = "/marks"}
-          className="group relative overflow-hidden bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 text-white p-4 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+          className="bg-gradient-to-r from-slate-800 to-slate-700 text-white p-3 rounded-xl text-sm font-semibold hover:shadow-lg transition-all flex items-center justify-center gap-2 hover:scale-105 hover:from-slate-700 hover:to-slate-600"
         >
-          <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
-          <div className="relative flex flex-col items-center gap-1">
-            <span className="text-3xl">📝</span>
-            <span className="text-sm font-semibold">Record Marks</span>
-          </div>
+          <span>📝</span>
+          <span className="hidden xs:inline">Record Marks</span>
+          <span className="xs:hidden">Marks</span>
         </button>
         <button 
           onClick={() => window.location.href = "/attendance"}
-          className="group relative overflow-hidden bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600 text-white p-4 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+          className="bg-gradient-to-r from-slate-800 to-slate-700 text-white p-3 rounded-xl text-sm font-semibold hover:shadow-lg transition-all flex items-center justify-center gap-2 hover:scale-105 hover:from-slate-700 hover:to-slate-600"
         >
-          <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
-          <div className="relative flex flex-col items-center gap-1">
-            <span className="text-3xl">✅</span>
-            <span className="text-sm font-semibold">Mark Attendance</span>
-          </div>
+          <span>✅</span>
+          <span className="hidden xs:inline">Mark Attendance</span>
+          <span className="xs:hidden">Attendance</span>
         </button>
       </div>
 
       <style>{`
-        @keyframes fade-in {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
+        @media (max-width: 480px) {
+          .xs\\:inline { display: inline; }
+          .xs\\:hidden { display: none; }
         }
-        .animate-fade-in {
-          animation: fade-in 0.6s ease-out forwards;
+        @media (min-width: 481px) {
+          .xs\\:inline { display: none; }
         }
       `}</style>
     </div>
