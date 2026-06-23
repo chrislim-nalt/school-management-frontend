@@ -169,16 +169,16 @@ export default function SchoolDashboard() {
       const attendance = attendanceRes.data || {};
       console.log("Attendance data:", attendance);
 
-      // Handle different response structures
+      // Extract attendance stats - handle multiple response structures
       let avgAttendance = 0;
       let totalPresent = 0;
       let totalAbsent = 0;
       let totalLate = 0;
 
-      // Check multiple possible structures
+      // Check if we have summary data
       if (attendance.summary) {
         avgAttendance = parseFloat(attendance.summary.averageAttendance) || 0;
-        // Also check for overallAttendance (alternate field name)
+        // Fallback to overallAttendance if averageAttendance is not present
         if (!avgAttendance && attendance.summary.overallAttendance) {
           avgAttendance = parseFloat(attendance.summary.overallAttendance) || 0;
         }
@@ -186,6 +186,7 @@ export default function SchoolDashboard() {
         totalAbsent = attendance.summary.totalAbsent || 0;
         totalLate = attendance.summary.totalLate || 0;
       } else {
+        // Try direct properties
         avgAttendance = parseFloat(attendance.averageAttendance) || 0;
         if (!avgAttendance && attendance.overallAttendance) {
           avgAttendance = parseFloat(attendance.overallAttendance) || 0;
@@ -195,7 +196,17 @@ export default function SchoolDashboard() {
         totalLate = attendance.totalLate || 0;
       }
 
-      console.log("Attendance stats:", { avgAttendance, totalPresent, totalAbsent, totalLate });
+      // If we have daily breakdown but no summary, calculate from daily breakdown
+      if (attendance.dailyBreakdown && Object.keys(attendance.dailyBreakdown).length > 0) {
+        const dailyData = attendance.dailyBreakdown;
+        totalPresent = Object.values(dailyData).reduce((sum, d) => sum + (d.present || 0), 0);
+        totalAbsent = Object.values(dailyData).reduce((sum, d) => sum + (d.absent || 0), 0);
+        totalLate = Object.values(dailyData).reduce((sum, d) => sum + (d.late || 0), 0);
+        const totalRecords = totalPresent + totalAbsent + totalLate;
+        avgAttendance = totalRecords > 0 ? ((totalPresent / totalRecords) * 100) : 0;
+      }
+
+      console.log("Attendance stats calculated:", { avgAttendance, totalPresent, totalAbsent, totalLate });
 
       setStats({
         students: {
@@ -217,7 +228,7 @@ export default function SchoolDashboard() {
           gradeDistribution: gradeDistribution
         },
          attendance: {
-          rate: avgAttendance || 0,
+          rate: Math.round(avgAttendance) || 0,
           present: totalPresent || 0,
           absent: totalAbsent || 0,
           late: totalLate || 0
