@@ -472,19 +472,20 @@ export default function Laboratory() {
           </button>
         </div>
       ) : (
+        /* Laboratory Items Table */
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-slate-200 text-sm">
               <thead className="bg-gradient-to-r from-slate-50 to-slate-100">
                 <tr>
-                  <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Item</th>
-                  <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Type</th>
-                  <th className="px-3 py-2.5 text-right text-xs font-semibold text-slate-600 uppercase tracking-wider">Qty</th>
-                  <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Unit</th>
-                  <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Condition</th>
-                  <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Location</th>
-                  <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">Expiry</th>
-                  <th className="px-3 py-2.5 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider">Actions</th>
+                  <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider min-w-[180px]">Item</th>
+                  <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider min-w-[100px]">Type</th>
+                  <th className="px-3 py-2.5 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider min-w-[70px]">Qty</th>
+                  <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider min-w-[80px]">Unit</th>
+                  <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider min-w-[120px]">Condition</th>
+                  <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider min-w-[130px]">Location</th>
+                  <th className="px-3 py-2.5 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider min-w-[120px]">Expiry</th>
+                  <th className="px-3 py-2.5 text-center text-xs font-semibold text-slate-600 uppercase tracking-wider min-w-[90px]">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -494,39 +495,49 @@ export default function Laboratory() {
                   const typeIcon = itemTypes.find(t => t.value === item.itemType)?.icon || "📦";
                   
                   return (
-                    <tr key={item._id} className="hover:bg-slate-50 transition-colors animate-fade-in" style={{ animationDelay: `${index * 30}ms` }}>
-                      <td className="px-3 py-2.5 whitespace-nowrap">
-                        <div className="flex items-center gap-2">
-                          <span className="text-lg">{typeIcon}</span>
-                          <span className="font-medium text-slate-800 text-sm">{item.name}</span>
-                          {item.isHazardous && (
-                            <span className="inline-flex items-center gap-0.5 text-[10px] bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded">⚠️ Hazardous</span>
-                          )}
+                    <tr key={item._id} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-3 py-2.5">
+                        <div className="flex items-center gap-2 max-w-[200px]">
+                          <span className="text-base flex-shrink-0">{typeIcon}</span>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-medium text-slate-800 text-sm truncate" title={item.name}>
+                              {item.name}
+                            </p>
+                            {item.isHazardous && (
+                              <span className="inline-flex items-center gap-0.5 text-[10px] bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded mt-0.5">
+                                ⚠️ Hazardous
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </td>
-                      <td className="px-3 py-2.5 whitespace-nowrap text-slate-600 text-xs">
+                      <td className="px-3 py-2.5 whitespace-nowrap">
                         <span className="inline-flex px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-medium">
                           {item.itemType}
                         </span>
                       </td>
-                      <td className="px-3 py-2.5 whitespace-nowrap text-right">
+                      <td className="px-3 py-2.5 whitespace-nowrap text-center">
                         <span className={`font-semibold text-sm ${lowStock ? 'text-rose-500' : 'text-slate-700'}`}>
                           {item.quantity}
                         </span>
-                        {lowStock && <span className="ml-1 text-[10px] text-amber-500">(Low)</span>}
+                        {lowStock && <span className="ml-1 text-[10px] text-amber-500 whitespace-nowrap">(Low)</span>}
                       </td>
                       <td className="px-3 py-2.5 whitespace-nowrap text-slate-600 text-xs">{item.unit}</td>
                       <td className="px-3 py-2.5 whitespace-nowrap">
-                        <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-xs font-medium ${getConditionColor(item.condition)}`}>
+                        <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-xs font-medium whitespace-nowrap ${getConditionColor(item.condition)}`}>
                           {getConditionEmoji(item.condition)} {item.condition}
                         </span>
                       </td>
-                      <td className="px-3 py-2.5 whitespace-nowrap text-slate-600 text-xs">📍 {item.storageLocation}</td>
+                      <td className="px-3 py-2.5 whitespace-nowrap text-slate-600 text-xs">
+                        <span className="truncate max-w-[100px] inline-block" title={item.storageLocation}>
+                          📍 {item.storageLocation}
+                        </span>
+                      </td>
                       <td className="px-3 py-2.5 whitespace-nowrap">
                         {item.expirationDate ? (
                           <span className={`text-xs ${expired ? 'text-rose-600 font-semibold' : 'text-slate-600'}`}>
                             📅 {new Date(item.expirationDate).toLocaleDateString()}
-                            {expired && <span className="ml-1 text-rose-500">Expired</span>}
+                            {expired && <span className="ml-1 text-rose-500 whitespace-nowrap">Expired</span>}
                           </span>
                         ) : "-"}
                       </td>
@@ -810,16 +821,11 @@ export default function Laboratory() {
           from { transform: translateX(100%); opacity: 0; }
           to { transform: translateX(0); opacity: 1; }
         }
-        @keyframes fade-in {
-          from { opacity: 0; transform: translateY(5px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
         @keyframes float {
           0%, 100% { transform: translateY(0px); }
           50% { transform: translateY(-5px); }
         }
         .animate-slide-in { animation: slide-in 0.3s ease-out; }
-        .animate-fade-in { animation: fade-in 0.3s ease-out forwards; opacity: 0; }
         .animate-float { animation: float 3s ease-in-out infinite; }
       `}</style>
     </div>
