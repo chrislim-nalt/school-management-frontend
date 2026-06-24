@@ -253,10 +253,10 @@ export default function Layout({ children }) {
         {
           title: "🏗️ Facility & Asset Management",
           items: [
-            { path: "/assets", name: "Assets", icon: "🏗️", description: "School assets", roles: ["stock_keeper"] },
+            // { path: "/assets", name: "Assets", icon: "🏗️", description: "School assets", roles: ["stock_keeper"] },
             { path: "/tracked-assets", name: "Computer Lab", icon: "💻", description: "Computer Tracking", roles: ["stock_keeper"] },
-            { path: "/laboratory", name: "Laboratory", icon: "🔬", description: "Lab equipment", roles: ["stock_keeper"] },
-            { path: "/library", name: "Library", icon: "📚", description: "Books collection", roles: ["stock_keeper"] },
+            // { path: "/laboratory", name: "Laboratory", icon: "🔬", description: "Lab equipment", roles: ["stock_keeper"] },
+            // { path: "/library", name: "Library", icon: "📚", description: "Books collection", roles: ["stock_keeper"] },
             { path: "/cleaning-supplies", name: "Cleaning Supplies", icon: "🧹", description: "Cleaning inventory", roles: ["stock_keeper"] },
             { path: "/feeding", name: "Feeding Records", icon: "🍽️", description: "Food management", roles: ["stock_keeper"] },
           ],
