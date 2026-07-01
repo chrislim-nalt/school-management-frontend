@@ -210,6 +210,7 @@ export default function Layout({ children }) {
         {
           title: "📦 Inventory Management",
           items: [
+            { path: "/Dashboard", name: "Dashboard", icon: "📊", description: "Overview of inventory", roles: ["bursar"] },
             { path: "/categories", name: "Categories", icon: "📂", description: "Organize inventory categories", roles: ["bursar"] },
             { path: "/items", name: "Items", icon: "🛒", description: "Manage inventory items", roles: ["bursar"] },
             { path: "/stock", name: "Stock Management", icon: "📦", description: "Track stock movements", roles: ["bursar"] },
@@ -331,6 +332,7 @@ export default function Layout({ children }) {
         {
           title: "📦 Inventory Management",
           items: [
+            { path: "/Dashboard", name: "Dashboard", icon: "�", description: "Overview of inventory", roles: ["school_admin"] },
             { path: "/categories", name: "Categories", icon: "📂", description: "Organize items", roles: ["school_admin"] },
             { path: "/items", name: "Items", icon: "🛒", description: "Manage inventory", roles: ["school_admin"] },
             { path: "/stock", name: "Stock Management", icon: "📦", description: "Track movements", roles: ["school_admin"] },
