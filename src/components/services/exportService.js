@@ -33,7 +33,7 @@ export const exportToPDF = async (data, columns, title, filename, subtitle = "")
       
       doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
-      doc.text(subtitle || "G.S AGATEKO School Management System", pageWidth / 2, 30, { align: "center" });
+      doc.text(subtitle || "School Management System", pageWidth / 2, 30, { align: "center" });
       
       // Reset text color for body
       doc.setTextColor(33, 33, 33);
@@ -118,7 +118,7 @@ export const exportToExcel = (data, columns, filename) => {
         return;
       }
       
-      const schoolName = localStorage.getItem("schoolName") || "G.S AGATEKO";
+      const schoolName = localStorage.getItem("schoolName") || "School Management System";
       
       // Prepare worksheet data
       const worksheetData = [
@@ -232,7 +232,7 @@ export const exportItemsToPDF = (items) => {
       doc.text("Inventory Items Report", pageWidth / 2, 18, { align: "center" });
       
       doc.setFontSize(9);
-      doc.text("G.S AGATEKO School Inventory System", pageWidth / 2, 28, { align: "center" });
+      doc.text("School Management System", pageWidth / 2, 28, { align: "center" });
       
       doc.setTextColor(33, 33, 33);
       
