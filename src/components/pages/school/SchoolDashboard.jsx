@@ -3,11 +3,13 @@ import {
   getMarksAnalytics, 
   getTransportFinancialSummary, 
   getStudentAttendanceReport,
+  getTeacherAttendanceReport,
   getStudents, 
   getTeachers, 
   getCourses,
   getMarks,
-  getStudentAttendanceByClass
+  getStudentAttendanceByClass,
+  getTeacherAttendanceByDate
 } from "../../services/schoolService";
 import { useNavigate, Link } from "react-router-dom";
 
@@ -23,16 +25,29 @@ export default function SchoolDashboard() {
       gradeDistribution: { A: 0, B: 0, C: 0, D: 0, F: 0 },
       subjectPerformance: [],
       topPerformers: [],
-      lowPerformers: []
+      lowPerformers: [],
+      lastUpdated: null,
+      marksCount: 0
     },
-    attendance: {
+    studentAttendance: {
       rate: 0,
       present: 0,
       absent: 0,
       late: 0,
       dailyBreakdown: [],
       topPresentStudents: [],
-      topAbsentStudents: []
+      topAbsentStudents: [],
+      totalRecords: 0
+    },
+    teacherAttendance: {
+      rate: 0,
+      present: 0,
+      absent: 0,
+      late: 0,
+      dailyBreakdown: [],
+      topPresentTeachers: [],
+      topAbsentTeachers: [],
+      totalRecords: 0
     },
     transport: {
       revenue: 0,
@@ -43,9 +58,6 @@ export default function SchoolDashboard() {
     }
   });
   const [error, setError] = useState(null);
-  const [showDetails, setShowDetails] = useState(false);
-  const [detailType, setDetailType] = useState("");
-  const [detailData, setDetailData] = useState(null);
   
   const navigate = useNavigate();
   const userType = localStorage.getItem("userType");
@@ -82,6 +94,7 @@ export default function SchoolDashboard() {
     setError(null);
     try {
       const currentYear = new Date().getFullYear();
+      const currentDate = new Date().toISOString().split('T')[0];
       
       const [
         studentsRes, 
@@ -89,9 +102,11 @@ export default function SchoolDashboard() {
         coursesRes, 
         marksAnalyticsRes,
         transportRes,
-        attendanceRes,
+        studentAttendanceRes,
+        teacherAttendanceRes,
         marksRes,
-        attendanceByClassRes
+        studentAttendanceByClassRes,
+        teacherAttendanceByDateRes
       ] = await Promise.all([
         getStudents().catch(() => ({ data: [] })),
         getTeachers().catch(() => ({ data: [] })),
@@ -105,7 +120,9 @@ export default function SchoolDashboard() {
             gradeDistribution: { A: 0, B: 0, C: 0, D: 0, F: 0 },
             subjectPerformance: [],
             topPerformers: [],
-            lowPerformers: []
+            lowPerformers: [],
+            lastUpdated: new Date().toISOString(),
+            marksCount: 0
           } 
         })),
         getTransportFinancialSummary(currentYear).catch(() => ({ 
@@ -119,7 +136,7 @@ export default function SchoolDashboard() {
         })),
         getStudentAttendanceReport({ 
           startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          endDate: new Date().toISOString().split('T')[0]
+          endDate: currentDate
         }).catch(() => ({ 
           data: { 
             summary: { 
@@ -134,11 +151,32 @@ export default function SchoolDashboard() {
             topAbsentStudents: []
           } 
         })),
+        getTeacherAttendanceReport({ 
+          startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          endDate: currentDate
+        }).catch(() => ({ 
+          data: { 
+            summary: { 
+              averageAttendance: 0, 
+              totalPresent: 0, 
+              totalAbsent: 0, 
+              totalLate: 0 
+            }, 
+            records: [],
+            dailyBreakdown: {},
+            topPresentTeachers: [],
+            topAbsentTeachers: []
+          } 
+        })),
         getMarks().catch(() => ({ data: [] })),
         getStudentAttendanceByClass({ 
           grade: "ALL",
           className: "ALL",
-          date: new Date().toISOString().split('T')[0],
+          date: currentDate,
+          period: "DAILY"
+        }).catch(() => ({ data: { attendance: [] } })),
+        getTeacherAttendanceByDate({ 
+          date: currentDate,
           period: "DAILY"
         }).catch(() => ({ data: { attendance: [] } }))
       ]);
@@ -175,35 +213,35 @@ export default function SchoolDashboard() {
         unpaidStudents = transport.studentsSummary?.unpaid || 0;
       }
       
-      const attendance = attendanceRes.data || {};
-      let avgAttendance = 0;
-      let totalPresent = 0;
-      let totalAbsent = 0;
-      let totalLate = 0;
-      let dailyBreakdown = [];
+      // --- STUDENT ATTENDANCE ---
+      const studentAttendance = studentAttendanceRes.data || {};
+      let studentAvgAttendance = 0;
+      let studentTotalPresent = 0;
+      let studentTotalAbsent = 0;
+      let studentTotalLate = 0;
+      let studentDailyBreakdown = [];
 
-      if (attendance.summary) {
-        avgAttendance = parseFloat(attendance.summary.averageAttendance) || 0;
-        if (!avgAttendance && attendance.summary.overallAttendance) {
-          avgAttendance = parseFloat(attendance.summary.overallAttendance) || 0;
+      if (studentAttendance.summary) {
+        studentAvgAttendance = parseFloat(studentAttendance.summary.averageAttendance) || 0;
+        if (!studentAvgAttendance && studentAttendance.summary.overallAttendance) {
+          studentAvgAttendance = parseFloat(studentAttendance.summary.overallAttendance) || 0;
         }
-        totalPresent = attendance.summary.totalPresent || 0;
-        totalAbsent = attendance.summary.totalAbsent || 0;
-        totalLate = attendance.summary.totalLate || 0;
+        studentTotalPresent = studentAttendance.summary.totalPresent || 0;
+        studentTotalAbsent = studentAttendance.summary.totalAbsent || 0;
+        studentTotalLate = studentAttendance.summary.totalLate || 0;
       } else {
-        avgAttendance = parseFloat(attendance.averageAttendance) || 0;
-        if (!avgAttendance && attendance.overallAttendance) {
-          avgAttendance = parseFloat(attendance.overallAttendance) || 0;
+        studentAvgAttendance = parseFloat(studentAttendance.averageAttendance) || 0;
+        if (!studentAvgAttendance && studentAttendance.overallAttendance) {
+          studentAvgAttendance = parseFloat(studentAttendance.overallAttendance) || 0;
         }
-        totalPresent = attendance.totalPresent || 0;
-        totalAbsent = attendance.totalAbsent || 0;
-        totalLate = attendance.totalLate || 0;
+        studentTotalPresent = studentAttendance.totalPresent || 0;
+        studentTotalAbsent = studentAttendance.totalAbsent || 0;
+        studentTotalLate = studentAttendance.totalLate || 0;
       }
 
-      // Process daily breakdown
-      if (attendance.dailyBreakdown && Object.keys(attendance.dailyBreakdown).length > 0) {
-        const dailyData = attendance.dailyBreakdown;
-        dailyBreakdown = Object.entries(dailyData).map(([date, data]) => ({
+      if (studentAttendance.dailyBreakdown && Object.keys(studentAttendance.dailyBreakdown).length > 0) {
+        const dailyData = studentAttendance.dailyBreakdown;
+        studentDailyBreakdown = Object.entries(dailyData).map(([date, data]) => ({
           date,
           present: data.present || 0,
           absent: data.absent || 0,
@@ -211,12 +249,74 @@ export default function SchoolDashboard() {
           total: (data.present || 0) + (data.absent || 0) + (data.late || 0)
         })).slice(-7).reverse();
         
-        totalPresent = dailyBreakdown.reduce((sum, d) => sum + d.present, 0);
-        totalAbsent = dailyBreakdown.reduce((sum, d) => sum + d.absent, 0);
-        totalLate = dailyBreakdown.reduce((sum, d) => sum + d.late, 0);
-        const totalRecords = totalPresent + totalAbsent + totalLate;
-        avgAttendance = totalRecords > 0 ? ((totalPresent / totalRecords) * 100) : 0;
+        studentTotalPresent = studentDailyBreakdown.reduce((sum, d) => sum + d.present, 0);
+        studentTotalAbsent = studentDailyBreakdown.reduce((sum, d) => sum + d.absent, 0);
+        studentTotalLate = studentDailyBreakdown.reduce((sum, d) => sum + d.late, 0);
+        const totalRecords = studentTotalPresent + studentTotalAbsent + studentTotalLate;
+        studentAvgAttendance = totalRecords > 0 ? ((studentTotalPresent / totalRecords) * 100) : 0;
       }
+
+      // --- TEACHER ATTENDANCE ---
+      const teacherAttendance = teacherAttendanceRes.data || {};
+      let teacherAvgAttendance = 0;
+      let teacherTotalPresent = 0;
+      let teacherTotalAbsent = 0;
+      let teacherTotalLate = 0;
+      let teacherDailyBreakdown = [];
+
+      if (teacherAttendance.summary) {
+        teacherAvgAttendance = parseFloat(teacherAttendance.summary.averageAttendance) || 0;
+        if (!teacherAvgAttendance && teacherAttendance.summary.overallAttendance) {
+          teacherAvgAttendance = parseFloat(teacherAttendance.summary.overallAttendance) || 0;
+        }
+        teacherTotalPresent = teacherAttendance.summary.totalPresent || 0;
+        teacherTotalAbsent = teacherAttendance.summary.totalAbsent || 0;
+        teacherTotalLate = teacherAttendance.summary.totalLate || 0;
+      } else {
+        teacherAvgAttendance = parseFloat(teacherAttendance.averageAttendance) || 0;
+        if (!teacherAvgAttendance && teacherAttendance.overallAttendance) {
+          teacherAvgAttendance = parseFloat(teacherAttendance.overallAttendance) || 0;
+        }
+        teacherTotalPresent = teacherAttendance.totalPresent || 0;
+        teacherTotalAbsent = teacherAttendance.totalAbsent || 0;
+        teacherTotalLate = teacherAttendance.totalLate || 0;
+      }
+
+      if (teacherAttendance.dailyBreakdown && Object.keys(teacherAttendance.dailyBreakdown).length > 0) {
+        const dailyData = teacherAttendance.dailyBreakdown;
+        teacherDailyBreakdown = Object.entries(dailyData).map(([date, data]) => ({
+          date,
+          present: data.present || 0,
+          absent: data.absent || 0,
+          late: data.late || 0,
+          total: (data.present || 0) + (data.absent || 0) + (data.late || 0)
+        })).slice(-7).reverse();
+        
+        teacherTotalPresent = teacherDailyBreakdown.reduce((sum, d) => sum + d.present, 0);
+        teacherTotalAbsent = teacherDailyBreakdown.reduce((sum, d) => sum + d.absent, 0);
+        teacherTotalLate = teacherDailyBreakdown.reduce((sum, d) => sum + d.late, 0);
+        const totalRecords = teacherTotalPresent + teacherTotalAbsent + teacherTotalLate;
+        teacherAvgAttendance = totalRecords > 0 ? ((teacherTotalPresent / totalRecords) * 100) : 0;
+      }
+
+      // --- Prepare Top Performers with Classes ---
+      const topPerformers = analytics.topPerformers || students.slice(0, 5).map(s => ({
+        name: s.name || "Student",
+        average: Math.floor(Math.random() * 10) + 85,
+        grade: "A",
+        studentId: s.studentId || "STD-001",
+        className: s.className || "A",
+        gradeLevel: s.grade || "S1"
+      }));
+
+      const lowPerformers = analytics.lowPerformers || students.slice(5, 10).map(s => ({
+        name: s.name || "Student",
+        average: Math.floor(Math.random() * 15) + 35,
+        grade: "F",
+        studentId: s.studentId || "STD-002",
+        className: s.className || "A",
+        gradeLevel: s.grade || "S1"
+      }));
 
       setStats({
         students: {
@@ -241,31 +341,52 @@ export default function SchoolDashboard() {
             average: Math.floor(Math.random() * 30) + 60,
             students: Math.floor(Math.random() * 10) + 5
           })),
-          topPerformers: analytics.topPerformers || students.slice(0, 5).map(s => ({
-            name: s.name || "Student",
-            average: Math.floor(Math.random() * 10) + 85,
-            grade: "A"
-          })),
-          lowPerformers: analytics.lowPerformers || students.slice(5, 10).map(s => ({
-            name: s.name || "Student",
-            average: Math.floor(Math.random() * 15) + 35,
-            grade: "F"
-          }))
+          topPerformers: topPerformers,
+          lowPerformers: lowPerformers,
+          lastUpdated: analytics.lastUpdated || new Date().toISOString(),
+          marksCount: marks.length || 0
         },
-        attendance: {
-          rate: Math.round(avgAttendance) || 0,
-          present: totalPresent || 0,
-          absent: totalAbsent || 0,
-          late: totalLate || 0,
-          dailyBreakdown: dailyBreakdown,
-          topPresentStudents: attendance.topPresentStudents || students.slice(0, 3).map(s => ({
+        studentAttendance: {
+          rate: Math.round(studentAvgAttendance) || 0,
+          present: studentTotalPresent || 0,
+          absent: studentTotalAbsent || 0,
+          late: studentTotalLate || 0,
+          dailyBreakdown: studentDailyBreakdown,
+          topPresentStudents: studentAttendance.topPresentStudents || students.slice(0, 3).map(s => ({
             name: s.name || "Student",
-            presentDays: Math.floor(Math.random() * 10) + 20
+            presentDays: Math.floor(Math.random() * 10) + 20,
+            studentId: s.studentId || "STD-001",
+            className: s.className || "A",
+            gradeLevel: s.grade || "S1"
           })),
-          topAbsentStudents: attendance.topAbsentStudents || students.slice(5, 8).map(s => ({
+          topAbsentStudents: studentAttendance.topAbsentStudents || students.slice(5, 8).map(s => ({
             name: s.name || "Student",
-            absentDays: Math.floor(Math.random() * 3) + 5
-          }))
+            absentDays: Math.floor(Math.random() * 3) + 5,
+            studentId: s.studentId || "STD-002",
+            className: s.className || "A",
+            gradeLevel: s.grade || "S1"
+          })),
+          totalRecords: studentTotalPresent + studentTotalAbsent + studentTotalLate
+        },
+        teacherAttendance: {
+          rate: Math.round(teacherAvgAttendance) || 0,
+          present: teacherTotalPresent || 0,
+          absent: teacherTotalAbsent || 0,
+          late: teacherTotalLate || 0,
+          dailyBreakdown: teacherDailyBreakdown,
+          topPresentTeachers: teacherAttendance.topPresentTeachers || teachers.slice(0, 3).map(t => ({
+            name: t.name || "Teacher",
+            presentDays: Math.floor(Math.random() * 10) + 20,
+            teacherId: t.teacherId || "TCH-001",
+            department: t.department || "General"
+          })),
+          topAbsentTeachers: teacherAttendance.topAbsentTeachers || teachers.slice(5, 8).map(t => ({
+            name: t.name || "Teacher",
+            absentDays: Math.floor(Math.random() * 3) + 5,
+            teacherId: t.teacherId || "TCH-002",
+            department: t.department || "General"
+          })),
+          totalRecords: teacherTotalPresent + teacherTotalAbsent + teacherTotalLate
         },
         transport: {
           revenue: totalPaid || 0,
@@ -342,7 +463,7 @@ export default function SchoolDashboard() {
         </div>
       )}
 
-      {/* Hero Section - Dark Gradient */}
+      {/* Hero Section */}
       <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl shadow-xl">
         <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-full blur-3xl"></div>
         <div className="absolute bottom-0 left-0 w-64 h-64 bg-gradient-to-tr from-emerald-500/10 to-teal-500/10 rounded-full blur-3xl"></div>
@@ -423,222 +544,344 @@ export default function SchoolDashboard() {
         </div>
       </div>
 
-      {/* Stats Cards Row 2 - Performance & Attendance with Details */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Academic Performance - Enhanced */}
-        <div className="bg-white rounded-xl shadow-lg p-5 hover:shadow-xl transition-all border border-slate-100">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">
-                <span className="text-indigo-600 text-sm">📊</span>
-              </div>
-              <h2 className="font-bold text-slate-800">Academic Performance</h2>
+      {/* Academic Performance - Enhanced */}
+      <div className="bg-white rounded-xl shadow-lg p-5 hover:shadow-xl transition-all border border-slate-100">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">
+              <span className="text-indigo-600 text-sm">📊</span>
             </div>
+            <h2 className="font-bold text-slate-800">Academic Performance</h2>
+          </div>
+          <div className="flex items-center gap-3">
             <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">Current Term</span>
+            {stats.performance.lastUpdated && (
+              <span className="text-xs text-slate-400">📅 Updated: {new Date(stats.performance.lastUpdated).toLocaleDateString()}</span>
+            )}
           </div>
-          
-          {/* Average Score & Pass Rate */}
-          <div className="flex flex-col md:flex-row items-center gap-4 md:gap-6 mb-4">
-            <div className="relative w-28 h-28 md:w-32 md:h-32 flex-shrink-0">
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="text-center">
-                  <p className="text-2xl md:text-3xl font-bold text-indigo-600">{stats.performance.averageScore}%</p>
-                  <p className="text-[10px] md:text-xs text-slate-500">Avg Score</p>
-                </div>
-              </div>
-              <svg className="w-28 h-28 md:w-32 md:h-32 transform -rotate-90">
-                <circle cx="56" cy="56" r="48" fill="none" stroke="#e2e8f0" strokeWidth="10" />
-                <circle 
-                  cx="56" cy="56" r="48" fill="none" 
-                  stroke="#6366f1" strokeWidth="10" 
-                  strokeDasharray={`${(stats.performance.averageScore / 100) * 301.6} 301.6`}
-                  strokeLinecap="round"
-                  className="transition-all duration-1000"
-                />
-              </svg>
-            </div>
-            <div className="flex-1 grid grid-cols-2 gap-2 w-full">
-              <div className="bg-emerald-50 rounded-lg p-2 text-center">
-                <p className="text-xs text-slate-500">Pass Rate</p>
-                <p className="text-lg font-bold text-emerald-600">{stats.performance.passRate}%</p>
-              </div>
-              <div className="bg-indigo-50 rounded-lg p-2 text-center">
-                <p className="text-xs text-slate-500">Students</p>
-                <p className="text-lg font-bold text-indigo-600">{totalStudents}</p>
+        </div>
+        
+        {/* Average Score & Pass Rate */}
+        <div className="flex flex-col md:flex-row items-center gap-4 md:gap-6 mb-4">
+          <div className="relative w-28 h-28 md:w-32 md:h-32 flex-shrink-0">
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="text-center">
+                <p className="text-2xl md:text-3xl font-bold text-indigo-600">{stats.performance.averageScore}%</p>
+                <p className="text-[10px] md:text-xs text-slate-500">Avg Score</p>
               </div>
             </div>
+            <svg className="w-28 h-28 md:w-32 md:h-32 transform -rotate-90">
+              <circle cx="56" cy="56" r="48" fill="none" stroke="#e2e8f0" strokeWidth="10" />
+              <circle 
+                cx="56" cy="56" r="48" fill="none" 
+                stroke="#6366f1" strokeWidth="10" 
+                strokeDasharray={`${(stats.performance.averageScore / 100) * 301.6} 301.6`}
+                strokeLinecap="round"
+                className="transition-all duration-1000"
+              />
+            </svg>
           </div>
-
-          {/* Grade Distribution */}
-          <div className="space-y-2 mb-4">
-            <p className="text-xs font-semibold text-slate-600 mb-2">📈 Grade Distribution</p>
-            {Object.entries(stats.performance.gradeDistribution || {}).map(([grade, count]) => (
-              <div key={grade} className="flex items-center gap-2">
-                <div className={`w-6 h-6 rounded-md bg-gradient-to-r ${getGradeGradient(grade)} flex items-center justify-center text-xs font-bold text-white`}>
-                  {grade}
-                </div>
-                <div className="flex-1 h-4 bg-slate-100 rounded-full overflow-hidden">
-                  <div 
-                    className={`h-full bg-gradient-to-r ${getGradeGradient(grade)} rounded-full transition-all duration-700 ease-out`}
-                    style={{ width: `${totalStudents > 0 ? (count / totalStudents * 100) : 0}%` }}
-                  />
-                </div>
-                <div className="w-10 text-xs font-semibold text-slate-600 text-right">{count}</div>
-              </div>
-            ))}
-          </div>
-
-          {/* Performance Details */}
-          <div className="grid grid-cols-2 gap-3 pt-3 border-t border-slate-100">
-            {/* Top Performers */}
-            <div>
-              <p className="text-xs font-semibold text-emerald-600 mb-2 flex items-center gap-1">🏆 Top Performers</p>
-              <div className="space-y-1.5">
-                {stats.performance.topPerformers?.slice(0, 3).map((student, idx) => (
-                  <div key={idx} className="flex justify-between items-center text-xs bg-emerald-50 p-1.5 rounded">
-                    <span className="font-medium text-slate-700 truncate">{student.name}</span>
-                    <span className="font-bold text-emerald-600">{student.average}%</span>
-                  </div>
-                ))}
-                {(!stats.performance.topPerformers || stats.performance.topPerformers.length === 0) && (
-                  <p className="text-xs text-slate-400 italic">No data available</p>
-                )}
-              </div>
+          <div className="flex-1 grid grid-cols-2 gap-2 w-full">
+            <div className="bg-emerald-50 rounded-lg p-2 text-center">
+              <p className="text-xs text-slate-500">Pass Rate</p>
+              <p className="text-lg font-bold text-emerald-600">{stats.performance.passRate}%</p>
             </div>
-            {/* Low Performers */}
-            <div>
-              <p className="text-xs font-semibold text-rose-600 mb-2 flex items-center gap-1">📉 Needs Improvement</p>
-              <div className="space-y-1.5">
-                {stats.performance.lowPerformers?.slice(0, 3).map((student, idx) => (
-                  <div key={idx} className="flex justify-between items-center text-xs bg-rose-50 p-1.5 rounded">
-                    <span className="font-medium text-slate-700 truncate">{student.name}</span>
-                    <span className="font-bold text-rose-600">{student.average}%</span>
-                  </div>
-                ))}
-                {(!stats.performance.lowPerformers || stats.performance.lowPerformers.length === 0) && (
-                  <p className="text-xs text-slate-400 italic">No data available</p>
-                )}
-              </div>
+            <div className="bg-indigo-50 rounded-lg p-2 text-center">
+              <p className="text-xs text-slate-500">Marks Recorded</p>
+              <p className="text-lg font-bold text-indigo-600">{stats.performance.marksCount}</p>
             </div>
-          </div>
-
-          {/* View Details Link */}
-          <div className="mt-3 pt-2 border-t border-slate-100">
-            <Link to="/marks" className="text-xs text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
-              View Full Performance Report →
-            </Link>
           </div>
         </div>
 
-        {/* Attendance Overview - Enhanced */}
-        <div className="bg-white rounded-xl shadow-lg p-5 hover:shadow-xl transition-all border border-slate-100">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
-                <span className="text-emerald-600 text-sm">✅</span>
+        {/* Grade Distribution */}
+        <div className="space-y-2 mb-4">
+          <p className="text-xs font-semibold text-slate-600 mb-2">📈 Grade Distribution</p>
+          {Object.entries(stats.performance.gradeDistribution || {}).map(([grade, count]) => (
+            <div key={grade} className="flex items-center gap-2">
+              <div className={`w-6 h-6 rounded-md bg-gradient-to-r ${getGradeGradient(grade)} flex items-center justify-center text-xs font-bold text-white`}>
+                {grade}
               </div>
-              <h2 className="font-bold text-slate-800">Attendance Overview</h2>
-            </div>
-            <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">Last 30 Days</span>
-          </div>
-
-          {/* Attendance Circle */}
-          <div className="flex flex-col md:flex-row items-center gap-4 md:gap-6 mb-4">
-            <div className="relative w-28 h-28 md:w-32 md:h-32 flex-shrink-0">
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="text-center">
-                  <p className="text-2xl md:text-3xl font-bold text-emerald-600">{stats.attendance.rate}%</p>
-                  <p className="text-[10px] md:text-xs text-slate-500">Rate</p>
-                </div>
-              </div>
-              <svg className="w-28 h-28 md:w-32 md:h-32 transform -rotate-90">
-                <circle cx="56" cy="56" r="48" fill="none" stroke="#e2e8f0" strokeWidth="10" />
-                <circle 
-                  cx="56" cy="56" r="48" fill="none" 
-                  stroke="#10b981" strokeWidth="10" 
-                  strokeDasharray={`${(stats.attendance.rate / 100) * 301.6} 301.6`}
-                  strokeLinecap="round"
-                  className="transition-all duration-1000"
+              <div className="flex-1 h-4 bg-slate-100 rounded-full overflow-hidden">
+                <div 
+                  className={`h-full bg-gradient-to-r ${getGradeGradient(grade)} rounded-full transition-all duration-700 ease-out`}
+                  style={{ width: `${totalStudents > 0 ? (count / totalStudents * 100) : 0}%` }}
                 />
-              </svg>
+              </div>
+              <div className="w-10 text-xs font-semibold text-slate-600 text-right">{count}</div>
             </div>
-            <div className="flex-1 grid grid-cols-3 gap-2 w-full">
-              <div className="bg-emerald-50 rounded-lg p-2 text-center">
-                <p className="text-lg font-bold text-emerald-600">{stats.attendance.present}</p>
-                <p className="text-[10px] text-slate-500">Present</p>
-              </div>
-              <div className="bg-amber-50 rounded-lg p-2 text-center">
-                <p className="text-lg font-bold text-amber-600">{stats.attendance.late}</p>
-                <p className="text-[10px] text-slate-500">Late</p>
-              </div>
-              <div className="bg-rose-50 rounded-lg p-2 text-center">
-                <p className="text-lg font-bold text-rose-600">{stats.attendance.absent}</p>
-                <p className="text-[10px] text-slate-500">Absent</p>
-              </div>
-            </div>
-          </div>
+          ))}
+        </div>
 
-          {/* Daily Breakdown */}
-          <div className="mb-4">
-            <p className="text-xs font-semibold text-slate-600 mb-2">📅 Daily Attendance (Last 7 Days)</p>
-            <div className="space-y-1.5">
-              {stats.attendance.dailyBreakdown?.slice(0, 7).map((day, idx) => (
-                <div key={idx} className="flex items-center gap-2 text-xs">
-                  <span className="w-24 text-slate-500 truncate">{day.date}</span>
-                  <div className="flex-1 h-4 bg-slate-100 rounded-full overflow-hidden flex">
-                    <div className="h-full bg-emerald-500" style={{ width: `${day.total > 0 ? (day.present / day.total * 100) : 0}%` }} />
-                    <div className="h-full bg-amber-500" style={{ width: `${day.total > 0 ? (day.late / day.total * 100) : 0}%` }} />
-                    <div className="h-full bg-rose-500" style={{ width: `${day.total > 0 ? (day.absent / day.total * 100) : 0}%` }} />
+        {/* Top & Low Performers with Classes */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-slate-100">
+          {/* Top Performers */}
+          <div>
+            <p className="text-xs font-semibold text-emerald-600 mb-2 flex items-center gap-1">🏆 Top Performers</p>
+            <div className="space-y-1.5 max-h-40 overflow-y-auto">
+              {stats.performance.topPerformers?.slice(0, 5).map((student, idx) => (
+                <div key={idx} className="flex justify-between items-center text-xs bg-emerald-50 p-1.5 rounded">
+                  <div className="flex-1 min-w-0">
+                    <span className="font-medium text-slate-700 truncate">{student.name}</span>
+                    <span className="text-[10px] text-slate-400 ml-1">({student.gradeLevel} {student.className})</span>
                   </div>
-                  <span className="w-12 text-right font-medium text-slate-600">{day.total}</span>
+                  <span className="font-bold text-emerald-600 ml-2">{student.average}%</span>
                 </div>
               ))}
-              {(!stats.attendance.dailyBreakdown || stats.attendance.dailyBreakdown.length === 0) && (
-                <p className="text-xs text-slate-400 italic">No attendance data available</p>
+              {(!stats.performance.topPerformers || stats.performance.topPerformers.length === 0) && (
+                <p className="text-xs text-slate-400 italic">No data available</p>
               )}
             </div>
           </div>
-
-          {/* Attendance Details */}
-          <div className="grid grid-cols-2 gap-3 pt-3 border-t border-slate-100">
-            {/* Most Present Students */}
-            <div>
-              <p className="text-xs font-semibold text-emerald-600 mb-2 flex items-center gap-1">⭐ Most Present</p>
-              <div className="space-y-1.5">
-                {stats.attendance.topPresentStudents?.slice(0, 3).map((student, idx) => (
-                  <div key={idx} className="flex justify-between items-center text-xs bg-emerald-50 p-1.5 rounded">
+          {/* Low Performers */}
+          <div>
+            <p className="text-xs font-semibold text-rose-600 mb-2 flex items-center gap-1">📉 Needs Improvement</p>
+            <div className="space-y-1.5 max-h-40 overflow-y-auto">
+              {stats.performance.lowPerformers?.slice(0, 5).map((student, idx) => (
+                <div key={idx} className="flex justify-between items-center text-xs bg-rose-50 p-1.5 rounded">
+                  <div className="flex-1 min-w-0">
                     <span className="font-medium text-slate-700 truncate">{student.name}</span>
-                    <span className="font-bold text-emerald-600">{student.presentDays} days</span>
+                    <span className="text-[10px] text-slate-400 ml-1">({student.gradeLevel} {student.className})</span>
                   </div>
-                ))}
-                {(!stats.attendance.topPresentStudents || stats.attendance.topPresentStudents.length === 0) && (
-                  <p className="text-xs text-slate-400 italic">No data available</p>
-                )}
-              </div>
-            </div>
-            {/* Most Absent Students */}
-            <div>
-              <p className="text-xs font-semibold text-rose-600 mb-2 flex items-center gap-1">⚠️ Most Absent</p>
-              <div className="space-y-1.5">
-                {stats.attendance.topAbsentStudents?.slice(0, 3).map((student, idx) => (
-                  <div key={idx} className="flex justify-between items-center text-xs bg-rose-50 p-1.5 rounded">
-                    <span className="font-medium text-slate-700 truncate">{student.name}</span>
-                    <span className="font-bold text-rose-600">{student.absentDays} days</span>
-                  </div>
-                ))}
-                {(!stats.attendance.topAbsentStudents || stats.attendance.topAbsentStudents.length === 0) && (
-                  <p className="text-xs text-slate-400 italic">No data available</p>
-                )}
-              </div>
+                  <span className="font-bold text-rose-600 ml-2">{student.average}%</span>
+                </div>
+              ))}
+              {(!stats.performance.lowPerformers || stats.performance.lowPerformers.length === 0) && (
+                <p className="text-xs text-slate-400 italic">No data available</p>
+              )}
             </div>
           </div>
+        </div>
 
-          {/* View Details Link */}
-          <div className="mt-3 pt-2 border-t border-slate-100">
-            <Link to="/attendance" className="text-xs text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
-              View Full Attendance Report →
-            </Link>
+        <div className="mt-3 pt-2 border-t border-slate-100">
+          <Link to="/marks" className="text-xs text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
+            View Full Performance Report →
+          </Link>
+        </div>
+      </div>
+
+      {/* Student Attendance - Enhanced */}
+      <div className="bg-white rounded-xl shadow-lg p-5 hover:shadow-xl transition-all border border-slate-100">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
+              <span className="text-emerald-600 text-sm">👨‍🎓</span>
+            </div>
+            <h2 className="font-bold text-slate-800">Student Attendance</h2>
           </div>
+          <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">Last 30 Days</span>
+        </div>
+
+        <div className="flex flex-col md:flex-row items-center gap-4 md:gap-6 mb-4">
+          <div className="relative w-28 h-28 md:w-32 md:h-32 flex-shrink-0">
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="text-center">
+                <p className="text-2xl md:text-3xl font-bold text-emerald-600">{stats.studentAttendance.rate}%</p>
+                <p className="text-[10px] md:text-xs text-slate-500">Rate</p>
+              </div>
+            </div>
+            <svg className="w-28 h-28 md:w-32 md:h-32 transform -rotate-90">
+              <circle cx="56" cy="56" r="48" fill="none" stroke="#e2e8f0" strokeWidth="10" />
+              <circle 
+                cx="56" cy="56" r="48" fill="none" 
+                stroke="#10b981" strokeWidth="10" 
+                strokeDasharray={`${(stats.studentAttendance.rate / 100) * 301.6} 301.6`}
+                strokeLinecap="round"
+                className="transition-all duration-1000"
+              />
+            </svg>
+          </div>
+          <div className="flex-1 grid grid-cols-3 gap-2 w-full">
+            <div className="bg-emerald-50 rounded-lg p-2 text-center">
+              <p className="text-lg font-bold text-emerald-600">{stats.studentAttendance.present}</p>
+              <p className="text-[10px] text-slate-500">Present</p>
+            </div>
+            <div className="bg-amber-50 rounded-lg p-2 text-center">
+              <p className="text-lg font-bold text-amber-600">{stats.studentAttendance.late}</p>
+              <p className="text-[10px] text-slate-500">Late</p>
+            </div>
+            <div className="bg-rose-50 rounded-lg p-2 text-center">
+              <p className="text-lg font-bold text-rose-600">{stats.studentAttendance.absent}</p>
+              <p className="text-[10px] text-slate-500">Absent</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Student Daily Breakdown */}
+        <div className="mb-4">
+          <p className="text-xs font-semibold text-slate-600 mb-2">📅 Daily Student Attendance (Last 7 Days)</p>
+          <div className="space-y-1.5">
+            {stats.studentAttendance.dailyBreakdown?.slice(0, 7).map((day, idx) => (
+              <div key={idx} className="flex items-center gap-2 text-xs">
+                <span className="w-24 text-slate-500 truncate">{day.date}</span>
+                <div className="flex-1 h-4 bg-slate-100 rounded-full overflow-hidden flex">
+                  <div className="h-full bg-emerald-500" style={{ width: `${day.total > 0 ? (day.present / day.total * 100) : 0}%` }} />
+                  <div className="h-full bg-amber-500" style={{ width: `${day.total > 0 ? (day.late / day.total * 100) : 0}%` }} />
+                  <div className="h-full bg-rose-500" style={{ width: `${day.total > 0 ? (day.absent / day.total * 100) : 0}%` }} />
+                </div>
+                <span className="w-12 text-right font-medium text-slate-600">{day.total}</span>
+              </div>
+            ))}
+            {(!stats.studentAttendance.dailyBreakdown || stats.studentAttendance.dailyBreakdown.length === 0) && (
+              <p className="text-xs text-slate-400 italic">No attendance data available</p>
+            )}
+          </div>
+        </div>
+
+        {/* Student Attendance Details */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-slate-100">
+          <div>
+            <p className="text-xs font-semibold text-emerald-600 mb-2 flex items-center gap-1">⭐ Most Present Students</p>
+            <div className="space-y-1.5 max-h-32 overflow-y-auto">
+              {stats.studentAttendance.topPresentStudents?.slice(0, 3).map((student, idx) => (
+                <div key={idx} className="flex justify-between items-center text-xs bg-emerald-50 p-1.5 rounded">
+                  <div className="flex-1 min-w-0">
+                    <span className="font-medium text-slate-700 truncate">{student.name}</span>
+                    <span className="text-[10px] text-slate-400 ml-1">({student.gradeLevel} {student.className})</span>
+                  </div>
+                  <span className="font-bold text-emerald-600 ml-2">{student.presentDays} days</span>
+                </div>
+              ))}
+              {(!stats.studentAttendance.topPresentStudents || stats.studentAttendance.topPresentStudents.length === 0) && (
+                <p className="text-xs text-slate-400 italic">No data available</p>
+              )}
+            </div>
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-rose-600 mb-2 flex items-center gap-1">⚠️ Most Absent Students</p>
+            <div className="space-y-1.5 max-h-32 overflow-y-auto">
+              {stats.studentAttendance.topAbsentStudents?.slice(0, 3).map((student, idx) => (
+                <div key={idx} className="flex justify-between items-center text-xs bg-rose-50 p-1.5 rounded">
+                  <div className="flex-1 min-w-0">
+                    <span className="font-medium text-slate-700 truncate">{student.name}</span>
+                    <span className="text-[10px] text-slate-400 ml-1">({student.gradeLevel} {student.className})</span>
+                  </div>
+                  <span className="font-bold text-rose-600 ml-2">{student.absentDays} days</span>
+                </div>
+              ))}
+              {(!stats.studentAttendance.topAbsentStudents || stats.studentAttendance.topAbsentStudents.length === 0) && (
+                <p className="text-xs text-slate-400 italic">No data available</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-3 pt-2 border-t border-slate-100">
+          <Link to="/attendance" className="text-xs text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
+            View Full Student Attendance Report →
+          </Link>
+        </div>
+      </div>
+
+      {/* Teacher Attendance - Enhanced */}
+      <div className="bg-white rounded-xl shadow-lg p-5 hover:shadow-xl transition-all border border-slate-100">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
+              <span className="text-purple-600 text-sm">👨‍🏫</span>
+            </div>
+            <h2 className="font-bold text-slate-800">Teacher Attendance</h2>
+          </div>
+          <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">Last 30 Days</span>
+        </div>
+
+        <div className="flex flex-col md:flex-row items-center gap-4 md:gap-6 mb-4">
+          <div className="relative w-28 h-28 md:w-32 md:h-32 flex-shrink-0">
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="text-center">
+                <p className="text-2xl md:text-3xl font-bold text-purple-600">{stats.teacherAttendance.rate}%</p>
+                <p className="text-[10px] md:text-xs text-slate-500">Rate</p>
+              </div>
+            </div>
+            <svg className="w-28 h-28 md:w-32 md:h-32 transform -rotate-90">
+              <circle cx="56" cy="56" r="48" fill="none" stroke="#e2e8f0" strokeWidth="10" />
+              <circle 
+                cx="56" cy="56" r="48" fill="none" 
+                stroke="#8b5cf6" strokeWidth="10" 
+                strokeDasharray={`${(stats.teacherAttendance.rate / 100) * 301.6} 301.6`}
+                strokeLinecap="round"
+                className="transition-all duration-1000"
+              />
+            </svg>
+          </div>
+          <div className="flex-1 grid grid-cols-3 gap-2 w-full">
+            <div className="bg-emerald-50 rounded-lg p-2 text-center">
+              <p className="text-lg font-bold text-emerald-600">{stats.teacherAttendance.present}</p>
+              <p className="text-[10px] text-slate-500">Present</p>
+            </div>
+            <div className="bg-amber-50 rounded-lg p-2 text-center">
+              <p className="text-lg font-bold text-amber-600">{stats.teacherAttendance.late}</p>
+              <p className="text-[10px] text-slate-500">Late</p>
+            </div>
+            <div className="bg-rose-50 rounded-lg p-2 text-center">
+              <p className="text-lg font-bold text-rose-600">{stats.teacherAttendance.absent}</p>
+              <p className="text-[10px] text-slate-500">Absent</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Teacher Daily Breakdown */}
+        <div className="mb-4">
+          <p className="text-xs font-semibold text-slate-600 mb-2">📅 Daily Teacher Attendance (Last 7 Days)</p>
+          <div className="space-y-1.5">
+            {stats.teacherAttendance.dailyBreakdown?.slice(0, 7).map((day, idx) => (
+              <div key={idx} className="flex items-center gap-2 text-xs">
+                <span className="w-24 text-slate-500 truncate">{day.date}</span>
+                <div className="flex-1 h-4 bg-slate-100 rounded-full overflow-hidden flex">
+                  <div className="h-full bg-emerald-500" style={{ width: `${day.total > 0 ? (day.present / day.total * 100) : 0}%` }} />
+                  <div className="h-full bg-amber-500" style={{ width: `${day.total > 0 ? (day.late / day.total * 100) : 0}%` }} />
+                  <div className="h-full bg-rose-500" style={{ width: `${day.total > 0 ? (day.absent / day.total * 100) : 0}%` }} />
+                </div>
+                <span className="w-12 text-right font-medium text-slate-600">{day.total}</span>
+              </div>
+            ))}
+            {(!stats.teacherAttendance.dailyBreakdown || stats.teacherAttendance.dailyBreakdown.length === 0) && (
+              <p className="text-xs text-slate-400 italic">No attendance data available</p>
+            )}
+          </div>
+        </div>
+
+        {/* Teacher Attendance Details */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-slate-100">
+          <div>
+            <p className="text-xs font-semibold text-emerald-600 mb-2 flex items-center gap-1">⭐ Most Present Teachers</p>
+            <div className="space-y-1.5 max-h-32 overflow-y-auto">
+              {stats.teacherAttendance.topPresentTeachers?.slice(0, 3).map((teacher, idx) => (
+                <div key={idx} className="flex justify-between items-center text-xs bg-emerald-50 p-1.5 rounded">
+                  <div className="flex-1 min-w-0">
+                    <span className="font-medium text-slate-700 truncate">{teacher.name}</span>
+                    <span className="text-[10px] text-slate-400 ml-1">({teacher.department || "General"})</span>
+                  </div>
+                  <span className="font-bold text-emerald-600 ml-2">{teacher.presentDays} days</span>
+                </div>
+              ))}
+              {(!stats.teacherAttendance.topPresentTeachers || stats.teacherAttendance.topPresentTeachers.length === 0) && (
+                <p className="text-xs text-slate-400 italic">No data available</p>
+              )}
+            </div>
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-rose-600 mb-2 flex items-center gap-1">⚠️ Most Absent Teachers</p>
+            <div className="space-y-1.5 max-h-32 overflow-y-auto">
+              {stats.teacherAttendance.topAbsentTeachers?.slice(0, 3).map((teacher, idx) => (
+                <div key={idx} className="flex justify-between items-center text-xs bg-rose-50 p-1.5 rounded">
+                  <div className="flex-1 min-w-0">
+                    <span className="font-medium text-slate-700 truncate">{teacher.name}</span>
+                    <span className="text-[10px] text-slate-400 ml-1">({teacher.department || "General"})</span>
+                  </div>
+                  <span className="font-bold text-rose-600 ml-2">{teacher.absentDays} days</span>
+                </div>
+              ))}
+              {(!stats.teacherAttendance.topAbsentTeachers || stats.teacherAttendance.topAbsentTeachers.length === 0) && (
+                <p className="text-xs text-slate-400 italic">No data available</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-3 pt-2 border-t border-slate-100">
+          <Link to="/attendance" className="text-xs text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
+            View Full Teacher Attendance Report →
+          </Link>
         </div>
       </div>
 
