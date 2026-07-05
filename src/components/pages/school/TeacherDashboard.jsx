@@ -1,6 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { getMyPermissions, getHomeworks, getCourses, getStudents, getHomeworkSummary } from "../../services/schoolService";
+import { 
+  getMyPermissions, 
+  getHomeworks, 
+  getCourses, 
+  getStudents, 
+  getHomeworkSummary,
+  getClassActivities,
+  getSlowLearnerCases,
+  getStudentActivities
+} from "../../services/schoolService";
 
 export default function TeacherDashboard() {
   const [loading, setLoading] = useState(true);
@@ -10,10 +19,15 @@ export default function TeacherDashboard() {
     myCourses: 0,
     myStudents: 0,
     homeworkPending: 0,
-    homeworkOverdue: 0
+    homeworkOverdue: 0,
+    recentActivities: 0,
+    slowLearners: 0,
+    recentActivityCount: 0
   });
   const [recentPermissions, setRecentPermissions] = useState([]);
   const [recentHomeworks, setRecentHomeworks] = useState([]);
+  const [recentActivities, setRecentActivities] = useState([]);
+  const [slowLearnerCases, setSlowLearnerCases] = useState([]);
   const [error, setError] = useState("");
   const [userName, setUserName] = useState(localStorage.getItem("userName") || "Teacher");
 
@@ -45,6 +59,14 @@ export default function TeacherDashboard() {
         getHomeworkSummary().catch(err => {
           console.warn("Homework summary API not available yet:", err.message);
           return { data: { summary: {} } };
+        }),
+        getClassActivities({ grade: "ALL", className: "ALL", term: "TERM1" }).catch(err => {
+          console.warn("Activities API not available yet:", err.message);
+          return { data: { activities: [] } };
+        }),
+        getSlowLearnerCases({ semester: "TERM1" }).catch(err => {
+          console.warn("Slow learners API not available yet:", err.message);
+          return { data: { cases: [] } };
         })
       ]);
 
@@ -53,6 +75,20 @@ export default function TeacherDashboard() {
       const courses = results[2].status === "fulfilled" ? (results[2].value?.data || []) : [];
       const students = results[3].status === "fulfilled" ? (results[3].value?.data || []) : [];
       const summary = results[4].status === "fulfilled" ? (results[4].value?.data?.summary || {}) : {};
+      const activities = results[5].status === "fulfilled" ? (results[5].value?.data?.activities || []) : [];
+      const slowLearners = results[6].status === "fulfilled" ? (results[6].value?.data?.cases || []) : [];
+
+      // Count activities by teacher (filter by current teacher)
+      const teacherId = localStorage.getItem("userId");
+      const myActivities = activities.filter(a => a.teacherId === teacherId || a.teacherName === userName);
+      
+      // Count slow learners in teacher's classes
+      const teacherGrade = localStorage.getItem("grade") || "ALL";
+      const teacherClass = localStorage.getItem("className") || "ALL";
+      const mySlowLearners = slowLearners.filter(s => 
+        (teacherGrade === "ALL" || s.grade === teacherGrade) && 
+        (teacherClass === "ALL" || s.className === teacherClass)
+      );
 
       setStats({
         pendingRequests: permissions.filter(p => p.status === "PENDING").length,
@@ -60,11 +96,16 @@ export default function TeacherDashboard() {
         myCourses: courses.length,
         myStudents: students.length,
         homeworkPending: summary.pending || 0,
-        homeworkOverdue: summary.overdue || 0
+        homeworkOverdue: summary.overdue || 0,
+        recentActivities: myActivities.length,
+        slowLearners: mySlowLearners.length,
+        recentActivityCount: activities.length
       });
 
       setRecentPermissions(permissions.slice(0, 5));
       setRecentHomeworks(homeworks.slice(0, 5));
+      setRecentActivities(myActivities.slice(0, 5));
+      setSlowLearnerCases(mySlowLearners.slice(0, 5));
     } catch (error) {
       console.error("Error fetching teacher data:", error);
       setError("Failed to load some data. Please refresh the page.");
@@ -148,7 +189,7 @@ export default function TeacherDashboard() {
           </div>
 
           {/* Quick Stats - Dark Theme */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-6">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mt-6">
             <div className="bg-white/5 backdrop-blur rounded-xl p-3 border border-white/10 hover:bg-white/10 transition-all">
               <div className="flex items-center gap-2">
                 <span className="text-lg">📚</span>
@@ -172,10 +213,17 @@ export default function TeacherDashboard() {
             </div>
             <div className="bg-white/5 backdrop-blur rounded-xl p-3 border border-white/10 hover:bg-white/10 transition-all">
               <div className="flex items-center gap-2">
-                <span className="text-lg">📋</span>
-                <p className="text-slate-300 text-xs">Leave Requests</p>
+                <span className="text-lg">✏️</span>
+                <p className="text-slate-300 text-xs">Recent Activities</p>
               </div>
-              <p className="text-2xl font-bold text-rose-300 mt-1">{stats.pendingRequests}</p>
+              <p className="text-2xl font-bold text-orange-300 mt-1">{stats.recentActivities}</p>
+            </div>
+            <div className="bg-white/5 backdrop-blur rounded-xl p-3 border border-white/10 hover:bg-white/10 transition-all">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">🎯</span>
+                <p className="text-slate-300 text-xs">Slow Learners</p>
+              </div>
+              <p className="text-2xl font-bold text-rose-300 mt-1">{stats.slowLearners}</p>
             </div>
           </div>
         </div>
@@ -206,13 +254,13 @@ export default function TeacherDashboard() {
       </div>
 
       {/* Recent Activity Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Recent Permissions */}
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
           <div className="px-4 py-3 border-b bg-gradient-to-r from-slate-50 to-slate-100 flex justify-between items-center">
             <div className="flex items-center gap-2">
               <span className="text-lg">📋</span>
-              <h3 className="font-semibold text-slate-800 text-sm">Recent Leave Requests</h3>
+              <h3 className="font-semibold text-slate-800 text-sm">Leave Requests</h3>
             </div>
             {recentPermissions.length > 0 && (
               <Link to="/permissions" className="text-xs text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
@@ -226,7 +274,7 @@ export default function TeacherDashboard() {
               <span>No leave requests yet</span>
             </div>
           ) : (
-            <div className="divide-y divide-slate-100">
+            <div className="divide-y divide-slate-100 max-h-52 overflow-y-auto">
               {recentPermissions.map((permission) => (
                 <div key={permission._id} className="px-4 py-3 flex justify-between items-center hover:bg-slate-50 transition">
                   <div className="flex-1 min-w-0">
@@ -235,7 +283,6 @@ export default function TeacherDashboard() {
                       <span>📅</span>
                       {permission.startDate ? new Date(permission.startDate).toLocaleDateString() : "N/A"} - 
                       {permission.endDate ? new Date(permission.endDate).toLocaleDateString() : "N/A"}
-                      {permission.totalDays && ` (${permission.totalDays} days)`}
                     </p>
                   </div>
                   <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ml-2 flex-shrink-0 ${
@@ -248,10 +295,6 @@ export default function TeacherDashboard() {
                      permission.status === "PENDING" ? "⏳" :
                      permission.status === "REVOKED" ? "🔄" :
                      "❌"}
-                    {permission.status === "APPROVED" ? "Approved" :
-                     permission.status === "PENDING" ? "Pending" :
-                     permission.status === "REVOKED" ? "Revoked" :
-                     "Disapproved"}
                   </span>
                 </div>
               ))}
@@ -278,24 +321,17 @@ export default function TeacherDashboard() {
               <span>No homework assigned yet</span>
             </div>
           ) : (
-            <div className="divide-y divide-slate-100">
+            <div className="divide-y divide-slate-100 max-h-52 overflow-y-auto">
               {recentHomeworks.map((homework) => {
                 const isOverdue = new Date(homework.dueDate) < new Date();
-                const submissionCount = homework.submissions?.length || 0;
-                const gradedCount = homework.submissions?.filter(s => s.status === "GRADED").length || 0;
-                
                 return (
                   <div key={homework._id} className="px-4 py-3 hover:bg-slate-50 transition">
                     <div className="flex justify-between items-start">
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-slate-800 truncate">{homework.title}</p>
                         <div className="flex flex-wrap items-center gap-2 mt-1">
-                          <span className="text-xs text-slate-500 flex items-center gap-1">
-                            🏫 {homework.grade} {homework.className}
-                          </span>
-                          <span className="text-xs text-slate-500 flex items-center gap-1">
-                            📖 {homework.courseName}
-                          </span>
+                          <span className="text-xs text-slate-500">🏫 {homework.grade} {homework.className}</span>
+                          <span className="text-xs text-slate-500">📖 {homework.courseName}</span>
                         </div>
                       </div>
                       <span className={`text-xs font-medium flex-shrink-0 ml-2 ${isOverdue ? "text-rose-600" : "text-emerald-600"}`}>
@@ -303,19 +339,66 @@ export default function TeacherDashboard() {
                         {new Date(homework.dueDate).toLocaleDateString()}
                       </span>
                     </div>
-                    <div className="flex items-center gap-3 mt-1.5 text-xs text-slate-400">
-                      <span className="flex items-center gap-1">
-                        👥 {submissionCount} submissions
-                      </span>
-                      {gradedCount > 0 && (
-                        <span className="flex items-center gap-1 text-emerald-600">
-                          ⭐ {gradedCount} graded
-                        </span>
-                      )}
-                    </div>
                   </div>
                 );
               })}
+            </div>
+          )}
+        </div>
+
+        {/* Recent Slow Learners */}
+        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+          <div className="px-4 py-3 border-b bg-gradient-to-r from-slate-50 to-slate-100 flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">🎯</span>
+              <h3 className="font-semibold text-slate-800 text-sm">Slow Learners</h3>
+            </div>
+            {slowLearnerCases.length > 0 && (
+              <Link to="/slow-learners" className="text-xs text-amber-600 hover:text-amber-700 flex items-center gap-1">
+                View all →
+              </Link>
+            )}
+          </div>
+          {slowLearnerCases.length === 0 ? (
+            <div className="p-4 text-center text-slate-400 text-sm flex flex-col items-center gap-2">
+              <span className="text-3xl">🎯</span>
+              <span>No slow learners in your classes</span>
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100 max-h-52 overflow-y-auto">
+              {slowLearnerCases.map((caseItem) => (
+                <div key={caseItem._id} className="px-4 py-3 hover:bg-slate-50 transition">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-slate-800 truncate">{caseItem.studentName}</p>
+                      <div className="flex flex-wrap items-center gap-2 mt-1">
+                        <span className="text-xs text-slate-500">🏫 {caseItem.grade} {caseItem.className}</span>
+                        <span className="text-xs text-slate-500">📋 {caseItem.problemCategory}</span>
+                      </div>
+                    </div>
+                    <span className={`text-xs font-medium flex-shrink-0 ml-2 px-2 py-0.5 rounded-full ${
+                      caseItem.status === "RESOLVED" ? "bg-green-100 text-green-700" :
+                      caseItem.status === "IMPROVING" ? "bg-emerald-100 text-emerald-700" :
+                      caseItem.status === "IN_PROGRESS" ? "bg-blue-100 text-blue-700" :
+                      "bg-amber-100 text-amber-700"
+                    }`}>
+                      {caseItem.status}
+                    </span>
+                  </div>
+                  {caseItem.averagePerformanceScore > 0 && (
+                    <div className="mt-1.5 flex items-center gap-2">
+                      <span className="text-xs text-slate-400">Avg Score:</span>
+                      <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full ${caseItem.averagePerformanceScore >= 50 ? 'bg-emerald-500' : 'bg-rose-500'}`}
+                          style={{ width: `${Math.min(caseItem.averagePerformanceScore, 100)}%` }}
+                        />
+                      </div>
+                      <span className="text-xs font-medium text-slate-600">{caseItem.averagePerformanceScore}%</span>
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -329,30 +412,26 @@ export default function TeacherDashboard() {
           </div>
           <h3 className="font-semibold text-slate-800 text-sm">Teaching Overview</h3>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           <div className="bg-blue-50 rounded-lg p-3 text-center hover:bg-blue-100 transition">
             <p className="text-2xl font-bold text-blue-600">{stats.totalHomeworks}</p>
-            <p className="text-xs text-slate-500 flex items-center justify-center gap-1">
-              📚 Total Homework
-            </p>
+            <p className="text-xs text-slate-500 flex items-center justify-center gap-1">📚 Total Homework</p>
           </div>
           <div className="bg-emerald-50 rounded-lg p-3 text-center hover:bg-emerald-100 transition">
             <p className="text-2xl font-bold text-emerald-600">{stats.myCourses}</p>
-            <p className="text-xs text-slate-500 flex items-center justify-center gap-1">
-              📖 Courses
-            </p>
+            <p className="text-xs text-slate-500 flex items-center justify-center gap-1">📖 Courses</p>
           </div>
           <div className="bg-purple-50 rounded-lg p-3 text-center hover:bg-purple-100 transition">
             <p className="text-2xl font-bold text-purple-600">{stats.myStudents}</p>
-            <p className="text-xs text-slate-500 flex items-center justify-center gap-1">
-              👨‍🎓 Students
-            </p>
+            <p className="text-xs text-slate-500 flex items-center justify-center gap-1">👨‍🎓 Students</p>
           </div>
           <div className="bg-amber-50 rounded-lg p-3 text-center hover:bg-amber-100 transition">
             <p className="text-2xl font-bold text-amber-600">{stats.pendingRequests}</p>
-            <p className="text-xs text-slate-500 flex items-center justify-center gap-1">
-              📋 Pending Leave
-            </p>
+            <p className="text-xs text-slate-500 flex items-center justify-center gap-1">📋 Pending Leave</p>
+          </div>
+          <div className="bg-orange-50 rounded-lg p-3 text-center hover:bg-orange-100 transition">
+            <p className="text-2xl font-bold text-orange-600">{stats.recentActivities}</p>
+            <p className="text-xs text-slate-500 flex items-center justify-center gap-1">✏️ Activities</p>
           </div>
         </div>
       </div>

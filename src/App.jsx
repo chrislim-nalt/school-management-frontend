@@ -3,6 +3,7 @@ import { lazy, Suspense } from "react";
 import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
 import RoleBasedRedirect from "./components/RoleBasedRedirect";
+import SchoolFeeManagement from "./pages/SchoolFeeManagement";
 
 // Lazy load components to prevent import errors
 const Login = lazy(() => import("./components/pages/Login"));
@@ -100,6 +101,9 @@ function App() {
           <Route path="/slow-learners" element={<ProtectedRoute requiredUserType={["school_admin", "teacher"]}><Layout><SlowLearners /></Layout></ProtectedRoute>} />
           <Route path="/visitors" element={<ProtectedRoute requiredUserType={["school_admin", "customer_care"]}><Layout><Visitors /></Layout></ProtectedRoute>} />
           <Route path="/activities" element={<ProtectedRoute requiredUserType={["school_admin", "teacher"]}><Layout><Activities /></Layout></ProtectedRoute>} />
+          
+          {/* SCHOOL FEE MANAGEMENT ROUTE - NEW */}
+          <Route path="/fees" element={<ProtectedRoute requiredUserType={["school_admin", "bursar"]}><Layout><SchoolFeeManagement /></Layout></ProtectedRoute>} />
 
           {/* SUPER ADMIN ROUTES */}
           <Route path="/admin" element={<ProtectedRoute requiredRole="superadmin"><AdminLayout><AdminDashboard /></AdminLayout></ProtectedRoute>} />

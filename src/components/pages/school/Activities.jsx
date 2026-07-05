@@ -7,7 +7,10 @@ import {
   getStudentActivities,
   updateStudentScore,
   getStudents,
-  getCourses
+  getCourses,
+  getSlowLearnerCases,
+  autoDetectSlowLearners,
+  autoCreateSlowLearnerCases
 } from "../../services/schoolService";
 import DownloadButton from "../../DownloadButton";
 
@@ -63,6 +66,8 @@ function ActivitiesComponent() {
   const [showTrends, setShowTrends] = useState(false);
   const [trendData, setTrendData] = useState(null);
   const [editingScore, setEditingScore] = useState(null);
+  const [showSlowLearnerDetect, setShowSlowLearnerDetect] = useState(false);
+  const [slowLearnerData, setSlowLearnerData] = useState(null);
   
   // Filters
   const [filterGrade, setFilterGrade] = useState("P1");
@@ -77,6 +82,14 @@ function ActivitiesComponent() {
     { value: "QUIZ", label: "Quiz", icon: "📝", color: "bg-purple-100 text-purple-700" },
     { value: "HOMEWORK", label: "Homework", icon: "📚", color: "bg-emerald-100 text-emerald-700" },
     { value: "EXAM", label: "Exam", icon: "📋", color: "bg-amber-100 text-amber-700" }
+  ];
+
+  const performanceLevels = [
+    { value: "EXCELLENT", label: "Excellent", icon: "🌟", color: "bg-emerald-500 text-white" },
+    { value: "GOOD", label: "Good", icon: "👍", color: "bg-blue-500 text-white" },
+    { value: "AVERAGE", label: "Average", icon: "📊", color: "bg-amber-500 text-white" },
+    { value: "POOR", label: "Poor", icon: "⚠️", color: "bg-orange-500 text-white" },
+    { value: "FAILING", label: "Failing", icon: "🔴", color: "bg-rose-500 text-white" }
   ];
 
   const [form, setForm] = useState({
@@ -187,6 +200,51 @@ function ActivitiesComponent() {
     }
   };
 
+  const detectSlowLearners = async () => {
+    if (filterGrade === "ALL" || filterClass === "ALL") {
+      setError("Please select a specific grade and class to detect slow learners");
+      return;
+    }
+    
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await autoDetectSlowLearners({
+        grade: filterGrade,
+        className: filterClass,
+        term: filterTerm
+      });
+      setSlowLearnerData(res.data);
+      setShowSlowLearnerDetect(true);
+    } catch (err) {
+      console.error("Detect slow learners error:", err);
+      setError("Failed to detect slow learners");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const createSlowLearnerCases = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await autoCreateSlowLearnerCases({
+        grade: filterGrade,
+        className: filterClass,
+        term: filterTerm
+      });
+      setSuccess(`✅ ${res.data.created} slow learner cases created!`);
+      setShowSlowLearnerDetect(false);
+      await fetchData();
+      setTimeout(() => setSuccess(null), 4000);
+    } catch (err) {
+      console.error("Create slow learner cases error:", err);
+      setError("Failed to create slow learner cases");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleAssign = async (e) => {
     e.preventDefault();
     setError(null);
@@ -251,6 +309,14 @@ function ActivitiesComponent() {
     return activityTypes.find(a => a.value === type) || activityTypes[0];
   };
 
+  const getPerformanceLevel = (percentage) => {
+    if (percentage >= 90) return performanceLevels[0];
+    if (percentage >= 75) return performanceLevels[1];
+    if (percentage >= 50) return performanceLevels[2];
+    if (percentage >= 30) return performanceLevels[3];
+    return performanceLevels[4];
+  };
+
   const getScoreColor = (percentage) => {
     if (percentage >= 80) return "bg-emerald-100 text-emerald-700";
     if (percentage >= 70) return "bg-blue-100 text-blue-700";
@@ -265,9 +331,10 @@ function ActivitiesComponent() {
     courseName: a?.courseName || "-",
     activityType: a?.activityType || "-",
     title: a?.title || "-",
-    score: a?.score || 0,
-    maxScore: a?.maxScore || 100,
+    marksObtained: a?.marksObtained || 0,
+    marksTotal: a?.marksTotal || 100,
     percentage: a?.percentage || 0,
+    performanceLevel: a?.performanceLevel || "-",
     date: a?.date ? new Date(a.date).toLocaleDateString() : "-"
   }));
 
@@ -277,9 +344,10 @@ function ActivitiesComponent() {
     { key: "courseName", label: "Course" },
     { key: "activityType", label: "Type" },
     { key: "title", label: "Title" },
-    { key: "score", label: "Score" },
-    { key: "maxScore", label: "Max" },
+    { key: "marksObtained", label: "Score" },
+    { key: "marksTotal", label: "Max" },
     { key: "percentage", label: "Percentage" },
+    { key: "performanceLevel", label: "Performance" },
     { key: "date", label: "Date" }
   ];
 
@@ -344,6 +412,13 @@ function ActivitiesComponent() {
               >
                 <span className="text-lg">📈</span>
                 Trends
+              </button>
+              <button
+                onClick={detectSlowLearners}
+                className="bg-white/10 backdrop-blur-md hover:bg-white/20 text-white px-4 py-2 rounded-xl transition-all flex items-center gap-2 font-semibold border border-white/20 text-sm"
+              >
+                <span className="text-lg">🎯</span>
+                Detect Slow Learners
               </button>
             </div>
           </div>
@@ -455,83 +530,119 @@ function ActivitiesComponent() {
                         <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">ID</th>
                         <th className="px-3 py-2 text-center text-xs font-semibold text-slate-600">Score</th>
                         <th className="px-3 py-2 text-center text-xs font-semibold text-slate-600">Percentage</th>
+                        <th className="px-3 py-2 text-center text-xs font-semibold text-slate-600">Performance</th>
                         <th className="px-3 py-2 text-center text-xs font-semibold text-slate-600">Action</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {batch.students?.map((student) => (
-                        <tr key={student.studentId} className="hover:bg-slate-50 transition-colors">
-                          <td className="px-3 py-2 font-medium text-slate-800">{student.studentName}</td>
-                          <td className="px-3 py-2 font-mono text-xs text-indigo-600">{student.studentId}</td>
-                          <td className="px-3 py-2 text-center font-medium">{student.score || 0}</td>
-                          <td className="px-3 py-2 text-center">
-                            <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-bold ${getScoreColor(student.percentage || 0)}`}>
-                              {student.percentage || 0}%
-                            </span>
-                          </td>
-                          <td className="px-3 py-2 text-center">
-                            <button
-                              onClick={() => {
-                                setEditingScore({
-                                  activityId: student.activityId || batch.batchId,
-                                  studentId: student.studentId,
-                                  studentName: student.studentName,
-                                  score: student.score || 0,
-                                  maxScore: batch.maxScore
-                                });
-                              }}
-                              className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-600 text-white rounded-lg text-xs font-medium hover:bg-indigo-700 transition"
-                            >
-                              ✏️ Update Score
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
+                      {batch.students?.map((student) => {
+                        const marksObtained = student.marksObtained || student.score || 0;
+                        const marksTotal = student.marksTotal || batch.maxScore || 100;
+                        const percentage = student.percentage || (marksTotal > 0 ? (marksObtained / marksTotal * 100) : 0);
+                        const performance = getPerformanceLevel(percentage);
+                        const isSlowLearner = student.isSlowLearner || false;
+                        
+                        return (
+                          <tr key={student.studentId} className={`hover:bg-slate-50 transition-colors ${isSlowLearner ? 'bg-amber-50' : ''}`}>
+                            <td className="px-3 py-2 font-medium text-slate-800">
+                              {student.studentName}
+                              {isSlowLearner && (
+                                <span className="ml-1.5 text-xs text-amber-600">🎯</span>
+                              )}
+                            </td>
+                            <td className="px-3 py-2 font-mono text-xs text-indigo-600">{student.studentId}</td>
+                            <td className="px-3 py-2 text-center font-medium">
+                              {marksObtained} / {marksTotal}
+                            </td>
+                            <td className="px-3 py-2 text-center">
+                              <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-bold ${getScoreColor(percentage)}`}>
+                                {Math.round(percentage)}%
+                              </span>
+                            </td>
+                            <td className="px-3 py-2 text-center">
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${performance.color}`}>
+                                {performance.icon} {performance.label}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2 text-center">
+                              <button
+                                onClick={() => {
+                                  setEditingScore({
+                                    activityId: student.activityId || batch.batchId,
+                                    studentId: student.studentId,
+                                    studentName: student.studentName,
+                                    score: marksObtained,
+                                    maxScore: marksTotal,
+                                    isSlowLearner: isSlowLearner
+                                  });
+                                }}
+                                className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-600 text-white rounded-lg text-xs font-medium hover:bg-indigo-700 transition"
+                              >
+                                ✏️ Update Score
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
 
                 {/* Student Scores - Mobile Cards */}
                 <div className="block md:hidden divide-y divide-slate-100">
-                  {batch.students?.map((student) => (
-                    <div key={student.studentId} className="p-3 hover:bg-slate-50 transition">
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <p className="font-medium text-slate-800 text-sm">{student.studentName}</p>
-                          <p className="text-xs text-slate-400">{student.studentId}</p>
-                        </div>
-                        <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-bold ${getScoreColor(student.percentage || 0)}`}>
-                          {student.percentage || 0}%
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <div className="flex gap-3">
+                  {batch.students?.map((student) => {
+                    const marksObtained = student.marksObtained || student.score || 0;
+                    const marksTotal = student.marksTotal || batch.maxScore || 100;
+                    const percentage = student.percentage || (marksTotal > 0 ? (marksObtained / marksTotal * 100) : 0);
+                    const performance = getPerformanceLevel(percentage);
+                    const isSlowLearner = student.isSlowLearner || false;
+                    
+                    return (
+                      <div key={student.studentId} className={`p-3 hover:bg-slate-50 transition ${isSlowLearner ? 'bg-amber-50' : ''}`}>
+                        <div className="flex justify-between items-start mb-2">
                           <div>
-                            <p className="text-[10px] text-slate-400">Score</p>
-                            <p className="text-sm font-medium text-slate-800">{student.score || 0}</p>
+                            <p className="font-medium text-slate-800 text-sm">
+                              {student.studentName}
+                              {isSlowLearner && (
+                                <span className="ml-1.5 text-xs text-amber-600">🎯</span>
+                              )}
+                            </p>
+                            <p className="text-xs text-slate-400">{student.studentId}</p>
                           </div>
-                          <div>
-                            <p className="text-[10px] text-slate-400">Max</p>
-                            <p className="text-sm font-medium text-slate-800">{batch.maxScore}</p>
-                          </div>
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${performance.color}`}>
+                            {performance.icon} {performance.label}
+                          </span>
                         </div>
-                        <button
-                          onClick={() => {
-                            setEditingScore({
-                              activityId: student.activityId || batch.batchId,
-                              studentId: student.studentId,
-                              studentName: student.studentName,
-                              score: student.score || 0,
-                              maxScore: batch.maxScore
-                            });
-                          }}
-                          className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-600 text-white rounded-lg text-xs font-medium hover:bg-indigo-700 transition"
-                        >
-                          ✏️ Update
-                        </button>
+                        <div className="flex justify-between items-center">
+                          <div className="flex gap-3">
+                            <div>
+                              <p className="text-[10px] text-slate-400">Score</p>
+                              <p className="text-sm font-medium text-slate-800">{marksObtained} / {marksTotal}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-slate-400">Percentage</p>
+                              <p className="text-sm font-bold text-slate-800">{Math.round(percentage)}%</p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => {
+                              setEditingScore({
+                                activityId: student.activityId || batch.batchId,
+                                studentId: student.studentId,
+                                studentName: student.studentName,
+                                score: marksObtained,
+                                maxScore: marksTotal,
+                                isSlowLearner: isSlowLearner
+                              });
+                            }}
+                            className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-600 text-white rounded-lg text-xs font-medium hover:bg-indigo-700 transition"
+                          >
+                            ✏️ Update
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
                 
                 {/* Batch Stats */}
@@ -540,6 +651,7 @@ function ActivitiesComponent() {
                   <span className="flex items-center gap-1">✅ Submitted: {batch.statistics?.submitted || 0}</span>
                   <span className="flex items-center gap-1">📊 Average: {batch.statistics?.averageScore || 0}%</span>
                   <span className="flex items-center gap-1">🏆 Pass Rate: {batch.statistics?.passRate || 0}%</span>
+                  <span className="flex items-center gap-1">🎯 Slow Learners: {batch.statistics?.slowLearnerCount || 0}</span>
                 </div>
               </div>
             );
@@ -717,7 +829,12 @@ function ActivitiesComponent() {
             <form onSubmit={handleUpdateScore} className="p-5 space-y-4">
               <div>
                 <p className="text-xs font-semibold text-slate-700">Student</p>
-                <p className="text-base font-bold text-slate-800">{editingScore.studentName}</p>
+                <p className="text-base font-bold text-slate-800">
+                  {editingScore.studentName}
+                  {editingScore.isSlowLearner && (
+                    <span className="ml-2 text-xs text-amber-600">🎯 Slow Learner</span>
+                  )}
+                </p>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Score (0 - {editingScore.maxScore})</label>
@@ -764,7 +881,7 @@ function ActivitiesComponent() {
               </button>
             </div>
             <div className="p-5 space-y-4">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                 <div className="bg-blue-50 rounded-lg p-3 text-center">
                   <p className="text-xs text-blue-600 flex items-center justify-center gap-1">👥 Total Students</p>
                   <p className="text-xl font-bold text-blue-700">{dashboardData?.classInfo?.totalStudents || 0}</p>
@@ -780,6 +897,10 @@ function ActivitiesComponent() {
                 <div className="bg-amber-50 rounded-lg p-3 text-center">
                   <p className="text-xs text-amber-600 flex items-center justify-center gap-1">🏆 Pass Rate</p>
                   <p className="text-xl font-bold text-amber-700">{dashboardData?.summary?.passRate || 0}%</p>
+                </div>
+                <div className="bg-rose-50 rounded-lg p-3 text-center">
+                  <p className="text-xs text-rose-600 flex items-center justify-center gap-1">🎯 Slow Learners</p>
+                  <p className="text-xl font-bold text-rose-700">{dashboardData?.summary?.slowLearnerCount || 0}</p>
                 </div>
               </div>
 
@@ -807,6 +928,9 @@ function ActivitiesComponent() {
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-indigo-600">#{idx + 1}</span>
                         <span className="text-sm font-medium">{student?.studentName || "Unknown"}</span>
+                        {student?.isSlowLearner && (
+                          <span className="text-xs text-amber-600">🎯</span>
+                        )}
                       </div>
                       <div className="flex gap-3 text-xs">
                         <span className="text-emerald-600 flex items-center gap-1">📊 {student?.average || 0}%</span>
@@ -815,6 +939,15 @@ function ActivitiesComponent() {
                     </div>
                   ))}
                 </div>
+              </div>
+
+              <div className="bg-amber-50 rounded-lg p-3 border border-amber-200">
+                <p className="text-xs text-amber-700 font-semibold flex items-center gap-1">💡 Performance Insight</p>
+                <p className="text-sm text-amber-600">
+                  {dashboardData?.summary?.slowLearnerCount > 0 
+                    ? `🎯 ${dashboardData.summary.slowLearnerCount} students have been identified as slow learners. Consider providing additional support and resources.`
+                    : "✅ No slow learners detected in this class. All students are performing at or above expectations."}
+                </p>
               </div>
             </div>
           </div>
@@ -884,6 +1017,93 @@ function ActivitiesComponent() {
                   ))}
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Slow Learner Detection Modal */}
+      {showSlowLearnerDetect && slowLearnerData && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto" onClick={() => setShowSlowLearnerDetect(false)}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl my-8 max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 bg-gradient-to-r from-amber-600 to-orange-600 px-5 py-4 flex justify-between items-center text-white rounded-t-xl">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🎯</span>
+                <h2 className="text-lg font-bold">Slow Learner Detection</h2>
+              </div>
+              <button onClick={() => setShowSlowLearnerDetect(false)} className="text-white/70 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10 text-xl">
+                ✕
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="bg-blue-50 rounded-lg p-3 text-center">
+                  <p className="text-xs text-blue-600">Total Students</p>
+                  <p className="text-xl font-bold text-blue-700">{slowLearnerData?.totalStudents || 0}</p>
+                </div>
+                <div className="bg-rose-50 rounded-lg p-3 text-center">
+                  <p className="text-xs text-rose-600">Detected</p>
+                  <p className="text-xl font-bold text-rose-700">{slowLearnerData?.detectedCount || 0}</p>
+                </div>
+                <div className="bg-amber-50 rounded-lg p-3 text-center">
+                  <p className="text-xs text-amber-600">Threshold</p>
+                  <p className="text-xl font-bold text-amber-700">{slowLearnerData?.threshold || 50}%</p>
+                </div>
+                <div className="bg-emerald-50 rounded-lg p-3 text-center">
+                  <p className="text-xs text-emerald-600">Existing Cases</p>
+                  <p className="text-xl font-bold text-emerald-700">{slowLearnerData?.existingCases || 0}</p>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">🎯 Detected Slow Learners</p>
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {(slowLearnerData?.students || []).map((student, idx) => (
+                    <div key={idx} className="flex justify-between items-center p-3 bg-amber-50 rounded-lg border border-amber-200">
+                      <div>
+                        <p className="font-medium text-slate-800">{student.name}</p>
+                        <p className="text-xs text-slate-400">{student.studentId} - {student.grade} {student.className}</p>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="text-center">
+                          <p className="text-xs text-slate-500">Average</p>
+                          <p className="text-sm font-bold text-rose-600">{student.averageScore}%</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-xs text-slate-500">Activities</p>
+                          <p className="text-sm font-bold text-blue-600">{student.activityCount}</p>
+                        </div>
+                        <span className="text-xs text-amber-600 bg-amber-100 px-2 py-1 rounded-full">
+                          {student.hasCase ? "✅ Existing Case" : "🆕 New"}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2 border-t border-slate-100">
+                <button
+                  onClick={createSlowLearnerCases}
+                  disabled={loading || (slowLearnerData?.detectedCount || 0) === 0}
+                  className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white py-2.5 rounded-lg font-semibold text-sm hover:shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  🎯 {loading ? "Creating..." : "Create Slow Learner Cases"}
+                </button>
+                <button
+                  onClick={() => setShowSlowLearnerDetect(false)}
+                  className="flex-1 bg-slate-100 text-slate-700 py-2.5 rounded-lg font-semibold text-sm hover:bg-slate-200 transition-all"
+                >
+                  Close
+                </button>
+              </div>
+
+              {(slowLearnerData?.detectedCount || 0) === 0 && (
+                <div className="bg-emerald-50 border-l-4 border-emerald-500 text-emerald-700 p-3 rounded-lg text-sm flex items-center gap-2">
+                  <span className="text-lg">✅</span>
+                  <span>No slow learners detected in this class. All students are performing at or above expectations.</span>
+                </div>
+              )}
             </div>
           </div>
         </div>

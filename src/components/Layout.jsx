@@ -196,13 +196,13 @@ export default function Layout({ children }) {
         {
           title: "📊 Overview",
           items: [
-            { path: "/transport", name: "Dashboard", icon: "📊", description: "Financial overview", roles: ["bursar"] },
             { path: "/profile", name: "My Profile", icon: "👤", description: "Manage your account", roles: ["bursar"] },
           ],
         },
         {
-          title: "💰 Finance & Transport",
+          title: "💰 Finance Management",
           items: [
+            { path: "/fees", name: "Fees Management", icon: "💰", description: "Manage school fees", roles: ["bursar"] },
             { path: "/transport", name: "Transport Management", icon: "🚌", description: "Transport payments & records", roles: ["bursar"] },
           ],
         },
@@ -210,7 +210,7 @@ export default function Layout({ children }) {
         {
           title: "📦 Inventory Management",
           items: [
-            { path: "/Dashboard", name: "Dashboard", icon: "📊", description: "Overview of inventory", roles: ["bursar"] },
+            { path: "/dashboard", name: "Inventory Dashboard", icon: "📊", description: "Overview of inventory", roles: ["bursar"] },
             { path: "/categories", name: "Categories", icon: "📂", description: "Organize inventory categories", roles: ["bursar"] },
             { path: "/items", name: "Items", icon: "🛒", description: "Manage inventory items", roles: ["bursar"] },
             { path: "/stock", name: "Stock Management", icon: "📦", description: "Track stock movements", roles: ["bursar"] },
@@ -254,10 +254,7 @@ export default function Layout({ children }) {
         {
           title: "🏗️ Facility & Asset Management",
           items: [
-            // { path: "/assets", name: "Assets", icon: "🏗️", description: "School assets", roles: ["stock_keeper"] },
             { path: "/tracked-assets", name: "Computer Lab", icon: "💻", description: "Computer Tracking", roles: ["stock_keeper"] },
-            // { path: "/laboratory", name: "Laboratory", icon: "🔬", description: "Lab equipment", roles: ["stock_keeper"] },
-            // { path: "/library", name: "Library", icon: "📚", description: "Books collection", roles: ["stock_keeper"] },
             { path: "/cleaning-supplies", name: "Cleaning Supplies", icon: "🧹", description: "Cleaning inventory", roles: ["stock_keeper"] },
             { path: "/feeding", name: "Feeding Records", icon: "🍽️", description: "Food management", roles: ["stock_keeper"] },
           ],
@@ -307,10 +304,11 @@ export default function Layout({ children }) {
             { path: "/permissions", name: "Leave Requests", icon: "📋", description: "Manage leave requests", roles: ["school_admin"] },
           ],
         },
-        // SECTION 5: FINANCE & TRANSPORT
+        // SECTION 5: FINANCE & TRANSPORT - ADDED FEES
         {
           title: "💰 Finance & Transport",
           items: [
+            { path: "/fees", name: "Fees Management", icon: "💰", description: "Manage school fees", roles: ["school_admin"] },
             { path: "/transport", name: "Transport Management", icon: "🚌", description: "Transport payments", roles: ["school_admin"] },
           ],
         },
@@ -332,7 +330,7 @@ export default function Layout({ children }) {
         {
           title: "📦 Inventory Management",
           items: [
-            { path: "/Dashboard", name: "Dashboard", icon: "�", description: "Overview of inventory", roles: ["school_admin"] },
+            { path: "/dashboard", name: "Inventory Dashboard", icon: "📊", description: "Overview of inventory", roles: ["school_admin"] },
             { path: "/categories", name: "Categories", icon: "📂", description: "Organize items", roles: ["school_admin"] },
             { path: "/items", name: "Items", icon: "🛒", description: "Manage inventory", roles: ["school_admin"] },
             { path: "/stock", name: "Stock Management", icon: "📦", description: "Track movements", roles: ["school_admin"] },
@@ -394,6 +392,7 @@ export default function Layout({ children }) {
     
     if (isBursar) {
       return [
+        { path: "/fees", name: "Fees", icon: "💰" },
         { path: "/transport", name: "Transport", icon: "🚌" },
         { path: "/items", name: "Items", icon: "🛒" },
         { path: "/profile", name: "Profile", icon: "👤" },
@@ -412,6 +411,7 @@ export default function Layout({ children }) {
     return [
       { path: "/school-dashboard", name: "Dashboard", icon: "📊" },
       { path: "/students", name: "Students", icon: "👨‍🎓" },
+      { path: "/fees", name: "Fees", icon: "💰" },
       { path: "/profile", name: "Profile", icon: "👤" },
     ];
   };

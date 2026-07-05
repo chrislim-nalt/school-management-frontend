@@ -515,6 +515,78 @@ export const deleteVisitor = (id) => API.delete(`/visitors/${id}`);
 export const getVisitorStatistics = (params) => API.get("/visitors/statistics", { params: params || {} });
 export const getVisitorReport = (params) => API.get("/visitors/report", { params: params || {} });
 
+// ==================== SCHOOL FEES ====================
+export const recordFee = async (data) => {
+  try {
+    const response = await API.post("/fees", data);
+    return response;
+  } catch (error) {
+    console.error("recordFee error:", error);
+    throw error;
+  }
+};
+
+export const getFeeRecords = async (params) => {
+  try {
+    const response = await API.get("/fees", { params: params || {} });
+    return response;
+  } catch (error) {
+    console.error("getFeeRecords error:", error);
+    return { data: { records: [] } };
+  }
+};
+
+export const getOutstandingFees = async (params) => {
+  try {
+    const response = await API.get("/fees/outstanding", { params: params || {} });
+    return response;
+  } catch (error) {
+    console.error("getOutstandingFees error:", error);
+    return { data: { records: [] } };
+  }
+};
+
+export const getStudentFeeSummary = async (studentId) => {
+  try {
+    const response = await API.get(`/fees/student/${studentId}`);
+    return response;
+  } catch (error) {
+    console.error("getStudentFeeSummary error:", error);
+    return { data: {} };
+  }
+};
+
+// ==================== SLOW LEARNER AUTO DETECTION ====================
+export const autoDetectSlowLearners = async (params) => {
+  try {
+    const response = await API.get("/activities/auto-detect-slow-learners", { params: params || {} });
+    return response;
+  } catch (error) {
+    console.error("autoDetectSlowLearners error:", error);
+    return { data: { students: [], detectedCount: 0 } };
+  }
+};
+
+export const autoCreateSlowLearnerCases = async (params) => {
+  try {
+    const response = await API.post("/activities/auto-create-slow-learner-cases", params);
+    return response;
+  } catch (error) {
+    console.error("autoCreateSlowLearnerCases error:", error);
+    throw error;
+  }
+};
+
+export const updateSlowLearnerProgress = async (id, data) => {
+  try {
+    const response = await API.post(`/activities/update-slow-learner/${id}`, data);
+    return response;
+  } catch (error) {
+    console.error("updateSlowLearnerProgress error:", error);
+    throw error;
+  }
+};
+
 // ==================== ACTIVITIES ====================
 export const assignActivityToClass = async (data) => {
   try {

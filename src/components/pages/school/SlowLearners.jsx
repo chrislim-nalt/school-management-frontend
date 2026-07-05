@@ -96,26 +96,26 @@ export default function SlowLearners() {
   }, [selectedGrade, selectedClass, searchTerm, students]);
 
   const fetchData = async () => {
-    setLoading(true);
-    try {
-      const [studentsRes, casesRes] = await Promise.all([
-        getStudents(),
-        getSlowLearnerCases({ 
-          semester: filterSemester, 
-          grade: filterGrade !== "ALL" ? filterGrade : undefined,
-          className: filterClass !== "ALL" ? filterClass : undefined,
-          status: filterStatus !== "ALL" ? filterStatus : undefined
-        })
-      ]);
-      setStudents(studentsRes.data || []);
-      setCases(casesRes.data?.cases || []);
-    } catch (error) {
-      console.error("Failed to load data:", error);
-      setError("Failed to load data");
-    } finally {
-      setLoading(false);
-    }
-  };
+  setLoading(true);
+  try {
+    const [studentsRes, casesRes] = await Promise.all([
+      getStudents(),
+      getSlowLearnerCases({ 
+        semester: filterSemester, 
+        grade: filterGrade !== "ALL" ? filterGrade : undefined,
+        className: filterClass !== "ALL" ? filterClass : undefined,
+        status: filterStatus !== "ALL" ? filterStatus : undefined
+      })
+    ]);
+    setStudents(studentsRes.data || []);
+    setCases(casesRes.data?.cases || []);
+  } catch (error) {
+    console.error("Failed to load data:", error);
+    setError("Failed to load data");
+  } finally {
+    setLoading(false);
+  }
+};
 
   const fetchReport = async () => {
     setLoading(true);

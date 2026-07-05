@@ -9,7 +9,9 @@ import {
   getCourses,
   getMarks,
   getStudentAttendanceByClass,
-  getTeacherAttendanceByDate
+  getTeacherAttendanceByDate,
+  getSlowLearnerCases,
+  getClassActivities
 } from "../../services/schoolService";
 import { useNavigate, Link } from "react-router-dom";
 
@@ -55,9 +57,20 @@ export default function SchoolDashboard() {
       paidStudents: 0,
       unpaidStudents: 0,
       totalExpected: 0
-    }
+    },
+    slowLearners: {
+      total: 0,
+      identified: 0,
+      inProgress: 0,
+      improving: 0,
+      resolved: 0,
+      resolutionRate: 0
+    },
+    recentActivities: []
   });
   const [error, setError] = useState(null);
+  const [showSlowLearnerDetails, setShowSlowLearnerDetails] = useState(false);
+  const [slowLearnerData, setSlowLearnerData] = useState(null);
   
   const navigate = useNavigate();
   const userType = localStorage.getItem("userType");
@@ -82,6 +95,7 @@ export default function SchoolDashboard() {
       if (Array.isArray(data.courses)) return data.courses;
       if (Array.isArray(data.marks)) return data.marks;
       if (Array.isArray(data.payments)) return data.payments;
+      if (Array.isArray(data.activities)) return data.activities;
       if (Object.keys(data).every(key => !isNaN(key))) {
         return Object.values(data);
       }
@@ -106,7 +120,9 @@ export default function SchoolDashboard() {
         teacherAttendanceRes,
         marksRes,
         studentAttendanceByClassRes,
-        teacherAttendanceByDateRes
+        teacherAttendanceByDateRes,
+        slowLearnersRes,
+        recentActivitiesRes
       ] = await Promise.all([
         getStudents().catch(() => ({ data: [] })),
         getTeachers().catch(() => ({ data: [] })),
@@ -178,7 +194,9 @@ export default function SchoolDashboard() {
         getTeacherAttendanceByDate({ 
           date: currentDate,
           period: "DAILY"
-        }).catch(() => ({ data: { attendance: [] } }))
+        }).catch(() => ({ data: { attendance: [] } })),
+        getSlowLearnerCases({ semester: "TERM1" }).catch(() => ({ data: { cases: [] } })),
+        getClassActivities({ grade: "ALL", className: "ALL", term: "TERM1" }).catch(() => ({ data: { activities: [] } }))
       ]);
 
       const students = safeGetArray(studentsRes.data);
@@ -299,10 +317,34 @@ export default function SchoolDashboard() {
         teacherAvgAttendance = totalRecords > 0 ? ((teacherTotalPresent / totalRecords) * 100) : 0;
       }
 
+      // --- SLOW LEARNERS ---
+      const slowLearners = slowLearnersRes.data?.cases || [];
+      const slowLearnerSummary = {
+        total: slowLearners.length,
+        identified: slowLearners.filter(c => c.status === "IDENTIFIED").length,
+        inProgress: slowLearners.filter(c => c.status === "IN_PROGRESS").length,
+        improving: slowLearners.filter(c => c.status === "IMPROVING").length,
+        resolved: slowLearners.filter(c => c.status === "RESOLVED").length,
+        resolutionRate: slowLearners.length > 0 
+          ? ((slowLearners.filter(c => c.status === "RESOLVED").length / slowLearners.length) * 100).toFixed(1)
+          : 0
+      };
+
+      // --- RECENT ACTIVITIES ---
+      const activities = recentActivitiesRes.data?.activities || [];
+      const recentActivities = activities.slice(0, 5).map(a => ({
+        title: a.title || "Activity",
+        studentName: a.studentName || "Unknown",
+        marksObtained: a.marksObtained || 0,
+        marksTotal: a.marksTotal || 100,
+        percentage: a.percentage || 0,
+        performanceLevel: a.performanceLevel || "AVERAGE",
+        date: a.date ? new Date(a.date).toLocaleDateString() : "-"
+      }));
+
       // --- Prepare Course Performance from Marks Data ---
       let coursePerformance = [];
       if (marks && marks.length > 0) {
-        // Group marks by course
         const courseMap = {};
         marks.forEach(mark => {
           const courseId = mark.course?._id || mark.course;
@@ -344,7 +386,6 @@ export default function SchoolDashboard() {
           worstScore: Math.round(Math.min(...course.scores))
         })).sort((a, b) => b.average - a.average);
       } else {
-        // Fallback data if no marks
         coursePerformance = courses.slice(0, 5).map(c => ({
           name: c.courseName || "Course",
           average: Math.floor(Math.random() * 30) + 60,
@@ -358,7 +399,6 @@ export default function SchoolDashboard() {
         }));
       }
 
-      // --- Prepare Top Performers with Classes ---
       const topPerformers = analytics.topPerformers || students.slice(0, 5).map(s => ({
         name: s.name || "Student",
         average: Math.floor(Math.random() * 10) + 85,
@@ -449,9 +489,25 @@ export default function SchoolDashboard() {
           paidStudents: paidStudents || 0,
           unpaidStudents: unpaidStudents || 0,
           totalExpected: totalExpected || 0
-        }
+        },
+        slowLearners: slowLearnerSummary,
+        recentActivities: recentActivities
       });
       
+      // Store slow learner data for modal
+      setSlowLearnerData({
+        students: slowLearners.map(c => ({
+          name: c.studentName,
+          studentId: c.studentId,
+          grade: c.grade,
+          className: c.className,
+          status: c.status,
+          problemCategory: c.problemCategory,
+          averageScore: c.averagePerformanceScore || 0
+        })),
+        summary: slowLearnerSummary
+      });
+
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
       setError("Failed to load dashboard data. Please refresh the page.");
@@ -521,6 +577,14 @@ export default function SchoolDashboard() {
     return "bg-rose-500";
   };
 
+  const getPerformanceLevel = (percentage) => {
+    if (percentage >= 90) return { label: "Excellent", icon: "🌟", color: "bg-emerald-500" };
+    if (percentage >= 75) return { label: "Good", icon: "👍", color: "bg-blue-500" };
+    if (percentage >= 50) return { label: "Average", icon: "📊", color: "bg-amber-500" };
+    if (percentage >= 30) return { label: "Poor", icon: "⚠️", color: "bg-orange-500" };
+    return { label: "Failing", icon: "🔴", color: "bg-rose-500" };
+  };
+
   const totalStudents = stats.students.total || 0;
 
   return (
@@ -557,6 +621,27 @@ export default function SchoolDashboard() {
               <span>{new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}</span>
             </div>
           </div>
+
+          {/* Slow Learners Alert */}
+          {stats.slowLearners.total > 0 && (
+            <div className="mt-4 bg-amber-500/20 backdrop-blur border border-amber-400/30 rounded-xl p-3 flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2 text-amber-100">
+                <span className="text-lg">🎯</span>
+                <span>
+                  <span className="font-semibold">{stats.slowLearners.total}</span> slow learner cases identified
+                  {stats.slowLearners.resolutionRate > 0 && (
+                    <span className="text-amber-300 ml-1">({stats.slowLearners.resolutionRate}% resolved)</span>
+                  )}
+                </span>
+              </div>
+              <button
+                onClick={() => setShowSlowLearnerDetails(true)}
+                className="text-xs bg-amber-500/30 hover:bg-amber-500/50 text-amber-100 px-3 py-1 rounded-lg transition"
+              >
+                View Details →
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -613,6 +698,45 @@ export default function SchoolDashboard() {
         </div>
       </div>
 
+      {/* Slow Learners Stats Card */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        <div className="bg-white rounded-xl shadow-lg p-3 hover:shadow-xl transition-all border border-slate-100">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">🎯</span>
+            <p className="text-xs text-slate-500">Total Cases</p>
+          </div>
+          <p className="text-xl font-bold text-slate-800">{stats.slowLearners.total}</p>
+        </div>
+        <div className="bg-white rounded-xl shadow-lg p-3 hover:shadow-xl transition-all border border-slate-100">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">🔍</span>
+            <p className="text-xs text-slate-500">Identified</p>
+          </div>
+          <p className="text-xl font-bold text-amber-600">{stats.slowLearners.identified}</p>
+        </div>
+        <div className="bg-white rounded-xl shadow-lg p-3 hover:shadow-xl transition-all border border-slate-100">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">🔄</span>
+            <p className="text-xs text-slate-500">In Progress</p>
+          </div>
+          <p className="text-xl font-bold text-blue-600">{stats.slowLearners.inProgress}</p>
+        </div>
+        <div className="bg-white rounded-xl shadow-lg p-3 hover:shadow-xl transition-all border border-slate-100">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">📈</span>
+            <p className="text-xs text-slate-500">Improving</p>
+          </div>
+          <p className="text-xl font-bold text-emerald-600">{stats.slowLearners.improving}</p>
+        </div>
+        <div className="bg-white rounded-xl shadow-lg p-3 hover:shadow-xl transition-all border border-slate-100">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">✅</span>
+            <p className="text-xs text-slate-500">Resolved</p>
+          </div>
+          <p className="text-xl font-bold text-green-600">{stats.slowLearners.resolved}</p>
+        </div>
+      </div>
+
       {/* Academic Performance - Enhanced with Course Breakdown */}
       <div className="bg-white rounded-xl shadow-lg p-5 hover:shadow-xl transition-all border border-slate-100">
         <div className="flex items-center justify-between mb-4">
@@ -650,7 +774,7 @@ export default function SchoolDashboard() {
               />
             </svg>
           </div>
-          <div className="flex-1 grid grid-cols-2 gap-2 w-full">
+          <div className="flex-1 grid grid-cols-3 gap-2 w-full">
             <div className="bg-emerald-50 rounded-lg p-2 text-center">
               <p className="text-xs text-slate-500">Pass Rate</p>
               <p className="text-lg font-bold text-emerald-600">{stats.performance.passRate}%</p>
@@ -658,6 +782,10 @@ export default function SchoolDashboard() {
             <div className="bg-indigo-50 rounded-lg p-2 text-center">
               <p className="text-xs text-slate-500">Marks Recorded</p>
               <p className="text-lg font-bold text-indigo-600">{stats.performance.marksCount}</p>
+            </div>
+            <div className="bg-amber-50 rounded-lg p-2 text-center">
+              <p className="text-xs text-slate-500">Slow Learners</p>
+              <p className="text-lg font-bold text-amber-600">{stats.slowLearners.total}</p>
             </div>
           </div>
         </div>
@@ -681,7 +809,7 @@ export default function SchoolDashboard() {
           ))}
         </div>
 
-        {/* Course Performance Breakdown - New Section */}
+        {/* Course Performance Breakdown */}
         <div className="mb-4 pt-3 border-t border-slate-100">
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs font-semibold text-slate-600">📚 Course Performance Breakdown</p>
@@ -766,9 +894,15 @@ export default function SchoolDashboard() {
           </div>
         </div>
 
-        <div className="mt-3 pt-2 border-t border-slate-100">
+        <div className="mt-3 pt-2 border-t border-slate-100 flex flex-wrap gap-3">
           <Link to="/marks" className="text-xs text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
             View Full Performance Report →
+          </Link>
+          <Link to="/slow-learners" className="text-xs text-amber-600 hover:text-amber-700 flex items-center gap-1">
+            🎯 View Slow Learners →
+          </Link>
+          <Link to="/activities" className="text-xs text-orange-600 hover:text-orange-700 flex items-center gap-1">
+            ✏️ View Activities →
           </Link>
         </div>
       </div>
@@ -999,6 +1133,55 @@ export default function SchoolDashboard() {
         </div>
       </div>
 
+      {/* Recent Activities Section */}
+      <div className="bg-white rounded-xl shadow-lg p-5 hover:shadow-xl transition-all border border-slate-100">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center">
+              <span className="text-orange-600 text-sm">✏️</span>
+            </div>
+            <h2 className="font-bold text-slate-800">Recent Activities</h2>
+          </div>
+          <Link to="/activities" className="text-xs text-orange-600 hover:text-orange-700 flex items-center gap-1">
+            View All →
+          </Link>
+        </div>
+
+        {stats.recentActivities.length === 0 ? (
+          <div className="text-center py-4 text-slate-400 text-sm">
+            No recent activities recorded
+          </div>
+        ) : (
+          <div className="space-y-2 max-h-60 overflow-y-auto">
+            {stats.recentActivities.map((activity, idx) => {
+              const perf = getPerformanceLevel(activity.percentage);
+              return (
+                <div key={idx} className="flex justify-between items-center p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-slate-800 truncate">{activity.title}</span>
+                      <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium text-white ${perf.color}`}>
+                        {perf.icon} {perf.label}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3 mt-0.5 text-xs text-slate-400">
+                      <span>{activity.studentName}</span>
+                      <span>|</span>
+                      <span>Score: {activity.marksObtained}/{activity.marksTotal}</span>
+                      <span>|</span>
+                      <span>📅 {activity.date}</span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-sm font-bold text-indigo-600">{Math.round(activity.percentage)}%</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
       {/* Quick Actions */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <button 
@@ -1026,14 +1209,92 @@ export default function SchoolDashboard() {
           <span className="xs:hidden">Marks</span>
         </button>
         <button 
-          onClick={() => window.location.href = "/attendance"}
+          onClick={() => window.location.href = "/activities"}
           className="bg-gradient-to-r from-slate-800 to-slate-700 text-white p-3 rounded-xl text-sm font-semibold hover:shadow-lg transition-all flex items-center justify-center gap-2 hover:scale-105 hover:from-slate-700 hover:to-slate-600"
         >
-          <span>✅</span>
-          <span className="hidden xs:inline">Mark Attendance</span>
-          <span className="xs:hidden">Attendance</span>
+          <span>✏️</span>
+          <span className="hidden xs:inline">Manage Activities</span>
+          <span className="xs:hidden">Activities</span>
         </button>
       </div>
+
+      {/* Slow Learner Details Modal */}
+      {showSlowLearnerDetails && slowLearnerData && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto" onClick={() => setShowSlowLearnerDetails(false)}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl my-8 max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 bg-gradient-to-r from-amber-600 to-orange-600 px-5 py-4 flex justify-between items-center text-white rounded-t-xl">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🎯</span>
+                <h2 className="text-lg font-bold">Slow Learner Cases</h2>
+              </div>
+              <button onClick={() => setShowSlowLearnerDetails(false)} className="text-white/70 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10 text-xl">
+                ✕
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                <div className="bg-blue-50 rounded-lg p-3 text-center">
+                  <p className="text-xs text-blue-600">Total</p>
+                  <p className="text-xl font-bold text-blue-700">{slowLearnerData.summary.total}</p>
+                </div>
+                <div className="bg-amber-50 rounded-lg p-3 text-center">
+                  <p className="text-xs text-amber-600">Identified</p>
+                  <p className="text-xl font-bold text-amber-700">{slowLearnerData.summary.identified}</p>
+                </div>
+                <div className="bg-indigo-50 rounded-lg p-3 text-center">
+                  <p className="text-xs text-indigo-600">In Progress</p>
+                  <p className="text-xl font-bold text-indigo-700">{slowLearnerData.summary.inProgress}</p>
+                </div>
+                <div className="bg-emerald-50 rounded-lg p-3 text-center">
+                  <p className="text-xs text-emerald-600">Improving</p>
+                  <p className="text-xl font-bold text-emerald-700">{slowLearnerData.summary.improving}</p>
+                </div>
+                <div className="bg-green-50 rounded-lg p-3 text-center">
+                  <p className="text-xs text-green-600">Resolved</p>
+                  <p className="text-xl font-bold text-green-700">{slowLearnerData.summary.resolved}</p>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">🎯 Student Cases</p>
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {slowLearnerData.students.map((student, idx) => (
+                    <div key={idx} className="flex justify-between items-center p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition">
+                      <div>
+                        <p className="font-medium text-slate-800">{student.name}</p>
+                        <p className="text-xs text-slate-400">{student.studentId} - {student.grade} {student.className}</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                          student.status === "RESOLVED" ? "bg-green-100 text-green-700" :
+                          student.status === "IMPROVING" ? "bg-emerald-100 text-emerald-700" :
+                          student.status === "IN_PROGRESS" ? "bg-blue-100 text-blue-700" :
+                          "bg-amber-100 text-amber-700"
+                        }`}>
+                          {student.status}
+                        </span>
+                        <span className="text-xs font-bold text-rose-600">{student.averageScore}%</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2 border-t border-slate-100">
+                <Link to="/slow-learners" className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white py-2.5 rounded-lg font-semibold text-sm hover:shadow-lg transition-all flex items-center justify-center gap-2 text-center">
+                  🎯 Manage Slow Learners
+                </Link>
+                <button
+                  onClick={() => setShowSlowLearnerDetails(false)}
+                  className="flex-1 bg-slate-100 text-slate-700 py-2.5 rounded-lg font-semibold text-sm hover:bg-slate-200 transition-all"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style>{`
         @media (max-width: 480px) {
