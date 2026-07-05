@@ -3,7 +3,7 @@ import { lazy, Suspense } from "react";
 import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
 import RoleBasedRedirect from "./components/RoleBasedRedirect";
-import SchoolFeeManagement from "./pages/SchoolFeeManagement";
+
 
 // Lazy load components to prevent import errors
 const Login = lazy(() => import("./components/pages/Login"));
@@ -32,6 +32,7 @@ const Marks = lazy(() => import("./components/pages/school/Marks"));
 const Attendance = lazy(() => import("./components/pages/school/Attendance"));
 const Transport = lazy(() => import("./components/pages/school/Transport"));
 const SchoolReports = lazy(() => import("./components/pages/school/SchoolReports"));
+const SchoolFeeManagement = lazy(() => import("./components/pages/school/SchoolFeeManagement"));
 const Permissions = lazy(() => import("./components/pages/school/Permissions"));
 const Discipline = lazy(() => import("./components/pages/school/Discipline"));
 const EnglishPerformance = lazy(() => import("./components/pages/school/EnglishPerformance"));
