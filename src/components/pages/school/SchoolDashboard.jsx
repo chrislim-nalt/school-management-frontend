@@ -96,6 +96,7 @@ export default function SchoolDashboard() {
       if (Array.isArray(data.marks)) return data.marks;
       if (Array.isArray(data.payments)) return data.payments;
       if (Array.isArray(data.activities)) return data.activities;
+      if (Array.isArray(data.groupedByBatch)) return data.groupedByBatch;
       if (Object.keys(data).every(key => !isNaN(key))) {
         return Object.values(data);
       }
@@ -196,7 +197,7 @@ export default function SchoolDashboard() {
           period: "DAILY"
         }).catch(() => ({ data: { attendance: [] } })),
         getSlowLearnerCases({ semester: "TERM1" }).catch(() => ({ data: { cases: [] } })),
-        getClassActivities({ grade: "ALL", className: "ALL", term: "TERM1" }).catch(() => ({ data: { activities: [] } }))
+        getClassActivities({ grade: "ALL", className: "ALL", term: "TERM1" }).catch(() => ({ data: { activities: [], groupedByBatch: [] } }))
       ]);
 
       const students = safeGetArray(studentsRes.data);
@@ -330,17 +331,62 @@ export default function SchoolDashboard() {
           : 0
       };
 
-      // --- RECENT ACTIVITIES ---
-      const activities = recentActivitiesRes.data?.activities || [];
-      const recentActivities = activities.slice(0, 5).map(a => ({
-        title: a.title || "Activity",
-        studentName: a.studentName || "Unknown",
-        marksObtained: a.marksObtained || 0,
-        marksTotal: a.marksTotal || 100,
-        percentage: a.percentage || 0,
-        performanceLevel: a.performanceLevel || "AVERAGE",
-        date: a.date ? new Date(a.date).toLocaleDateString() : "-"
-      }));
+      // --- RECENT ACTIVITIES - FIXED: Extract from both activities and groupedByBatch ---
+      const activitiesData = recentActivitiesRes.data || {};
+      const flatActivities = activitiesData.activities || [];
+      const groupedBatches = activitiesData.groupedByBatch || [];
+      
+      // Extract all student activities from grouped batches
+      const allStudentActivities = [];
+      groupedBatches.forEach(batch => {
+        if (batch.students && Array.isArray(batch.students)) {
+          batch.students.forEach(student => {
+            // Calculate percentage if not present
+            let percentage = student.percentage || 0;
+            if (!percentage && student.marksObtained !== undefined && student.marksTotal) {
+              percentage = (student.marksObtained / student.marksTotal) * 100;
+            } else if (!percentage && student.score !== undefined && batch.maxScore) {
+              percentage = (student.score / batch.maxScore) * 100;
+            }
+            
+            // Determine performance level
+            let performanceLevel = student.performanceLevel || "AVERAGE";
+            if (!student.performanceLevel) {
+              if (percentage >= 90) performanceLevel = "EXCELLENT";
+              else if (percentage >= 75) performanceLevel = "GOOD";
+              else if (percentage >= 50) performanceLevel = "AVERAGE";
+              else if (percentage >= 30) performanceLevel = "POOR";
+              else performanceLevel = "FAILING";
+            }
+            
+            allStudentActivities.push({
+              title: batch.title || "Activity",
+              studentName: student.studentName || "Unknown",
+              studentId: student.studentId || "-",
+              marksObtained: student.marksObtained !== undefined ? student.marksObtained : (student.score || 0),
+              marksTotal: student.marksTotal || batch.maxScore || 100,
+              percentage: Math.round(percentage),
+              performanceLevel: performanceLevel,
+              date: batch.date ? new Date(batch.date).toLocaleDateString() : "-",
+              activityType: batch.activityType || "EXERCISE",
+              batchId: batch.batchId || "-"
+            });
+          });
+        }
+      });
+
+      // Combine flat activities with extracted student activities
+      const allActivities = [...flatActivities, ...allStudentActivities];
+
+      // Sort by date (most recent first) and take top 10
+      const recentActivities = allActivities
+        .sort((a, b) => {
+          // Convert date strings to comparable format
+          const dateA = a.date && a.date !== "-" ? new Date(a.date) : new Date(0);
+          const dateB = b.date && b.date !== "-" ? new Date(b.date) : new Date(0);
+          return dateB - dateA;
+        })
+        .slice(0, 10);
 
       // --- Prepare Course Performance from Marks Data ---
       let coursePerformance = [];
@@ -1133,7 +1179,7 @@ export default function SchoolDashboard() {
         </div>
       </div>
 
-      {/* Recent Activities Section */}
+      {/* Recent Activities Section - Now properly showing activities */}
       <div className="bg-white rounded-xl shadow-lg p-5 hover:shadow-xl transition-all border border-slate-100">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
@@ -1141,6 +1187,9 @@ export default function SchoolDashboard() {
               <span className="text-orange-600 text-sm">✏️</span>
             </div>
             <h2 className="font-bold text-slate-800">Recent Activities</h2>
+            {stats.recentActivities.length > 0 && (
+              <span className="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full">{stats.recentActivities.length}</span>
+            )}
           </div>
           <Link to="/activities" className="text-xs text-orange-600 hover:text-orange-700 flex items-center gap-1">
             View All →
@@ -1149,7 +1198,7 @@ export default function SchoolDashboard() {
 
         {stats.recentActivities.length === 0 ? (
           <div className="text-center py-4 text-slate-400 text-sm">
-            No recent activities recorded
+            No recent activities recorded. Assign an activity to get started.
           </div>
         ) : (
           <div className="space-y-2 max-h-60 overflow-y-auto">
@@ -1164,15 +1213,21 @@ export default function SchoolDashboard() {
                         {perf.icon} {perf.label}
                       </span>
                     </div>
-                    <div className="flex items-center gap-3 mt-0.5 text-xs text-slate-400">
+                    <div className="flex items-center gap-3 mt-0.5 text-xs text-slate-400 flex-wrap">
                       <span>{activity.studentName}</span>
                       <span>|</span>
                       <span>Score: {activity.marksObtained}/{activity.marksTotal}</span>
                       <span>|</span>
                       <span>📅 {activity.date}</span>
+                      {activity.activityType && (
+                        <>
+                          <span>|</span>
+                          <span className="text-orange-500">{activity.activityType}</span>
+                        </>
+                      )}
                     </div>
                   </div>
-                  <div className="text-right">
+                  <div className="text-right flex-shrink-0 ml-2">
                     <span className="text-sm font-bold text-indigo-600">{Math.round(activity.percentage)}%</span>
                   </div>
                 </div>

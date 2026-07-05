@@ -35,6 +35,14 @@ export default function TeacherDashboard() {
     fetchData();
   }, []);
 
+  const getPerformanceLevel = (percentage) => {
+    if (percentage >= 90) return { label: "Excellent", icon: "🌟", color: "bg-emerald-500" };
+    if (percentage >= 75) return { label: "Good", icon: "👍", color: "bg-blue-500" };
+    if (percentage >= 50) return { label: "Average", icon: "📊", color: "bg-amber-500" };
+    if (percentage >= 30) return { label: "Poor", icon: "⚠️", color: "bg-orange-500" };
+    return { label: "Failing", icon: "🔴", color: "bg-rose-500" };
+  };
+
   const fetchData = async () => {
     setLoading(true);
     setError("");
@@ -62,7 +70,7 @@ export default function TeacherDashboard() {
         }),
         getClassActivities({ grade: "ALL", className: "ALL", term: "TERM1" }).catch(err => {
           console.warn("Activities API not available yet:", err.message);
-          return { data: { activities: [] } };
+          return { data: { activities: [], groupedByBatch: [] } };
         }),
         getSlowLearnerCases({ semester: "TERM1" }).catch(err => {
           console.warn("Slow learners API not available yet:", err.message);
@@ -75,12 +83,68 @@ export default function TeacherDashboard() {
       const courses = results[2].status === "fulfilled" ? (results[2].value?.data || []) : [];
       const students = results[3].status === "fulfilled" ? (results[3].value?.data || []) : [];
       const summary = results[4].status === "fulfilled" ? (results[4].value?.data?.summary || {}) : {};
-      const activities = results[5].status === "fulfilled" ? (results[5].value?.data?.activities || []) : [];
-      const slowLearners = results[6].status === "fulfilled" ? (results[6].value?.data?.cases || []) : [];
+      
+      // --- RECENT ACTIVITIES - FIXED: Extract from both activities and groupedByBatch ---
+      const activitiesData = results[5].status === "fulfilled" ? (results[5].value?.data || {}) : { activities: [], groupedByBatch: [] };
+      const flatActivities = activitiesData.activities || [];
+      const groupedBatches = activitiesData.groupedByBatch || [];
+      
+      // Extract all student activities from grouped batches
+      const allStudentActivities = [];
+      groupedBatches.forEach(batch => {
+        if (batch.students && Array.isArray(batch.students)) {
+          batch.students.forEach(student => {
+            let percentage = student.percentage || 0;
+            if (!percentage && student.marksObtained !== undefined && student.marksTotal) {
+              percentage = (student.marksObtained / student.marksTotal) * 100;
+            } else if (!percentage && student.score !== undefined && batch.maxScore) {
+              percentage = (student.score / batch.maxScore) * 100;
+            }
+            
+            let performanceLevel = student.performanceLevel || "AVERAGE";
+            if (!student.performanceLevel) {
+              if (percentage >= 90) performanceLevel = "EXCELLENT";
+              else if (percentage >= 75) performanceLevel = "GOOD";
+              else if (percentage >= 50) performanceLevel = "AVERAGE";
+              else if (percentage >= 30) performanceLevel = "POOR";
+              else performanceLevel = "FAILING";
+            }
+            
+            allStudentActivities.push({
+              title: batch.title || "Activity",
+              studentName: student.studentName || "Unknown",
+              studentId: student.studentId || "-",
+              marksObtained: student.marksObtained !== undefined ? student.marksObtained : (student.score || 0),
+              marksTotal: student.marksTotal || batch.maxScore || 100,
+              percentage: Math.round(percentage),
+              performanceLevel: performanceLevel,
+              date: batch.date ? new Date(batch.date).toLocaleDateString() : "-",
+              activityType: batch.activityType || "EXERCISE",
+              batchId: batch.batchId || "-",
+              teacherId: batch.teacherId || null,
+              teacherName: batch.teacherName || null
+            });
+          });
+        }
+      });
 
-      // Count activities by teacher (filter by current teacher)
+      // Combine flat activities with extracted student activities
+      const allActivities = [...flatActivities, ...allStudentActivities];
+      
+      // Filter by teacher (current user)
       const teacherId = localStorage.getItem("userId");
-      const myActivities = activities.filter(a => a.teacherId === teacherId || a.teacherName === userName);
+      const myActivities = allActivities.filter(a => a.teacherId === teacherId || a.teacherName === userName);
+      
+      // Sort by date (most recent first) and take top 5
+      const recentActivitiesList = myActivities
+        .sort((a, b) => {
+          const dateA = a.date && a.date !== "-" ? new Date(a.date) : new Date(0);
+          const dateB = b.date && b.date !== "-" ? new Date(b.date) : new Date(0);
+          return dateB - dateA;
+        })
+        .slice(0, 5);
+      
+      const slowLearners = results[6].status === "fulfilled" ? (results[6].value?.data?.cases || []) : [];
       
       // Count slow learners in teacher's classes
       const teacherGrade = localStorage.getItem("grade") || "ALL";
@@ -99,12 +163,12 @@ export default function TeacherDashboard() {
         homeworkOverdue: summary.overdue || 0,
         recentActivities: myActivities.length,
         slowLearners: mySlowLearners.length,
-        recentActivityCount: activities.length
+        recentActivityCount: allActivities.length
       });
 
       setRecentPermissions(permissions.slice(0, 5));
       setRecentHomeworks(homeworks.slice(0, 5));
-      setRecentActivities(myActivities.slice(0, 5));
+      setRecentActivities(recentActivitiesList);
       setSlowLearnerCases(mySlowLearners.slice(0, 5));
     } catch (error) {
       console.error("Error fetching teacher data:", error);
@@ -402,6 +466,64 @@ export default function TeacherDashboard() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Recent Activities Section - Teacher's own activities */}
+      <div className="bg-white rounded-xl shadow-lg p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 bg-orange-100 rounded-lg text-lg">
+              ✏️
+            </div>
+            <h3 className="font-semibold text-slate-800 text-sm">My Recent Activities</h3>
+            {recentActivities.length > 0 && (
+              <span className="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full">{recentActivities.length}</span>
+            )}
+          </div>
+          {recentActivities.length > 0 && (
+            <Link to="/activities" className="text-xs text-orange-600 hover:text-orange-700 flex items-center gap-1">
+              View all →
+            </Link>
+          )}
+        </div>
+
+        {recentActivities.length === 0 ? (
+          <div className="text-center py-4 text-slate-400 text-sm flex flex-col items-center gap-2">
+            <span className="text-3xl">✏️</span>
+            <span>No activities assigned yet</span>
+            <Link to="/activities" className="text-xs text-orange-500 hover:text-orange-600 underline">
+              Assign an activity →
+            </Link>
+          </div>
+        ) : (
+          <div className="divide-y divide-slate-100 max-h-52 overflow-y-auto">
+            {recentActivities.map((activity, idx) => {
+              const perf = getPerformanceLevel(activity.percentage);
+              return (
+                <div key={idx} className="px-3 py-2.5 hover:bg-slate-50 transition">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-slate-800 truncate">{activity.title}</p>
+                        <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium text-white ${perf.color}`}>
+                          {perf.icon} {perf.label}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 mt-1">
+                        <span className="text-xs text-slate-500">👨‍🎓 {activity.studentName}</span>
+                        <span className="text-xs text-slate-500">|</span>
+                        <span className="text-xs text-slate-500">Score: {activity.marksObtained}/{activity.marksTotal}</span>
+                        <span className="text-xs text-slate-500">|</span>
+                        <span className="text-xs text-slate-500">📅 {activity.date}</span>
+                      </div>
+                    </div>
+                    <span className="text-sm font-bold text-indigo-600 flex-shrink-0 ml-2">{activity.percentage}%</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Teaching Overview Stats */}
