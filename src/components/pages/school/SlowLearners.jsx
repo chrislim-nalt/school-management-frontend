@@ -5,7 +5,9 @@ import {
   addProgressNote,
   updateSlowLearnerStatus,
   getSlowLearnerReport,
-  getStudents 
+  getStudents,
+  autoDetectSlowLearners,
+  autoCreateSlowLearnerCases
 } from "../../services/schoolService";
 import DownloadButton from "../../DownloadButton";
 
@@ -21,6 +23,15 @@ export default function SlowLearners() {
   const [showReport, setShowReport] = useState(false);
   const [showCaseDetails, setShowCaseDetails] = useState(null);
   const [reportData, setReportData] = useState(null);
+  const [showDetectModal, setShowDetectModal] = useState(false);
+  const [detecting, setDetecting] = useState(false);
+  const [detectResults, setDetectResults] = useState(null);
+  const [detectForm, setDetectForm] = useState({
+    grade: "ALL",
+    className: "ALL",
+    term: "TERM1",
+    threshold: 50
+  });
   const [filterGrade, setFilterGrade] = useState("ALL");
   const [filterClass, setFilterClass] = useState("ALL");
   const [filterSemester, setFilterSemester] = useState("TERM1");
@@ -236,13 +247,78 @@ export default function SlowLearners() {
     return colors[status] || "bg-slate-100 text-slate-700";
   };
 
+  const getTrendInfo = (trend) => {
+    const trends = {
+      IMPROVING: { icon: "📈", label: "Improving", color: "text-emerald-600 bg-emerald-50" },
+      DECLINING: { icon: "📉", label: "Declining", color: "text-rose-600 bg-rose-50" },
+      STABLE: { icon: "➖", label: "Stable", color: "text-amber-600 bg-amber-50" },
+      NO_DATA: { icon: "❓", label: "No Data", color: "text-slate-400 bg-slate-50" }
+    };
+    return trends[trend] || trends.NO_DATA;
+  };
+
+  const getScoreColor = (score) => {
+    if (score >= 70) return "text-emerald-600";
+    if (score >= 50) return "text-amber-600";
+    if (score > 0) return "text-rose-600";
+    return "text-slate-400";
+  };
+
+  const handleDetect = async () => {
+    setDetecting(true);
+    setError("");
+    try {
+      const params = {
+        term: detectForm.term,
+        threshold: detectForm.threshold
+      };
+      if (detectForm.grade !== "ALL") params.grade = detectForm.grade;
+      if (detectForm.className !== "ALL") params.className = detectForm.className;
+
+      const res = await autoDetectSlowLearners(params);
+      setDetectResults(res.data);
+    } catch (error) {
+      setError(error.response?.data?.message || "Failed to detect slow learners");
+    } finally {
+      setDetecting(false);
+    }
+  };
+
+  const handleCreateDetectedCases = async () => {
+    setDetecting(true);
+    setError("");
+    try {
+      const body = {
+        term: detectForm.term,
+        threshold: detectForm.threshold,
+        autoCreate: true
+      };
+      if (detectForm.grade !== "ALL") body.grade = detectForm.grade;
+      if (detectForm.className !== "ALL") body.className = detectForm.className;
+
+      const res = await autoCreateSlowLearnerCases(body);
+      setSuccess(res.data?.message || "Cases created from activity performance");
+      setShowDetectModal(false);
+      setDetectResults(null);
+      fetchData();
+      setTimeout(() => setSuccess(""), 4000);
+    } catch (error) {
+      setError(error.response?.data?.message || "Failed to create cases");
+    } finally {
+      setDetecting(false);
+    }
+  };
+
   const summaryStats = {
     total: cases.length,
     identified: cases.filter(c => c.status === "IDENTIFIED").length,
     inProgress: cases.filter(c => c.status === "IN_PROGRESS").length,
     improving: cases.filter(c => c.status === "IMPROVING").length,
     resolved: cases.filter(c => c.status === "RESOLVED").length,
-    resolutionRate: cases.length > 0 ? ((cases.filter(c => c.status === "RESOLVED").length / cases.length) * 100).toFixed(1) : 0
+    resolutionRate: cases.length > 0 ? ((cases.filter(c => c.status === "RESOLVED").length / cases.length) * 100).toFixed(1) : 0,
+    trendImproving: cases.filter(c => c.performanceTrend === "IMPROVING").length,
+    trendDeclining: cases.filter(c => c.performanceTrend === "DECLINING").length,
+    autoDetected: cases.filter(c => c.generatedFromActivities).length
   };
 
   const exportData = cases.map(c => ({
@@ -254,6 +330,12 @@ export default function SlowLearners() {
     "Problem Description": c.problemDescription,
     "Measures Taken": c.measuresTaken?.join(", ") || "-",
     "Status": c.status,
+    "Source": c.generatedFromActivities ? "Auto (Activities)" : "Manual",
+    "Avg Activity Score %": c.averagePerformanceScore ?? "-",
+    "Last Activity Score %": c.lastActivityScore ?? "-",
+    "Last Activity Date": c.lastActivityDate ? new Date(c.lastActivityDate).toLocaleDateString() : "-",
+    "Performance Trend": c.performanceTrend || "NO_DATA",
+    "Activities Tracked": c.performanceHistory?.length || 0,
     "Progress Notes": c.progressNotes?.length || 0,
     "Latest Improvement": c.progressNotes?.[c.progressNotes.length - 1]?.improvementLevel || "0%",
     "Last Update": c.progressNotes?.[c.progressNotes.length - 1]?.recordedAt 
@@ -284,7 +366,16 @@ export default function SlowLearners() {
                 Track and manage students who need additional academic support
               </p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
+              <button
+                onClick={() => {
+                  setDetectResults(null);
+                  setShowDetectModal(true);
+                }}
+                className="bg-emerald-500/90 backdrop-blur-md hover:bg-emerald-500 text-white px-4 py-2 rounded-xl transition-all flex items-center gap-2 font-semibold border border-emerald-300/30 text-sm"
+              >
+                <span>🔎</span> Detect From Activities
+              </button>
               <button
                 onClick={() => {
                   setSelectedGrade("ALL");
@@ -307,7 +398,7 @@ export default function SlowLearners() {
 
           {/* Stats Cards */}
           {cases.length > 0 && (
-            <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mt-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 mt-6">
               <div className="bg-white/5 backdrop-blur rounded-xl p-3 border border-white/10">
                 <p className="text-slate-300 text-xs">Total Cases</p>
                 <p className="text-2xl font-bold text-white mt-1">{summaryStats.total}</p>
@@ -327,6 +418,14 @@ export default function SlowLearners() {
               <div className="bg-white/5 backdrop-blur rounded-xl p-3 border border-white/10">
                 <p className="text-slate-300 text-xs">Resolved</p>
                 <p className="text-2xl font-bold text-green-400 mt-1">{summaryStats.resolved}</p>
+              </div>
+              <div className="bg-white/5 backdrop-blur rounded-xl p-3 border border-white/10">
+                <p className="text-slate-300 text-xs">📈 Trending Up</p>
+                <p className="text-2xl font-bold text-emerald-400 mt-1">{summaryStats.trendImproving}</p>
+              </div>
+              <div className="bg-white/5 backdrop-blur rounded-xl p-3 border border-white/10">
+                <p className="text-slate-300 text-xs">📉 Trending Down</p>
+                <p className="text-2xl font-bold text-rose-400 mt-1">{summaryStats.trendDeclining}</p>
               </div>
               <div className="bg-white/5 backdrop-blur rounded-xl p-3 border border-white/10">
                 <p className="text-slate-300 text-xs">Resolution Rate</p>
@@ -420,18 +519,19 @@ export default function SlowLearners() {
               <thead className="bg-gradient-to-r from-slate-50 to-slate-100">
                 <tr>
                   <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">Student</th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">Category</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">Source</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">Daily Performance</th>
                   <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">Problem</th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">Measures</th>
                   <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">Status</th>
-                  <th className="px-3 py-2 text-center text-xs font-semibold text-slate-600">Progress</th>
+                  <th className="px-3 py-2 text-center text-xs font-semibold text-slate-600">Notes</th>
                   <th className="px-3 py-2 text-center text-xs font-semibold text-slate-600">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {cases.map((caseItem) => {
                   const progressCount = caseItem.progressNotes?.length || 0;
-                  const latestImprovement = caseItem.progressNotes?.[progressCount - 1]?.improvementLevel || 0;
+                  const trend = getTrendInfo(caseItem.performanceTrend);
+                  const activitiesTracked = caseItem.performanceHistory?.length || 0;
                   return (
                     <tr key={caseItem._id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-3 py-2">
@@ -439,12 +539,38 @@ export default function SlowLearners() {
                         <p className="text-xs text-slate-400">{caseItem.studentId} - {caseItem.grade} {caseItem.className}</p>
                       </td>
                       <td className="px-3 py-2">
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-                          {problemCategories.find(c => c.value === caseItem.problemCategory)?.icon || "📌"} {caseItem.problemCategory}
-                        </span>
+                        {caseItem.generatedFromActivities ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700">
+                            🤖 Auto
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
+                            ✍️ Manual
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2">
+                        {activitiesTracked > 0 ? (
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span className={`text-sm font-bold ${getScoreColor(caseItem.averagePerformanceScore)}`}>
+                                {caseItem.averagePerformanceScore}% avg
+                              </span>
+                              <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${trend.color}`}>
+                                {trend.icon} {trend.label}
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-400">
+                              Last: <span className={`font-semibold ${getScoreColor(caseItem.lastActivityScore)}`}>{caseItem.lastActivityScore}%</span>
+                              {caseItem.lastActivityDate && ` · ${new Date(caseItem.lastActivityDate).toLocaleDateString()}`}
+                            </p>
+                            <p className="text-xs text-slate-400">{activitiesTracked} activities tracked</p>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-400">No activity data yet</span>
+                        )}
                       </td>
                       <td className="px-3 py-2 text-slate-600 text-sm max-w-xs truncate">{caseItem.problemDescription}</td>
-                      <td className="px-3 py-2 text-slate-600 text-sm max-w-xs truncate">{caseItem.measuresTaken?.join(", ") || "-"}</td>
                       <td className="px-3 py-2">
                         <select
                           value={caseItem.status}
@@ -458,15 +584,7 @@ export default function SlowLearners() {
                         </select>
                       </td>
                       <td className="px-3 py-2 text-center">
-                        <div className="flex flex-col items-center">
-                          <span className="text-xs font-semibold text-slate-600">{progressCount} notes</span>
-                          {progressCount > 0 && (
-                            <div className="mt-1 w-16 bg-slate-200 rounded-full h-1.5">
-                              <div className="bg-emerald-500 h-1.5 rounded-full" style={{ width: `${latestImprovement}%` }}></div>
-                            </div>
-                          )}
-                          <span className="text-xs text-slate-400 mt-0.5">{latestImprovement}%</span>
-                        </div>
+                        <span className="text-xs font-semibold text-slate-600">{progressCount} notes</span>
                       </td>
                       <td className="px-3 py-2 text-center whitespace-nowrap">
                         <div className="flex gap-1 justify-center">
@@ -694,6 +812,65 @@ export default function SlowLearners() {
                   <p className="text-sm font-semibold">{showCaseDetails.grade} {showCaseDetails.className}</p>
                 </div>
               </div>
+
+              {/* Automatic Daily Performance Tracking */}
+              <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-lg p-4 border border-indigo-100">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold text-slate-800 text-sm flex items-center gap-1">
+                    📊 Daily Activity Performance
+                  </h3>
+                  {showCaseDetails.generatedFromActivities && (
+                    <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-medium">🤖 Auto-tracked</span>
+                  )}
+                </div>
+                {showCaseDetails.performanceHistory?.length > 0 ? (
+                  <>
+                    <div className="grid grid-cols-3 gap-2 mb-3">
+                      <div className="bg-white rounded-lg p-2 text-center">
+                        <p className="text-[10px] text-slate-500">Average Score</p>
+                        <p className={`text-lg font-bold ${getScoreColor(showCaseDetails.averagePerformanceScore)}`}>
+                          {showCaseDetails.averagePerformanceScore}%
+                        </p>
+                      </div>
+                      <div className="bg-white rounded-lg p-2 text-center">
+                        <p className="text-[10px] text-slate-500">Last Activity</p>
+                        <p className={`text-lg font-bold ${getScoreColor(showCaseDetails.lastActivityScore)}`}>
+                          {showCaseDetails.lastActivityScore}%
+                        </p>
+                      </div>
+                      <div className="bg-white rounded-lg p-2 text-center">
+                        <p className="text-[10px] text-slate-500">Trend</p>
+                        <p className="text-sm font-bold mt-1">
+                          {getTrendInfo(showCaseDetails.performanceTrend).icon} {getTrendInfo(showCaseDetails.performanceTrend).label}
+                        </p>
+                      </div>
+                    </div>
+                    <p className="text-xs font-semibold text-slate-600 mb-2">Activity-by-activity history (most recent first)</p>
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                      {[...showCaseDetails.performanceHistory].reverse().map((p, idx) => {
+                        const pct = p.marksTotal > 0 ? Math.round((p.marksObtained / p.marksTotal) * 100) : 0;
+                        return (
+                          <div key={idx} className="flex justify-between items-center bg-white rounded-lg px-3 py-2">
+                            <div className="min-w-0">
+                              <p className="text-xs font-medium text-slate-700 truncate">{p.activityTitle || "Activity"}</p>
+                              <p className="text-[10px] text-slate-400">{p.date ? new Date(p.date).toLocaleDateString() : "-"}</p>
+                            </div>
+                            <div className="text-right flex-shrink-0 ml-2">
+                              <span className="text-xs font-semibold text-slate-700">{p.marksObtained}/{p.marksTotal}</span>
+                              <span className={`text-xs font-bold ml-2 ${getScoreColor(pct)}`}>{pct}%</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-xs text-slate-500 text-center py-3">
+                    No activity marks recorded yet for this student. This updates automatically as activities are assigned.
+                  </p>
+                )}
+              </div>
+
               <div className="bg-blue-50 p-3 rounded-lg">
                 <p className="text-xs text-blue-600 font-semibold">Problem Category</p>
                 <p className="text-sm">{showCaseDetails.problemCategory}</p>
@@ -794,6 +971,126 @@ export default function SlowLearners() {
                 <p className="text-xs text-amber-700">
                   💡 <span className="font-semibold">Recommendation:</span> Schedule regular progress reviews and provide additional resources for the most common problem categories.
                 </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Detect From Activities Modal */}
+      {showDetectModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto" onClick={() => setShowDetectModal(false)}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg my-8" onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-3 flex justify-between items-center text-white rounded-t-xl">
+              <h2 className="text-base font-bold">🔎 Detect Slow Learners From Daily Activities</h2>
+              <button onClick={() => setShowDetectModal(false)} className="text-white text-2xl">&times;</button>
+            </div>
+            <div className="p-5 space-y-4">
+              <p className="text-xs text-slate-500">
+                Scans recorded activity marks and finds students averaging below the threshold over at least 3 activities.
+                No typing required — cases are created and kept updated automatically as new activities come in.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Grade</label>
+                  <select
+                    value={detectForm.grade}
+                    onChange={(e) => setDetectForm({...detectForm, grade: e.target.value})}
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                  >
+                    <option value="ALL">All Grades</option>
+                    {grades.map(g => <option key={g} value={g}>{g}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Class</label>
+                  <select
+                    value={detectForm.className}
+                    onChange={(e) => setDetectForm({...detectForm, className: e.target.value})}
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                  >
+                    <option value="ALL">All Classes</option>
+                    {classes.map(c => <option key={c} value={c}>Class {c}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Term</label>
+                  <select
+                    value={detectForm.term}
+                    onChange={(e) => setDetectForm({...detectForm, term: e.target.value})}
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                  >
+                    {semesters.map(s => <option key={s} value={s}>{s.replace("TERM", "Term ")}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Threshold (%)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={detectForm.threshold}
+                    onChange={(e) => setDetectForm({...detectForm, threshold: parseInt(e.target.value) || 0})}
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                  />
+                </div>
+              </div>
+
+              <button
+                onClick={handleDetect}
+                disabled={detecting}
+                className="w-full bg-slate-800 text-white py-2 rounded-lg font-semibold text-sm hover:bg-slate-900 transition disabled:opacity-50"
+              >
+                {detecting ? "Scanning..." : "🔍 Preview Detected Students"}
+              </button>
+
+              {detectResults && (
+                <div className="border border-slate-200 rounded-lg p-3">
+                  <div className="grid grid-cols-3 gap-2 mb-2 text-center">
+                    <div>
+                      <p className="text-[10px] text-slate-500">Scanned</p>
+                      <p className="text-sm font-bold text-slate-700">{detectResults.summary?.totalStudents || 0}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-slate-500">Below Threshold</p>
+                      <p className="text-sm font-bold text-rose-600">{detectResults.summary?.slowLearnersFound || 0}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-slate-500">Threshold</p>
+                      <p className="text-sm font-bold text-amber-600">{detectResults.summary?.threshold}%</p>
+                    </div>
+                  </div>
+                  {detectResults.slowLearners?.length > 0 ? (
+                    <div className="space-y-1 max-h-40 overflow-y-auto">
+                      {detectResults.slowLearners.map((s, idx) => (
+                        <div key={idx} className="flex justify-between items-center text-xs bg-slate-50 rounded px-2 py-1.5">
+                          <span className="font-medium text-slate-700">{s.student?.name}</span>
+                          <span className="text-rose-600 font-semibold">{s.averagePercentage}% avg ({s.totalActivities} activities)</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-500 text-center py-2">
+                      {detectResults.summary?.message || "No students found below the threshold."}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={handleCreateDetectedCases}
+                  disabled={detecting || !detectResults?.slowLearners?.length}
+                  className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 text-white py-2 rounded-lg font-semibold text-sm hover:shadow-lg transition-all disabled:opacity-50"
+                >
+                  {detecting ? "Creating..." : "✅ Create/Update Cases"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowDetectModal(false)}
+                  className="flex-1 bg-slate-100 text-slate-700 py-2 rounded-lg font-semibold text-sm hover:bg-slate-200 transition-all"
+                >
+                  Cancel
+                </button>
               </div>
             </div>
           </div>

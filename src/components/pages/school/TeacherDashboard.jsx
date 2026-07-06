@@ -6,7 +6,7 @@ import {
   getCourses, 
   getStudents, 
   getHomeworkSummary,
-  getClassActivities,
+  getRecentActivities,
   getSlowLearnerCases,
   getStudentActivities
 } from "../../services/schoolService";
@@ -68,9 +68,9 @@ export default function TeacherDashboard() {
           console.warn("Homework summary API not available yet:", err.message);
           return { data: { summary: {} } };
         }),
-        getClassActivities({ grade: "ALL", className: "ALL", term: "TERM1" }).catch(err => {
+        getRecentActivities({ term: "TERM1", limit: 5, teacherId: localStorage.getItem("userId") }).catch(err => {
           console.warn("Activities API not available yet:", err.message);
-          return { data: { activities: [], groupedByBatch: [] } };
+          return { data: { activities: [] } };
         }),
         getSlowLearnerCases({ semester: "TERM1" }).catch(err => {
           console.warn("Slow learners API not available yet:", err.message);
@@ -85,66 +85,27 @@ export default function TeacherDashboard() {
       const summary = results[4].status === "fulfilled" ? (results[4].value?.data?.summary || {}) : {};
       
       // ============================================================
-      // FIXED: RECENT ACTIVITIES - Extract from groupedByBatch
+      // RECENT ACTIVITIES - from dedicated school-wide endpoint,
+      // scoped server-side to this teacher via recordedBy (teacherId param).
+      // (The old getClassActivities({grade:"ALL",className:"ALL"}) call
+      // always returned zero results, and the batch objects it returned
+      // never had teacherId/teacherName fields anyway.)
       // ============================================================
-      const activitiesData = results[5].status === "fulfilled" ? (results[5].value?.data || {}) : { activities: [], groupedByBatch: [] };
-      const groupedBatches = activitiesData.groupedByBatch || [];
-      
-      // Extract all student activities from grouped batches
-      const allActivities = [];
-      groupedBatches.forEach(batch => {
-        if (batch.students && Array.isArray(batch.students)) {
-          batch.students.forEach(student => {
-            // Calculate percentage
-            let percentage = student.percentage || 0;
-            const marksObtained = student.marksObtained !== undefined ? student.marksObtained : (student.score || 0);
-            const marksTotal = student.marksTotal || batch.maxScore || 100;
-            
-            if (!percentage && marksTotal > 0) {
-              percentage = (marksObtained / marksTotal) * 100;
-            }
-            
-            // Determine performance level
-            let performanceLevel = student.performanceLevel || "AVERAGE";
-            if (!student.performanceLevel) {
-              if (percentage >= 90) performanceLevel = "EXCELLENT";
-              else if (percentage >= 75) performanceLevel = "GOOD";
-              else if (percentage >= 50) performanceLevel = "AVERAGE";
-              else if (percentage >= 30) performanceLevel = "POOR";
-              else performanceLevel = "FAILING";
-            }
-            
-            allActivities.push({
-              title: batch.title || "Activity",
-              studentName: student.studentName || "Unknown",
-              studentId: student.studentId || "-",
-              marksObtained: marksObtained,
-              marksTotal: marksTotal,
-              percentage: Math.round(percentage),
-              performanceLevel: performanceLevel,
-              date: batch.date ? new Date(batch.date).toLocaleDateString() : "-",
-              activityType: batch.activityType || "EXERCISE",
-              batchId: batch.batchId || "-",
-              courseName: batch.courseName || "-",
-              teacherId: batch.teacherId || null,
-              teacherName: batch.teacherName || null
-            });
-          });
-        }
-      });
-
-      // Filter by teacher (current user)
-      const teacherId = localStorage.getItem("userId");
-      const myActivities = allActivities.filter(a => a.teacherId === teacherId || a.teacherName === userName);
-      
-      // Sort by date (most recent first) and take top 5
-      const recentActivitiesList = myActivities
-        .sort((a, b) => {
-          const dateA = a.date && a.date !== "-" ? new Date(a.date) : new Date(0);
-          const dateB = b.date && b.date !== "-" ? new Date(b.date) : new Date(0);
-          return dateB - dateA;
-        })
-        .slice(0, 5);
+      const activitiesData = results[5].status === "fulfilled" ? (results[5].value?.data || {}) : { activities: [] };
+      const recentActivitiesList = (activitiesData.activities || []).map(a => ({
+        title: a.title || "Activity",
+        studentName: a.studentName || "Unknown",
+        studentId: a.studentId || "-",
+        marksObtained: a.marksObtained ?? 0,
+        marksTotal: a.marksTotal ?? 0,
+        percentage: Math.round(a.percentage || 0),
+        performanceLevel: a.performanceLevel || "AVERAGE",
+        date: a.date ? new Date(a.date).toLocaleDateString() : "-",
+        activityType: a.activityType || "EXERCISE",
+        batchId: a.batchId || "-",
+        courseName: a.courseName || "-"
+      }));
+      const myActivities = recentActivitiesList;
       
       const slowLearners = results[6].status === "fulfilled" ? (results[6].value?.data?.cases || []) : [];
       
@@ -165,7 +126,7 @@ export default function TeacherDashboard() {
         homeworkOverdue: summary.overdue || 0,
         recentActivities: myActivities.length,
         slowLearners: mySlowLearners.length,
-        recentActivityCount: allActivities.length
+        recentActivityCount: myActivities.length
       });
 
       setRecentPermissions(permissions.slice(0, 5));

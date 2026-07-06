@@ -11,7 +11,7 @@ import {
   getStudentAttendanceByClass,
   getTeacherAttendanceByDate,
   getSlowLearnerCases,
-  getClassActivities
+  getRecentActivities
 } from "../../services/schoolService";
 import { useNavigate, Link } from "react-router-dom";
 
@@ -197,7 +197,7 @@ export default function SchoolDashboard() {
           period: "DAILY"
         }).catch(() => ({ data: { attendance: [] } })),
         getSlowLearnerCases({ semester: "TERM1" }).catch(() => ({ data: { cases: [] } })),
-        getClassActivities({ grade: "ALL", className: "ALL", term: "TERM1" }).catch(() => ({ data: { activities: [], groupedByBatch: [] } }))
+        getRecentActivities({ term: "TERM1", limit: 10 }).catch(() => ({ data: { activities: [] } }))
       ]);
 
       const students = safeGetArray(studentsRes.data);
@@ -332,60 +332,25 @@ export default function SchoolDashboard() {
       };
 
       // ============================================================
-      // FIXED: RECENT ACTIVITIES - Extract from groupedByBatch
+      // RECENT ACTIVITIES - now from dedicated school-wide endpoint
+      // (getClassActivities required a literal grade+className match,
+      // so "ALL"/"ALL" always returned zero results. /activities/recent
+      // has no such requirement.)
       // ============================================================
       const activitiesData = recentActivitiesRes.data || {};
-      const groupedBatches = activitiesData.groupedByBatch || [];
-      
-      // Extract all student activities from grouped batches
-      const allActivities = [];
-      groupedBatches.forEach(batch => {
-        if (batch.students && Array.isArray(batch.students)) {
-          batch.students.forEach(student => {
-            // Calculate percentage
-            let percentage = student.percentage || 0;
-            const marksObtained = student.marksObtained !== undefined ? student.marksObtained : (student.score || 0);
-            const marksTotal = student.marksTotal || batch.maxScore || 100;
-            
-            if (!percentage && marksTotal > 0) {
-              percentage = (marksObtained / marksTotal) * 100;
-            }
-            
-            // Determine performance level
-            let performanceLevel = student.performanceLevel || "AVERAGE";
-            if (!student.performanceLevel) {
-              if (percentage >= 90) performanceLevel = "EXCELLENT";
-              else if (percentage >= 75) performanceLevel = "GOOD";
-              else if (percentage >= 50) performanceLevel = "AVERAGE";
-              else if (percentage >= 30) performanceLevel = "POOR";
-              else performanceLevel = "FAILING";
-            }
-            
-            allActivities.push({
-              title: batch.title || "Activity",
-              studentName: student.studentName || "Unknown",
-              studentId: student.studentId || "-",
-              marksObtained: marksObtained,
-              marksTotal: marksTotal,
-              percentage: Math.round(percentage),
-              performanceLevel: performanceLevel,
-              date: batch.date ? new Date(batch.date).toLocaleDateString() : "-",
-              activityType: batch.activityType || "EXERCISE",
-              batchId: batch.batchId || "-",
-              courseName: batch.courseName || "-"
-            });
-          });
-        }
-      });
-
-      // Sort by date (most recent first) and take top 10
-      const recentActivities = allActivities
-        .sort((a, b) => {
-          const dateA = a.date && a.date !== "-" ? new Date(a.date) : new Date(0);
-          const dateB = b.date && b.date !== "-" ? new Date(b.date) : new Date(0);
-          return dateB - dateA;
-        })
-        .slice(0, 10);
+      const recentActivities = (activitiesData.activities || []).map(a => ({
+        title: a.title || "Activity",
+        studentName: a.studentName || "Unknown",
+        studentId: a.studentId || "-",
+        marksObtained: a.marksObtained ?? 0,
+        marksTotal: a.marksTotal ?? 0,
+        percentage: Math.round(a.percentage || 0),
+        performanceLevel: a.performanceLevel || "AVERAGE",
+        date: a.date ? new Date(a.date).toLocaleDateString() : "-",
+        activityType: a.activityType || "EXERCISE",
+        batchId: a.batchId || "-",
+        courseName: a.courseName || "-"
+      }));
 
       // --- Prepare Course Performance from Marks Data ---
       let coursePerformance = [];
