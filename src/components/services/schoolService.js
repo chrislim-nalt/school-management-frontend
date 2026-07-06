@@ -608,6 +608,16 @@ export const getClassActivities = async (params) => {
   }
 };
 
+export const getRecentActivities = async (params) => {
+  try {
+    const response = await API.get("/activities/recent", { params: params || {} });
+    return response;
+  } catch (error) {
+    console.error("getRecentActivities error:", error);
+    return { data: { activities: [] } };
+  }
+};
+
 export const getClassPerformanceDashboard = async (params) => {
   try {
     const response = await API.get("/activities/class-performance", { params: params || {} });
