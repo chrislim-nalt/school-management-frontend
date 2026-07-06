@@ -16,8 +16,8 @@ export default function Students() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(25);
 
-  const grades = ["P1", "P2", "P3", "P4", "P5", "P6", "S1", "S2", "S3", "S4", "S5", "S6"];
-  const classes = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"];
+  const grades = ["Baby", "Middle", "Top", "P1", "P2", "P3", "P4", "P5", "P6", "S1", "S2", "S3", "S4", "S5", "S6"];
+  const classes = ["A", "B", "C", "D"];
 
   const [form, setForm] = useState({
     name: "",

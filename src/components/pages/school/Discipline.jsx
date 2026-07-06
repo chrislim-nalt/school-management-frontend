@@ -35,7 +35,7 @@ export default function Discipline() {
   const isAdmin = userRole === "superadmin" || userType === "school_admin";
   const isTeacher = userType === "teacher";
 
-  const grades = ["P1", "P2", "P3", "P4", "P5", "P6", "S1", "S2", "S3", "S4", "S5", "S6"];
+  const grades = ["Baby", "Middle", "Top", "P1", "P2", "P3", "P4", "P5", "P6", "S1", "S2", "S3", "S4", "S5", "S6"];
   const classes = ["A", "B", "C", "D"];
   const semesters = ["TERM1", "TERM2", "TERM3"];
   const offenseTypes = [

@@ -51,7 +51,7 @@ export default function Transport() {
   const isTeacher = userType === "teacher" || userType === "staff";
   const isAuthenticated = !!localStorage.getItem("token");
 
-  const grades = ["P1", "P2", "P3", "P4", "P5", "P6", "S1", "S2", "S3", "S4", "S5", "S6"];
+  const grades = ["Baby", "Middle", "Top", "P1", "P2", "P3", "P4", "P5", "P6", "S1", "S2", "S3", "S4", "S5", "S6"];
   const semesters = [
     { value: "TERM1", label: "Term 1" },
     { value: "TERM2", label: "Term 2" },

@@ -74,7 +74,7 @@ function ActivitiesComponent() {
   const [filterClass, setFilterClass] = useState("A");
   const [filterTerm, setFilterTerm] = useState("TERM1");
 
-  const grades = ["P1", "P2", "P3", "P4", "P5", "P6", "S1", "S2", "S3", "S4", "S5", "S6"];
+  const grades = ["Baby", "Middle", "Top", "P1", "P2", "P3", "P4", "P5", "P6", "S1", "S2", "S3", "S4", "S5", "S6"];
   const classes = ["A", "B", "C", "D"];
   const terms = ["TERM1", "TERM2", "TERM3"];
   const activityTypes = [
