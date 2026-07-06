@@ -497,6 +497,7 @@ export default function Transport() {
               <option value={2024}>2024</option>
               <option value={2025}>2025</option>
               <option value={2026}>2026</option>
+              <option value={2027}>2027</option>
             </select>
             <select value={selectedSemester} onChange={(e) => setSelectedSemester(e.target.value)} className="border border-slate-200 rounded-lg px-3 py-2 text-sm">
               {semesters.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
@@ -611,7 +612,7 @@ export default function Transport() {
       <div className="bg-white rounded-xl shadow-lg p-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
           <select value={selectedYear} onChange={(e) => setSelectedYear(parseInt(e.target.value))} className="col-span-1 border border-slate-200 rounded-lg px-2 py-1.5 md:px-3 md:py-2 text-xs md:text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none">
-            <option value={2024}>2024</option><option value={2025}>2025</option><option value={2026}>2026</option>
+            <option value={2024}>2024</option><option value={2025}>2025</option><option value={2026}>2026</option><option value={2027}>2027</option>
           </select>
           <select value={selectedSemester} onChange={(e) => setSelectedSemester(e.target.value)} className="col-span-1 border border-slate-200 rounded-lg px-2 py-1.5 md:px-3 md:py-2 text-xs md:text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none">
             {semesters.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
