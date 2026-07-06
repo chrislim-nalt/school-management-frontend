@@ -331,22 +331,24 @@ export default function SchoolDashboard() {
           : 0
       };
 
-      // --- RECENT ACTIVITIES - FIXED: Extract from both activities and groupedByBatch ---
+      // ============================================================
+      // FIXED: RECENT ACTIVITIES - Extract from groupedByBatch
+      // ============================================================
       const activitiesData = recentActivitiesRes.data || {};
-      const flatActivities = activitiesData.activities || [];
       const groupedBatches = activitiesData.groupedByBatch || [];
       
       // Extract all student activities from grouped batches
-      const allStudentActivities = [];
+      const allActivities = [];
       groupedBatches.forEach(batch => {
         if (batch.students && Array.isArray(batch.students)) {
           batch.students.forEach(student => {
-            // Calculate percentage if not present
+            // Calculate percentage
             let percentage = student.percentage || 0;
-            if (!percentage && student.marksObtained !== undefined && student.marksTotal) {
-              percentage = (student.marksObtained / student.marksTotal) * 100;
-            } else if (!percentage && student.score !== undefined && batch.maxScore) {
-              percentage = (student.score / batch.maxScore) * 100;
+            const marksObtained = student.marksObtained !== undefined ? student.marksObtained : (student.score || 0);
+            const marksTotal = student.marksTotal || batch.maxScore || 100;
+            
+            if (!percentage && marksTotal > 0) {
+              percentage = (marksObtained / marksTotal) * 100;
             }
             
             // Determine performance level
@@ -359,29 +361,26 @@ export default function SchoolDashboard() {
               else performanceLevel = "FAILING";
             }
             
-            allStudentActivities.push({
+            allActivities.push({
               title: batch.title || "Activity",
               studentName: student.studentName || "Unknown",
               studentId: student.studentId || "-",
-              marksObtained: student.marksObtained !== undefined ? student.marksObtained : (student.score || 0),
-              marksTotal: student.marksTotal || batch.maxScore || 100,
+              marksObtained: marksObtained,
+              marksTotal: marksTotal,
               percentage: Math.round(percentage),
               performanceLevel: performanceLevel,
               date: batch.date ? new Date(batch.date).toLocaleDateString() : "-",
               activityType: batch.activityType || "EXERCISE",
-              batchId: batch.batchId || "-"
+              batchId: batch.batchId || "-",
+              courseName: batch.courseName || "-"
             });
           });
         }
       });
 
-      // Combine flat activities with extracted student activities
-      const allActivities = [...flatActivities, ...allStudentActivities];
-
       // Sort by date (most recent first) and take top 10
       const recentActivities = allActivities
         .sort((a, b) => {
-          // Convert date strings to comparable format
           const dateA = a.date && a.date !== "-" ? new Date(a.date) : new Date(0);
           const dateB = b.date && b.date !== "-" ? new Date(b.date) : new Date(0);
           return dateB - dateA;
@@ -1179,7 +1178,7 @@ export default function SchoolDashboard() {
         </div>
       </div>
 
-      {/* Recent Activities Section - Now properly showing activities */}
+      {/* Recent Activities Section - FIXED: Now properly displaying activities */}
       <div className="bg-white rounded-xl shadow-lg p-5 hover:shadow-xl transition-all border border-slate-100">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
@@ -1212,23 +1211,28 @@ export default function SchoolDashboard() {
                       <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium text-white ${perf.color}`}>
                         {perf.icon} {perf.label}
                       </span>
+                      {activity.activityType && (
+                        <span className="text-[10px] text-orange-500 bg-orange-50 px-1.5 py-0.5 rounded-full">
+                          {activity.activityType}
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-3 mt-0.5 text-xs text-slate-400 flex-wrap">
-                      <span>{activity.studentName}</span>
+                      <span>👨‍🎓 {activity.studentName}</span>
                       <span>|</span>
                       <span>Score: {activity.marksObtained}/{activity.marksTotal}</span>
                       <span>|</span>
                       <span>📅 {activity.date}</span>
-                      {activity.activityType && (
+                      {activity.courseName && (
                         <>
                           <span>|</span>
-                          <span className="text-orange-500">{activity.activityType}</span>
+                          <span className="text-indigo-500">{activity.courseName}</span>
                         </>
                       )}
                     </div>
                   </div>
                   <div className="text-right flex-shrink-0 ml-2">
-                    <span className="text-sm font-bold text-indigo-600">{Math.round(activity.percentage)}%</span>
+                    <span className="text-sm font-bold text-indigo-600">{activity.percentage}%</span>
                   </div>
                 </div>
               );

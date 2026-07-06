@@ -84,23 +84,27 @@ export default function TeacherDashboard() {
       const students = results[3].status === "fulfilled" ? (results[3].value?.data || []) : [];
       const summary = results[4].status === "fulfilled" ? (results[4].value?.data?.summary || {}) : {};
       
-      // --- RECENT ACTIVITIES - FIXED: Extract from both activities and groupedByBatch ---
+      // ============================================================
+      // FIXED: RECENT ACTIVITIES - Extract from groupedByBatch
+      // ============================================================
       const activitiesData = results[5].status === "fulfilled" ? (results[5].value?.data || {}) : { activities: [], groupedByBatch: [] };
-      const flatActivities = activitiesData.activities || [];
       const groupedBatches = activitiesData.groupedByBatch || [];
       
       // Extract all student activities from grouped batches
-      const allStudentActivities = [];
+      const allActivities = [];
       groupedBatches.forEach(batch => {
         if (batch.students && Array.isArray(batch.students)) {
           batch.students.forEach(student => {
+            // Calculate percentage
             let percentage = student.percentage || 0;
-            if (!percentage && student.marksObtained !== undefined && student.marksTotal) {
-              percentage = (student.marksObtained / student.marksTotal) * 100;
-            } else if (!percentage && student.score !== undefined && batch.maxScore) {
-              percentage = (student.score / batch.maxScore) * 100;
+            const marksObtained = student.marksObtained !== undefined ? student.marksObtained : (student.score || 0);
+            const marksTotal = student.marksTotal || batch.maxScore || 100;
+            
+            if (!percentage && marksTotal > 0) {
+              percentage = (marksObtained / marksTotal) * 100;
             }
             
+            // Determine performance level
             let performanceLevel = student.performanceLevel || "AVERAGE";
             if (!student.performanceLevel) {
               if (percentage >= 90) performanceLevel = "EXCELLENT";
@@ -110,17 +114,18 @@ export default function TeacherDashboard() {
               else performanceLevel = "FAILING";
             }
             
-            allStudentActivities.push({
+            allActivities.push({
               title: batch.title || "Activity",
               studentName: student.studentName || "Unknown",
               studentId: student.studentId || "-",
-              marksObtained: student.marksObtained !== undefined ? student.marksObtained : (student.score || 0),
-              marksTotal: student.marksTotal || batch.maxScore || 100,
+              marksObtained: marksObtained,
+              marksTotal: marksTotal,
               percentage: Math.round(percentage),
               performanceLevel: performanceLevel,
               date: batch.date ? new Date(batch.date).toLocaleDateString() : "-",
               activityType: batch.activityType || "EXERCISE",
               batchId: batch.batchId || "-",
+              courseName: batch.courseName || "-",
               teacherId: batch.teacherId || null,
               teacherName: batch.teacherName || null
             });
@@ -128,9 +133,6 @@ export default function TeacherDashboard() {
         }
       });
 
-      // Combine flat activities with extracted student activities
-      const allActivities = [...flatActivities, ...allStudentActivities];
-      
       // Filter by teacher (current user)
       const teacherId = localStorage.getItem("userId");
       const myActivities = allActivities.filter(a => a.teacherId === teacherId || a.teacherName === userName);
@@ -508,6 +510,11 @@ export default function TeacherDashboard() {
                         <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium text-white ${perf.color}`}>
                           {perf.icon} {perf.label}
                         </span>
+                        {activity.activityType && (
+                          <span className="text-[10px] text-orange-500 bg-orange-50 px-1.5 py-0.5 rounded-full">
+                            {activity.activityType}
+                          </span>
+                        )}
                       </div>
                       <div className="flex flex-wrap items-center gap-2 mt-1">
                         <span className="text-xs text-slate-500">👨‍🎓 {activity.studentName}</span>
@@ -515,6 +522,12 @@ export default function TeacherDashboard() {
                         <span className="text-xs text-slate-500">Score: {activity.marksObtained}/{activity.marksTotal}</span>
                         <span className="text-xs text-slate-500">|</span>
                         <span className="text-xs text-slate-500">📅 {activity.date}</span>
+                        {activity.courseName && (
+                          <>
+                            <span className="text-xs text-slate-500">|</span>
+                            <span className="text-xs text-indigo-500">{activity.courseName}</span>
+                          </>
+                        )}
                       </div>
                     </div>
                     <span className="text-sm font-bold text-indigo-600 flex-shrink-0 ml-2">{activity.percentage}%</span>
