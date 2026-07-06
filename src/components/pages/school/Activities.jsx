@@ -233,7 +233,7 @@ function ActivitiesComponent() {
         className: filterClass,
         term: filterTerm
       });
-      setSuccess(`✅ ${res.data.created} slow learner cases created!`);
+      setSuccess(`✅ ${res.data.message || `${res.data.summary?.created || 0} slow learner cases created`}`);
       setShowSlowLearnerDetect(false);
       await fetchData();
       setTimeout(() => setSuccess(null), 4000);
@@ -1039,42 +1039,42 @@ function ActivitiesComponent() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div className="bg-blue-50 rounded-lg p-3 text-center">
                   <p className="text-xs text-blue-600">Total Students</p>
-                  <p className="text-xl font-bold text-blue-700">{slowLearnerData?.totalStudents || 0}</p>
+                  <p className="text-xl font-bold text-blue-700">{slowLearnerData?.summary?.totalStudents || 0}</p>
                 </div>
                 <div className="bg-rose-50 rounded-lg p-3 text-center">
                   <p className="text-xs text-rose-600">Detected</p>
-                  <p className="text-xl font-bold text-rose-700">{slowLearnerData?.detectedCount || 0}</p>
+                  <p className="text-xl font-bold text-rose-700">{slowLearnerData?.summary?.slowLearnersFound || 0}</p>
                 </div>
                 <div className="bg-amber-50 rounded-lg p-3 text-center">
                   <p className="text-xs text-amber-600">Threshold</p>
-                  <p className="text-xl font-bold text-amber-700">{slowLearnerData?.threshold || 50}%</p>
+                  <p className="text-xl font-bold text-amber-700">{slowLearnerData?.summary?.threshold || 50}%</p>
                 </div>
                 <div className="bg-emerald-50 rounded-lg p-3 text-center">
-                  <p className="text-xs text-emerald-600">Existing Cases</p>
-                  <p className="text-xl font-bold text-emerald-700">{slowLearnerData?.existingCases || 0}</p>
+                  <p className="text-xs text-emerald-600">Activities Scanned</p>
+                  <p className="text-xl font-bold text-emerald-700">{slowLearnerData?.summary?.totalActivities || 0}</p>
                 </div>
               </div>
 
               <div>
                 <p className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">🎯 Detected Slow Learners</p>
                 <div className="space-y-2 max-h-60 overflow-y-auto">
-                  {(slowLearnerData?.students || []).map((student, idx) => (
+                  {(slowLearnerData?.slowLearners || []).map((entry, idx) => (
                     <div key={idx} className="flex justify-between items-center p-3 bg-amber-50 rounded-lg border border-amber-200">
                       <div>
-                        <p className="font-medium text-slate-800">{student.name}</p>
-                        <p className="text-xs text-slate-400">{student.studentId} - {student.grade} {student.className}</p>
+                        <p className="font-medium text-slate-800">{entry.student?.name}</p>
+                        <p className="text-xs text-slate-400">{entry.student?.studentId} - {entry.student?.grade} {entry.student?.className}</p>
                       </div>
                       <div className="flex items-center gap-4">
                         <div className="text-center">
                           <p className="text-xs text-slate-500">Average</p>
-                          <p className="text-sm font-bold text-rose-600">{student.averageScore}%</p>
+                          <p className="text-sm font-bold text-rose-600">{entry.averagePercentage}%</p>
                         </div>
                         <div className="text-center">
                           <p className="text-xs text-slate-500">Activities</p>
-                          <p className="text-sm font-bold text-blue-600">{student.activityCount}</p>
+                          <p className="text-sm font-bold text-blue-600">{entry.totalActivities}</p>
                         </div>
                         <span className="text-xs text-amber-600 bg-amber-100 px-2 py-1 rounded-full">
-                          {student.hasCase ? "✅ Existing Case" : "🆕 New"}
+                          🆕 {entry.status || "IDENTIFIED"}
                         </span>
                       </div>
                     </div>
@@ -1085,7 +1085,7 @@ function ActivitiesComponent() {
               <div className="flex gap-3 pt-2 border-t border-slate-100">
                 <button
                   onClick={createSlowLearnerCases}
-                  disabled={loading || (slowLearnerData?.detectedCount || 0) === 0}
+                  disabled={loading || (slowLearnerData?.summary?.slowLearnersFound || 0) === 0}
                   className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white py-2.5 rounded-lg font-semibold text-sm hover:shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   🎯 {loading ? "Creating..." : "Create Slow Learner Cases"}
@@ -1098,10 +1098,14 @@ function ActivitiesComponent() {
                 </button>
               </div>
 
-              {(slowLearnerData?.detectedCount || 0) === 0 && (
+              {(slowLearnerData?.summary?.slowLearnersFound || 0) === 0 && (
                 <div className="bg-emerald-50 border-l-4 border-emerald-500 text-emerald-700 p-3 rounded-lg text-sm flex items-center gap-2">
                   <span className="text-lg">✅</span>
-                  <span>No slow learners detected in this class. All students are performing at or above expectations.</span>
+                  <span>
+                    {slowLearnerData?.summary?.totalStudents > 0
+                      ? "No slow learners detected in this class. All students are performing at or above expectations (or haven't reached the minimum 3 activities yet)."
+                      : "No activities found for the selected grade, class and term."}
+                  </span>
                 </div>
               )}
             </div>

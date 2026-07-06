@@ -30,6 +30,7 @@ export default function TeacherDashboard() {
   const [slowLearnerCases, setSlowLearnerCases] = useState([]);
   const [error, setError] = useState("");
   const [userName, setUserName] = useState(localStorage.getItem("userName") || "Teacher");
+  const [expandedActivity, setExpandedActivity] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -41,6 +42,20 @@ export default function TeacherDashboard() {
     if (percentage >= 50) return { label: "Average", icon: "📊", color: "bg-amber-500" };
     if (percentage >= 30) return { label: "Poor", icon: "⚠️", color: "bg-orange-500" };
     return { label: "Failing", icon: "🔴", color: "bg-rose-500" };
+  };
+
+  const getPerformanceColor = (percentage) => {
+    if (percentage >= 80) return "text-emerald-600";
+    if (percentage >= 60) return "text-blue-600";
+    if (percentage >= 40) return "text-amber-600";
+    return "text-rose-600";
+  };
+
+  const getPerformanceBarColor = (percentage) => {
+    if (percentage >= 80) return "bg-emerald-500";
+    if (percentage >= 60) return "bg-blue-500";
+    if (percentage >= 40) return "bg-amber-500";
+    return "bg-rose-500";
   };
 
   const fetchData = async () => {
@@ -68,7 +83,7 @@ export default function TeacherDashboard() {
           console.warn("Homework summary API not available yet:", err.message);
           return { data: { summary: {} } };
         }),
-        getRecentActivities({ term: "TERM1", limit: 5, teacherId: localStorage.getItem("userId") }).catch(err => {
+        getRecentActivities({ term: "TERM1", limit: 60, teacherId: localStorage.getItem("userId") }).catch(err => {
           console.warn("Activities API not available yet:", err.message);
           return { data: { activities: [] } };
         }),
@@ -85,26 +100,86 @@ export default function TeacherDashboard() {
       const summary = results[4].status === "fulfilled" ? (results[4].value?.data?.summary || {}) : {};
       
       // ============================================================
-      // RECENT ACTIVITIES - from dedicated school-wide endpoint,
-      // scoped server-side to this teacher via recordedBy (teacherId param).
-      // (The old getClassActivities({grade:"ALL",className:"ALL"}) call
-      // always returned zero results, and the batch objects it returned
-      // never had teacherId/teacherName fields anyway.)
+      // RECENT ACTIVITIES - grouped into per-assignment ("batch") summaries
+      // with class-level analytics, matching the School Dashboard's
+      // analyst-grade view. Scoped server-side to this teacher via
+      // recordedBy (teacherId param).
       // ============================================================
       const activitiesData = results[5].status === "fulfilled" ? (results[5].value?.data || {}) : { activities: [] };
-      const recentActivitiesList = (activitiesData.activities || []).map(a => ({
-        title: a.title || "Activity",
-        studentName: a.studentName || "Unknown",
-        studentId: a.studentId || "-",
-        marksObtained: a.marksObtained ?? 0,
-        marksTotal: a.marksTotal ?? 0,
-        percentage: Math.round(a.percentage || 0),
-        performanceLevel: a.performanceLevel || "AVERAGE",
-        date: a.date ? new Date(a.date).toLocaleDateString() : "-",
-        activityType: a.activityType || "EXERCISE",
-        batchId: a.batchId || "-",
-        courseName: a.courseName || "-"
-      }));
+      const rawActivities = activitiesData.activities || [];
+
+      const batchMap = {};
+      rawActivities.forEach(a => {
+        const marksTotal = a.marksTotal ?? 100;
+        const marksObtained = a.marksObtained ?? 0;
+        const percentage = marksTotal > 0
+          ? Math.round((marksObtained / marksTotal) * 100)
+          : Math.round(a.percentage || 0);
+
+        const key = (a.batchId && a.batchId !== "-")
+          ? a.batchId
+          : `${a.title}__${a.courseName}__${a.date}__${a.grade}__${a.className}`;
+
+        if (!batchMap[key]) {
+          batchMap[key] = {
+            batchId: a.batchId || key,
+            title: a.title || "Activity",
+            activityType: a.activityType || "EXERCISE",
+            courseName: a.courseName || "-",
+            grade: a.grade || "-",
+            className: a.className || "-",
+            date: a.date ? new Date(a.date) : new Date(0),
+            marksTotal: marksTotal,
+            students: []
+          };
+        }
+
+        batchMap[key].students.push({
+          studentName: a.studentName || "Unknown",
+          studentId: a.studentId || "-",
+          marksObtained,
+          marksTotal,
+          percentage,
+          performanceLevel: a.performanceLevel || "AVERAGE"
+        });
+      });
+
+      const recentActivitiesList = Object.values(batchMap)
+        .map(batch => {
+          const scores = batch.students.map(s => s.percentage);
+          const totalStudents = scores.length;
+          const average = totalStudents > 0
+            ? parseFloat((scores.reduce((sum, s) => sum + s, 0) / totalStudents).toFixed(1))
+            : 0;
+          const passCount = scores.filter(s => s >= 50).length;
+          const passRate = totalStudents > 0 ? parseFloat(((passCount / totalStudents) * 100).toFixed(1)) : 0;
+
+          const sortedByScore = [...batch.students].sort((a, b) => b.percentage - a.percentage);
+          const topPerformer = sortedByScore[0] || null;
+          const weakestPerformer = sortedByScore[sortedByScore.length - 1] || null;
+
+          const distribution = { EXCELLENT: 0, GOOD: 0, AVERAGE: 0, POOR: 0, FAILING: 0 };
+          batch.students.forEach(s => {
+            const level = (s.performanceLevel || "AVERAGE").toUpperCase();
+            if (distribution[level] !== undefined) distribution[level]++;
+          });
+
+          return {
+            ...batch,
+            dateLabel: batch.date && batch.date.getTime() > 0 ? batch.date.toLocaleDateString() : "-",
+            totalStudents,
+            average,
+            passRate,
+            highest: totalStudents > 0 ? Math.max(...scores) : 0,
+            lowest: totalStudents > 0 ? Math.min(...scores) : 0,
+            topPerformer,
+            weakestPerformer,
+            distribution
+          };
+        })
+        .sort((a, b) => b.date - a.date)
+        .slice(0, 6);
+
       const myActivities = recentActivitiesList;
       
       const slowLearners = results[6].status === "fulfilled" ? (results[6].value?.data?.cases || []) : [];
@@ -459,40 +534,125 @@ export default function TeacherDashboard() {
             </Link>
           </div>
         ) : (
-          <div className="divide-y divide-slate-100 max-h-52 overflow-y-auto">
+          <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
             {recentActivities.map((activity, idx) => {
-              const perf = getPerformanceLevel(activity.percentage);
+              const distTotal = activity.totalStudents || 1;
+              const distSegments = [
+                { key: "EXCELLENT", color: "bg-emerald-500", count: activity.distribution.EXCELLENT },
+                { key: "GOOD", color: "bg-blue-500", count: activity.distribution.GOOD },
+                { key: "AVERAGE", color: "bg-amber-500", count: activity.distribution.AVERAGE },
+                { key: "POOR", color: "bg-orange-500", count: activity.distribution.POOR },
+                { key: "FAILING", color: "bg-rose-500", count: activity.distribution.FAILING }
+              ];
+              const rowKey = activity.batchId || idx;
+              const isExpanded = expandedActivity === rowKey;
               return (
-                <div key={idx} className="px-3 py-2.5 hover:bg-slate-50 transition">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
+                <div key={rowKey} className="border border-slate-100 rounded-lg hover:border-slate-200 transition">
+                  <div className="px-3 py-2.5">
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="min-w-0">
                         <p className="text-sm font-medium text-slate-800 truncate">{activity.title}</p>
-                        <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium text-white ${perf.color}`}>
-                          {perf.icon} {perf.label}
-                        </span>
-                        {activity.activityType && (
-                          <span className="text-[10px] text-orange-500 bg-orange-50 px-1.5 py-0.5 rounded-full">
+                        <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                          <span className="text-[10px] text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded-full font-medium">
                             {activity.activityType}
                           </span>
-                        )}
+                          <span className="text-[10px] text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded-full font-medium">
+                            {activity.courseName}
+                          </span>
+                          <span className="text-[10px] text-slate-400">{activity.grade} {activity.className} · 📅 {activity.dateLabel}</span>
+                        </div>
                       </div>
-                      <div className="flex flex-wrap items-center gap-2 mt-1">
-                        <span className="text-xs text-slate-500">👨‍🎓 {activity.studentName}</span>
-                        <span className="text-xs text-slate-500">|</span>
-                        <span className="text-xs text-slate-500">Score: {activity.marksObtained}/{activity.marksTotal}</span>
-                        <span className="text-xs text-slate-500">|</span>
-                        <span className="text-xs text-slate-500">📅 {activity.date}</span>
-                        {activity.courseName && (
-                          <>
-                            <span className="text-xs text-slate-500">|</span>
-                            <span className="text-xs text-indigo-500">{activity.courseName}</span>
-                          </>
-                        )}
+                      <button
+                        onClick={() => setExpandedActivity(isExpanded ? null : rowKey)}
+                        className="text-[11px] text-indigo-600 hover:text-indigo-800 font-medium flex-shrink-0 whitespace-nowrap"
+                      >
+                        {isExpanded ? "Hide ▲" : "Details ▼"}
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-4 gap-2 mt-2">
+                      <div>
+                        <p className="text-[9px] text-slate-400 uppercase tracking-wide">Submitted</p>
+                        <p className="text-xs font-bold text-slate-700">{activity.totalStudents}</p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] text-slate-400 uppercase tracking-wide">Average</p>
+                        <p className={`text-xs font-bold ${getPerformanceColor(activity.average)}`}>{activity.average}%</p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] text-slate-400 uppercase tracking-wide">Pass Rate</p>
+                        <p className={`text-xs font-bold ${activity.passRate >= 50 ? "text-emerald-600" : "text-rose-600"}`}>{activity.passRate}%</p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] text-slate-400 uppercase tracking-wide">High / Low</p>
+                        <p className="text-xs font-bold">
+                          <span className="text-emerald-600">{activity.highest}%</span>
+                          <span className="text-slate-300"> / </span>
+                          <span className="text-rose-500">{activity.lowest}%</span>
+                        </p>
                       </div>
                     </div>
-                    <span className="text-sm font-bold text-indigo-600 flex-shrink-0 ml-2">{activity.percentage}%</span>
+
+                    <div className="flex w-full h-1.5 rounded-full overflow-hidden bg-slate-100 mt-2">
+                      {distSegments.map(seg => seg.count > 0 && (
+                        <div
+                          key={seg.key}
+                          className={seg.color}
+                          style={{ width: `${(seg.count / distTotal) * 100}%` }}
+                          title={`${seg.key}: ${seg.count}`}
+                        />
+                      ))}
+                    </div>
                   </div>
+
+                  {isExpanded && (
+                    <div className="border-t border-slate-100 bg-slate-50 px-3 py-2.5">
+                      <div className="grid grid-cols-2 gap-2 mb-2">
+                        <div className="bg-white rounded-lg p-2 border border-slate-100">
+                          <p className="text-[9px] text-slate-400 uppercase tracking-wide mb-0.5">Top Performer</p>
+                          {activity.topPerformer ? (
+                            <p className="text-xs font-medium text-slate-700 truncate">
+                              {activity.topPerformer.studentName}
+                              <span className="text-emerald-600 font-bold"> · {activity.topPerformer.percentage}%</span>
+                            </p>
+                          ) : <span className="text-xs text-slate-400">-</span>}
+                        </div>
+                        <div className="bg-white rounded-lg p-2 border border-slate-100">
+                          <p className="text-[9px] text-slate-400 uppercase tracking-wide mb-0.5">Needs Support</p>
+                          {activity.weakestPerformer ? (
+                            <p className="text-xs font-medium text-slate-700 truncate">
+                              {activity.weakestPerformer.studentName}
+                              <span className="text-rose-600 font-bold"> · {activity.weakestPerformer.percentage}%</span>
+                            </p>
+                          ) : <span className="text-xs text-slate-400">-</span>}
+                        </div>
+                      </div>
+                      <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-wide mb-1">
+                        Full Roster ({activity.totalStudents} students, max {activity.marksTotal} pts)
+                      </p>
+                      <div className="max-h-40 overflow-y-auto rounded-lg border border-slate-100 bg-white">
+                        {[...activity.students]
+                          .sort((a, b) => b.percentage - a.percentage)
+                          .map((s, sIdx) => {
+                            const perf = getPerformanceLevel(s.percentage);
+                            return (
+                              <div key={sIdx} className="flex justify-between items-center px-2.5 py-1.5 border-b border-slate-50 last:border-0">
+                                <div className="min-w-0">
+                                  <p className="text-xs font-medium text-slate-700 truncate">{s.studentName}</p>
+                                  <p className="text-[9px] text-slate-400">{s.studentId}</p>
+                                </div>
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                  <span className="text-xs text-slate-600">{s.marksObtained}/{s.marksTotal}</span>
+                                  <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-medium text-white ${perf.color}`}>
+                                    {perf.icon} {s.percentage}%
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })}
