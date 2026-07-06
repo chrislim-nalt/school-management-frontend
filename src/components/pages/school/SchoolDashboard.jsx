@@ -71,6 +71,7 @@ export default function SchoolDashboard() {
   const [error, setError] = useState(null);
   const [showSlowLearnerDetails, setShowSlowLearnerDetails] = useState(false);
   const [slowLearnerData, setSlowLearnerData] = useState(null);
+  const [expandedActivity, setExpandedActivity] = useState(null);
   
   const navigate = useNavigate();
   const userType = localStorage.getItem("userType");
@@ -197,7 +198,7 @@ export default function SchoolDashboard() {
           period: "DAILY"
         }).catch(() => ({ data: { attendance: [] } })),
         getSlowLearnerCases({ semester: "TERM1" }).catch(() => ({ data: { cases: [] } })),
-        getRecentActivities({ term: "TERM1", limit: 10 }).catch(() => ({ data: { activities: [] } }))
+        getRecentActivities({ term: "TERM1", limit: 100 }).catch(() => ({ data: { activities: [] } }))
       ]);
 
       const students = safeGetArray(studentsRes.data);
@@ -337,20 +338,89 @@ export default function SchoolDashboard() {
       // so "ALL"/"ALL" always returned zero results. /activities/recent
       // has no such requirement.)
       // ============================================================
-      const activitiesData = recentActivitiesRes.data || {};
-      const recentActivities = (activitiesData.activities || []).map(a => ({
-        title: a.title || "Activity",
-        studentName: a.studentName || "Unknown",
-        studentId: a.studentId || "-",
-        marksObtained: a.marksObtained ?? 0,
-        marksTotal: a.marksTotal ?? 0,
-        percentage: Math.round(a.percentage || 0),
-        performanceLevel: a.performanceLevel || "AVERAGE",
-        date: a.date ? new Date(a.date).toLocaleDateString() : "-",
-        activityType: a.activityType || "EXERCISE",
-        batchId: a.batchId || "-",
-        courseName: a.courseName || "-"
-      }));
+      // ============================================================
+      // RECENT ACTIVITIES - grouped into per-assignment ("batch") summaries
+      // with real class-level analytics, not a flat per-student list.
+      // Each "batch" is one activity assigned to a whole class; we compute
+      // average, pass rate, spread, and performance-level distribution
+      // across every student in that batch, plus keep the raw roster for
+      // drill-down.
+      // ============================================================
+      const rawActivities = (recentActivitiesRes.data || {}).activities || [];
+
+      const batchMap = {};
+      rawActivities.forEach(a => {
+        const marksTotal = a.marksTotal ?? 100;
+        const marksObtained = a.marksObtained ?? 0;
+        const percentage = marksTotal > 0
+          ? Math.round((marksObtained / marksTotal) * 100)
+          : Math.round(a.percentage || 0);
+
+        // Fall back to a composite key if batchId is missing so single
+        // (non-batch) activities still group sensibly.
+        const key = (a.batchId && a.batchId !== "-")
+          ? a.batchId
+          : `${a.title}__${a.courseName}__${a.date}__${a.grade}__${a.className}`;
+
+        if (!batchMap[key]) {
+          batchMap[key] = {
+            batchId: a.batchId || key,
+            title: a.title || "Activity",
+            activityType: a.activityType || "EXERCISE",
+            courseName: a.courseName || "-",
+            grade: a.grade || "-",
+            className: a.className || "-",
+            date: a.date ? new Date(a.date) : new Date(0),
+            marksTotal: marksTotal,
+            students: []
+          };
+        }
+
+        batchMap[key].students.push({
+          studentName: a.studentName || "Unknown",
+          studentId: a.studentId || "-",
+          marksObtained,
+          marksTotal,
+          percentage,
+          performanceLevel: a.performanceLevel || "AVERAGE"
+        });
+      });
+
+      const recentActivities = Object.values(batchMap)
+        .map(batch => {
+          const scores = batch.students.map(s => s.percentage);
+          const totalStudents = scores.length;
+          const average = totalStudents > 0
+            ? parseFloat((scores.reduce((sum, s) => sum + s, 0) / totalStudents).toFixed(1))
+            : 0;
+          const passCount = scores.filter(s => s >= 50).length;
+          const passRate = totalStudents > 0 ? parseFloat(((passCount / totalStudents) * 100).toFixed(1)) : 0;
+
+          const sortedByScore = [...batch.students].sort((a, b) => b.percentage - a.percentage);
+          const topPerformer = sortedByScore[0] || null;
+          const weakestPerformer = sortedByScore[sortedByScore.length - 1] || null;
+
+          const distribution = { EXCELLENT: 0, GOOD: 0, AVERAGE: 0, POOR: 0, FAILING: 0 };
+          batch.students.forEach(s => {
+            const level = (s.performanceLevel || "AVERAGE").toUpperCase();
+            if (distribution[level] !== undefined) distribution[level]++;
+          });
+
+          return {
+            ...batch,
+            dateLabel: batch.date && batch.date.getTime() > 0 ? batch.date.toLocaleDateString() : "-",
+            totalStudents,
+            average,
+            passRate,
+            highest: totalStudents > 0 ? Math.max(...scores) : 0,
+            lowest: totalStudents > 0 ? Math.min(...scores) : 0,
+            topPerformer,
+            weakestPerformer,
+            distribution
+          };
+        })
+        .sort((a, b) => b.date - a.date)
+        .slice(0, 8);
 
       // --- Prepare Course Performance from Marks Data ---
       let coursePerformance = [];
@@ -1143,19 +1213,22 @@ export default function SchoolDashboard() {
         </div>
       </div>
 
-      {/* Recent Activities Section - FIXED: Now properly displaying activities */}
+      {/* Recent Activities Section - Analyst-grade batch summary with drill-down */}
       <div className="bg-white rounded-xl shadow-lg p-5 hover:shadow-xl transition-all border border-slate-100">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center">
               <span className="text-orange-600 text-sm">✏️</span>
             </div>
-            <h2 className="font-bold text-slate-800">Recent Activities</h2>
+            <div>
+              <h2 className="font-bold text-slate-800">Recent Activities</h2>
+              <p className="text-[11px] text-slate-400">Class-level performance per assignment, most recent first</p>
+            </div>
             {stats.recentActivities.length > 0 && (
               <span className="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full">{stats.recentActivities.length}</span>
             )}
           </div>
-          <Link to="/activities" className="text-xs text-orange-600 hover:text-orange-700 flex items-center gap-1">
+          <Link to="/activities" className="text-xs text-orange-600 hover:text-orange-700 flex items-center gap-1 flex-shrink-0">
             View All →
           </Link>
         </div>
@@ -1165,43 +1238,170 @@ export default function SchoolDashboard() {
             No recent activities recorded. Assign an activity to get started.
           </div>
         ) : (
-          <div className="space-y-2 max-h-60 overflow-y-auto">
-            {stats.recentActivities.map((activity, idx) => {
-              const perf = getPerformanceLevel(activity.percentage);
-              return (
-                <div key={idx} className="flex justify-between items-center p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-slate-800 truncate">{activity.title}</span>
-                      <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium text-white ${perf.color}`}>
-                        {perf.icon} {perf.label}
-                      </span>
-                      {activity.activityType && (
-                        <span className="text-[10px] text-orange-500 bg-orange-50 px-1.5 py-0.5 rounded-full">
-                          {activity.activityType}
-                        </span>
+          <div className="overflow-x-auto -mx-1">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 text-[11px] uppercase tracking-wide text-slate-400">
+                  <th className="text-left font-semibold px-2 py-2">Activity</th>
+                  <th className="text-left font-semibold px-2 py-2">Class</th>
+                  <th className="text-left font-semibold px-2 py-2">Date</th>
+                  <th className="text-center font-semibold px-2 py-2">Submitted</th>
+                  <th className="text-left font-semibold px-2 py-2 min-w-[130px]">Class Average</th>
+                  <th className="text-center font-semibold px-2 py-2">Pass Rate</th>
+                  <th className="text-left font-semibold px-2 py-2">Spread (High / Low)</th>
+                  <th className="text-left font-semibold px-2 py-2 min-w-[140px]">Distribution</th>
+                  <th className="text-center font-semibold px-2 py-2"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {stats.recentActivities.map((activity, idx) => {
+                  const distTotal = activity.totalStudents || 1;
+                  const distSegments = [
+                    { key: "EXCELLENT", color: "bg-emerald-500", count: activity.distribution.EXCELLENT },
+                    { key: "GOOD", color: "bg-blue-500", count: activity.distribution.GOOD },
+                    { key: "AVERAGE", color: "bg-amber-500", count: activity.distribution.AVERAGE },
+                    { key: "POOR", color: "bg-orange-500", count: activity.distribution.POOR },
+                    { key: "FAILING", color: "bg-rose-500", count: activity.distribution.FAILING }
+                  ];
+                  return (
+                    <React.Fragment key={activity.batchId || idx}>
+                      <tr className="hover:bg-slate-50 transition-colors align-top">
+                        <td className="px-2 py-3">
+                          <p className="font-medium text-slate-800 text-sm">{activity.title}</p>
+                          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                            <span className="text-[10px] text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded-full font-medium">
+                              {activity.activityType}
+                            </span>
+                            <span className="text-[10px] text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded-full font-medium">
+                              {activity.courseName}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-2 py-3 text-slate-600 text-xs whitespace-nowrap">
+                          {activity.grade} {activity.className}
+                        </td>
+                        <td className="px-2 py-3 text-slate-500 text-xs whitespace-nowrap">
+                          📅 {activity.dateLabel}
+                        </td>
+                        <td className="px-2 py-3 text-center text-xs font-semibold text-slate-700 whitespace-nowrap">
+                          {activity.totalStudents}
+                        </td>
+                        <td className="px-2 py-3">
+                          <div className="flex items-center gap-2">
+                            <span className={`text-sm font-bold ${getPerformanceColor(activity.average)}`}>{activity.average}%</span>
+                          </div>
+                          <div className="w-full bg-slate-100 rounded-full h-1.5 mt-1">
+                            <div
+                              className={`h-1.5 rounded-full ${getPerformanceBarColor(activity.average)}`}
+                              style={{ width: `${Math.min(activity.average, 100)}%` }}
+                            />
+                          </div>
+                        </td>
+                        <td className="px-2 py-3 text-center whitespace-nowrap">
+                          <span className={`text-xs font-bold ${activity.passRate >= 50 ? "text-emerald-600" : "text-rose-600"}`}>
+                            {activity.passRate}%
+                          </span>
+                        </td>
+                        <td className="px-2 py-3 text-xs whitespace-nowrap">
+                          <span className="text-emerald-600 font-semibold">{activity.highest}%</span>
+                          <span className="text-slate-300 mx-1">/</span>
+                          <span className="text-rose-500 font-semibold">{activity.lowest}%</span>
+                        </td>
+                        <td className="px-2 py-3">
+                          <div className="flex w-full h-2.5 rounded-full overflow-hidden bg-slate-100">
+                            {distSegments.map(seg => seg.count > 0 && (
+                              <div
+                                key={seg.key}
+                                className={seg.color}
+                                style={{ width: `${(seg.count / distTotal) * 100}%` }}
+                                title={`${seg.key}: ${seg.count}`}
+                              />
+                            ))}
+                          </div>
+                          <p className="text-[10px] text-slate-400 mt-1">
+                            {activity.distribution.EXCELLENT + activity.distribution.GOOD} strong · {activity.distribution.POOR + activity.distribution.FAILING} at risk
+                          </p>
+                        </td>
+                        <td className="px-2 py-3 text-center">
+                          <button
+                            onClick={() => setExpandedActivity(expandedActivity === (activity.batchId || idx) ? null : (activity.batchId || idx))}
+                            className="text-xs text-indigo-600 hover:text-indigo-800 font-medium whitespace-nowrap"
+                          >
+                            {expandedActivity === (activity.batchId || idx) ? "Hide ▲" : "Details ▼"}
+                          </button>
+                        </td>
+                      </tr>
+                      {expandedActivity === (activity.batchId || idx) && (
+                        <tr>
+                          <td colSpan={9} className="bg-slate-50 px-4 py-3">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                              <div className="bg-white rounded-lg p-3 border border-slate-100">
+                                <p className="text-[10px] text-slate-400 uppercase tracking-wide mb-1">Top Performer</p>
+                                {activity.topPerformer ? (
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-sm font-medium text-slate-700">{activity.topPerformer.studentName}</span>
+                                    <span className="text-sm font-bold text-emerald-600">
+                                      {activity.topPerformer.marksObtained}/{activity.topPerformer.marksTotal} · {activity.topPerformer.percentage}%
+                                    </span>
+                                  </div>
+                                ) : <span className="text-xs text-slate-400">-</span>}
+                              </div>
+                              <div className="bg-white rounded-lg p-3 border border-slate-100">
+                                <p className="text-[10px] text-slate-400 uppercase tracking-wide mb-1">Needs Support</p>
+                                {activity.weakestPerformer ? (
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-sm font-medium text-slate-700">{activity.weakestPerformer.studentName}</span>
+                                    <span className="text-sm font-bold text-rose-600">
+                                      {activity.weakestPerformer.marksObtained}/{activity.weakestPerformer.marksTotal} · {activity.weakestPerformer.percentage}%
+                                    </span>
+                                  </div>
+                                ) : <span className="text-xs text-slate-400">-</span>}
+                              </div>
+                            </div>
+                            <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-2">
+                              Full Roster ({activity.totalStudents} students, max {activity.marksTotal} pts)
+                            </p>
+                            <div className="max-h-52 overflow-y-auto rounded-lg border border-slate-100">
+                              <table className="min-w-full text-xs">
+                                <thead className="bg-slate-100 sticky top-0">
+                                  <tr>
+                                    <th className="text-left font-semibold text-slate-500 px-3 py-1.5">Student</th>
+                                    <th className="text-left font-semibold text-slate-500 px-3 py-1.5">ID</th>
+                                    <th className="text-center font-semibold text-slate-500 px-3 py-1.5">Score</th>
+                                    <th className="text-center font-semibold text-slate-500 px-3 py-1.5">%</th>
+                                    <th className="text-left font-semibold text-slate-500 px-3 py-1.5">Performance</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-slate-50">
+                                  {[...activity.students]
+                                    .sort((a, b) => b.percentage - a.percentage)
+                                    .map((s, sIdx) => {
+                                      const perf = getPerformanceLevel(s.percentage);
+                                      return (
+                                        <tr key={sIdx} className="hover:bg-slate-50">
+                                          <td className="px-3 py-1.5 font-medium text-slate-700">{s.studentName}</td>
+                                          <td className="px-3 py-1.5 text-slate-400">{s.studentId}</td>
+                                          <td className="px-3 py-1.5 text-center text-slate-600">{s.marksObtained}/{s.marksTotal}</td>
+                                          <td className={`px-3 py-1.5 text-center font-bold ${getPerformanceColor(s.percentage)}`}>{s.percentage}%</td>
+                                          <td className="px-3 py-1.5">
+                                            <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium text-white ${perf.color}`}>
+                                              {perf.icon} {perf.label}
+                                            </span>
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </td>
+                        </tr>
                       )}
-                    </div>
-                    <div className="flex items-center gap-3 mt-0.5 text-xs text-slate-400 flex-wrap">
-                      <span>👨‍🎓 {activity.studentName}</span>
-                      <span>|</span>
-                      <span>Score: {activity.marksObtained}/{activity.marksTotal}</span>
-                      <span>|</span>
-                      <span>📅 {activity.date}</span>
-                      {activity.courseName && (
-                        <>
-                          <span>|</span>
-                          <span className="text-indigo-500">{activity.courseName}</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  <div className="text-right flex-shrink-0 ml-2">
-                    <span className="text-sm font-bold text-indigo-600">{activity.percentage}%</span>
-                  </div>
-                </div>
-              );
-            })}
+                    </React.Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
