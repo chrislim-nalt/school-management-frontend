@@ -7,6 +7,7 @@ export default function Layout({ children }) {
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [schoolInfo, setSchoolInfo] = useState({ name: "Loading...", code: "" });
+  const [layoutFeatures, setLayoutFeatures] = useState({});
   const [userName, setUserName] = useState("");
   const [userRole, setUserRole] = useState("");
   const [userType, setUserType] = useState("");
@@ -53,16 +54,28 @@ export default function Layout({ children }) {
           setSchoolInfo({ name: user.school.name, code: user.school.schoolCode });
           localStorage.setItem("schoolName", user.school.name);
           localStorage.setItem("schoolCode", user.school.schoolCode);
+          if (user.school.layoutFeatures) {
+            setLayoutFeatures(user.school.layoutFeatures);
+            localStorage.setItem("layoutFeatures", JSON.stringify(user.school.layoutFeatures));
+          }
         } else {
           const schoolName = localStorage.getItem("schoolName");
           const schoolCode = localStorage.getItem("schoolCode");
           if (schoolName) setSchoolInfo({ name: schoolName, code: schoolCode || "" });
+          const storedFeatures = localStorage.getItem("layoutFeatures");
+          if (storedFeatures) {
+            try { setLayoutFeatures(JSON.parse(storedFeatures)); } catch { /* ignore */ }
+          }
         }
       } catch (error) {
         console.error("Error fetching user info:", error);
         const schoolName = localStorage.getItem("schoolName");
         const schoolCode = localStorage.getItem("schoolCode");
         if (schoolName) setSchoolInfo({ name: schoolName, code: schoolCode || "" });
+        const storedFeatures = localStorage.getItem("layoutFeatures");
+        if (storedFeatures) {
+          try { setLayoutFeatures(JSON.parse(storedFeatures)); } catch { /* ignore */ }
+        }
       }
     };
     fetchUserInfo();
@@ -75,6 +88,7 @@ export default function Layout({ children }) {
     localStorage.removeItem("userRole");
     localStorage.removeItem("userType");
     localStorage.removeItem("userName");
+    localStorage.removeItem("layoutFeatures");
     navigate("/");
   };
 
@@ -134,8 +148,8 @@ export default function Layout({ children }) {
         {
           title: "👥 Visitor Management",
           items: [
-            { path: "/visitors", name: "Visitors", icon: "👥", description: "Manage visitors", roles: ["customer_care"] },
-            { path: "/visitors/report", name: "Visitor Report", icon: "📊", description: "Visitor statistics", roles: ["customer_care"] },
+            { path: "/visitors", name: "Visitors", icon: "👥", description: "Manage visitors", roles: ["customer_care"], featureKey: "visitors" },
+            { path: "/visitors/report", name: "Visitor Report", icon: "📊", description: "Visitor statistics", roles: ["customer_care"], featureKey: "visitors" },
           ],
         },
         {
@@ -171,17 +185,17 @@ export default function Layout({ children }) {
         {
           title: "📚 Teaching Tools",
           items: [
-            { path: "/homework", name: "Homework", icon: "📚", description: "Assign and grade homework", roles: ["teacher"] },
-            { path: "/activities", name: "Activities", icon: "📝", description: "Exercises & quizzes", roles: ["teacher"] },
+            { path: "/homework", name: "Homework", icon: "📚", description: "Assign and grade homework", roles: ["teacher"], featureKey: "homework" },
+            { path: "/activities", name: "Activities", icon: "📝", description: "Exercises & quizzes", roles: ["teacher"], featureKey: "activities" },
             { path: "/permissions", name: "Leave Requests", icon: "📋", description: "Request time off", roles: ["teacher"] },
           ],
         },
         {
           title: "🤝 Student Support",
           items: [
-            { path: "/discipline", name: "Discipline", icon: "⚠️", description: "Track student conduct", roles: ["teacher"] },
-            { path: "/english-performance", name: "English Performance", icon: "🇬🇧", description: "English compliance", roles: ["teacher"] },
-            { path: "/slow-learners", name: "Slow Learners", icon: "🎯", description: "Additional support", roles: ["teacher"] },
+            { path: "/discipline", name: "Discipline", icon: "⚠️", description: "Track student conduct", roles: ["teacher"], featureKey: "discipline" },
+            { path: "/english-performance", name: "English Performance", icon: "🇬🇧", description: "English compliance", roles: ["teacher"], featureKey: "englishPerformance" },
+            { path: "/slow-learners", name: "Slow Learners", icon: "🎯", description: "Additional support", roles: ["teacher"], featureKey: "slowLearners" },
           ],
         },
       ];
@@ -202,8 +216,8 @@ export default function Layout({ children }) {
         {
           title: "💰 Finance Management",
           items: [
-            { path: "/fees", name: "Fees Management", icon: "💰", description: "Manage school fees", roles: ["bursar"] },
-            { path: "/transport", name: "Transport Management", icon: "🚌", description: "Transport payments & records", roles: ["bursar"] },
+            { path: "/fees", name: "Fees Management", icon: "💰", description: "Manage school fees", roles: ["bursar"], featureKey: "fees" },
+            { path: "/transport", name: "Transport Management", icon: "🚌", description: "Transport payments & records", roles: ["bursar"], featureKey: "transport" },
           ],
         },
         // INVENTORY MANAGEMENT SECONDARY
@@ -214,18 +228,18 @@ export default function Layout({ children }) {
             { path: "/categories", name: "Categories", icon: "📂", description: "Organize inventory categories", roles: ["bursar"] },
             { path: "/items", name: "Items", icon: "🛒", description: "Manage inventory items", roles: ["bursar"] },
             { path: "/stock", name: "Stock Management", icon: "📦", description: "Track stock movements", roles: ["bursar"] },
-            { path: "/borrowed", name: "Borrowed Items", icon: "📋", description: "Manage borrowed items", roles: ["bursar"] },
+            { path: "/borrowed", name: "Borrowed Items", icon: "📋", description: "Manage borrowed items", roles: ["bursar"], featureKey: "borrowed" },
           ],
         },
         {
           title: "🏗️ Facility & Asset Management",
           items: [
-            { path: "/assets", name: "Assets", icon: "🏗️", description: "School assets", roles: ["bursar"] },
-            { path: "/tracked-assets", name: "Computer Lab", icon: "💻", description: "Computer tracking", roles: ["bursar"] },
-            { path: "/laboratory", name: "Laboratory", icon: "🔬", description: "Lab equipment", roles: ["bursar"] },
-            { path: "/library", name: "Library", icon: "📚", description: "Books collection", roles: ["bursar"] },
-            { path: "/cleaning-supplies", name: "Cleaning Supplies", icon: "🧹", description: "Cleaning inventory", roles: ["bursar"] },
-            { path: "/feeding", name: "Feeding Records", icon: "🍽️", description: "Food management", roles: ["bursar"] },
+            { path: "/assets", name: "Assets", icon: "🏗️", description: "School assets", roles: ["bursar"], featureKey: "assets" },
+            { path: "/tracked-assets", name: "Computer Lab", icon: "💻", description: "Computer tracking", roles: ["bursar"], featureKey: "trackedAssets" },
+            { path: "/laboratory", name: "Laboratory", icon: "🔬", description: "Lab equipment", roles: ["bursar"], featureKey: "laboratory" },
+            { path: "/library", name: "Library", icon: "📚", description: "Books collection", roles: ["bursar"], featureKey: "library" },
+            { path: "/cleaning-supplies", name: "Cleaning Supplies", icon: "🧹", description: "Cleaning inventory", roles: ["bursar"], featureKey: "cleaningSupplies" },
+            { path: "/feeding", name: "Feeding Records", icon: "🍽️", description: "Food management", roles: ["bursar"], featureKey: "feeding" },
           ],
         },
       ];
@@ -254,9 +268,9 @@ export default function Layout({ children }) {
         {
           title: "🏗️ Facility & Asset Management",
           items: [
-            { path: "/tracked-assets", name: "Computer Lab", icon: "💻", description: "Computer Tracking", roles: ["stock_keeper"] },
-            { path: "/cleaning-supplies", name: "Cleaning Supplies", icon: "🧹", description: "Cleaning inventory", roles: ["stock_keeper"] },
-            { path: "/feeding", name: "Feeding Records", icon: "🍽️", description: "Food management", roles: ["stock_keeper"] },
+            { path: "/tracked-assets", name: "Computer Lab", icon: "💻", description: "Computer Tracking", roles: ["stock_keeper"], featureKey: "trackedAssets" },
+            { path: "/cleaning-supplies", name: "Cleaning Supplies", icon: "🧹", description: "Cleaning inventory", roles: ["stock_keeper"], featureKey: "cleaningSupplies" },
+            { path: "/feeding", name: "Feeding Records", icon: "🍽️", description: "Food management", roles: ["stock_keeper"], featureKey: "feeding" },
           ],
         },
       ];
@@ -290,17 +304,17 @@ export default function Layout({ children }) {
         {
           title: "🤝 Student Support",
           items: [
-            { path: "/discipline", name: "Discipline", icon: "⚠️", description: "Track student conduct", roles: ["school_admin"] },
-            { path: "/english-performance", name: "English Performance", icon: "🇬🇧", description: "English compliance", roles: ["school_admin"] },
-            { path: "/slow-learners", name: "Slow Learners", icon: "🎯", description: "Additional support", roles: ["school_admin"] },
+            { path: "/discipline", name: "Discipline", icon: "⚠️", description: "Track student conduct", roles: ["school_admin"], featureKey: "discipline" },
+            { path: "/english-performance", name: "English Performance", icon: "🇬🇧", description: "English compliance", roles: ["school_admin"], featureKey: "englishPerformance" },
+            { path: "/slow-learners", name: "Slow Learners", icon: "🎯", description: "Additional support", roles: ["school_admin"], featureKey: "slowLearners" },
           ],
         },
         // SECTION 4: TEACHER TOOLS
         {
           title: "👨‍🏫 Teacher Tools",
           items: [
-            { path: "/homework", name: "Homework", icon: "📚", description: "Manage homework", roles: ["school_admin"] },
-            { path: "/activities", name: "Activities", icon: "📝", description: "Manage activities", roles: ["school_admin"] },
+            { path: "/homework", name: "Homework", icon: "📚", description: "Manage homework", roles: ["school_admin"], featureKey: "homework" },
+            { path: "/activities", name: "Activities", icon: "📝", description: "Manage activities", roles: ["school_admin"], featureKey: "activities" },
             { path: "/permissions", name: "Leave Requests", icon: "📋", description: "Manage leave requests", roles: ["school_admin"] },
           ],
         },
@@ -308,15 +322,15 @@ export default function Layout({ children }) {
         {
           title: "💰 Finance & Transport",
           items: [
-            { path: "/fees", name: "Fees Management", icon: "💰", description: "Manage school fees", roles: ["school_admin"] },
-            { path: "/transport", name: "Transport Management", icon: "🚌", description: "Transport payments", roles: ["school_admin"] },
+            { path: "/fees", name: "Fees Management", icon: "💰", description: "Manage school fees", roles: ["school_admin"], featureKey: "fees" },
+            { path: "/transport", name: "Transport Management", icon: "🚌", description: "Transport payments", roles: ["school_admin"], featureKey: "transport" },
           ],
         },
         // SECTION 6: VISITOR MANAGEMENT
         {
           title: "👥 Visitor Management",
           items: [
-            { path: "/visitors", name: "Visitors", icon: "👥", description: "Manage visitors", roles: ["school_admin"] },
+            { path: "/visitors", name: "Visitors", icon: "👥", description: "Manage visitors", roles: ["school_admin"], featureKey: "visitors" },
           ],
         },
         // SECTION 7: REPORTS
@@ -334,19 +348,19 @@ export default function Layout({ children }) {
             { path: "/categories", name: "Categories", icon: "📂", description: "Organize items", roles: ["school_admin"] },
             { path: "/items", name: "Items", icon: "🛒", description: "Manage inventory", roles: ["school_admin"] },
             { path: "/stock", name: "Stock Management", icon: "📦", description: "Track movements", roles: ["school_admin"] },
-            { path: "/borrowed", name: "Borrowed Items", icon: "📋", description: "Manage borrows", roles: ["school_admin"] },
+            { path: "/borrowed", name: "Borrowed Items", icon: "📋", description: "Manage borrows", roles: ["school_admin"], featureKey: "borrowed" },
           ],
         },
         // SECTION 9: FACILITY & ASSET MANAGEMENT
         {
           title: "🏗️ Facility & Asset Management",
           items: [
-            { path: "/assets", name: "Assets", icon: "🏗️", description: "School assets", roles: ["school_admin"] },
-            { path: "/tracked-assets", name: "Computer Lab", icon: "💻", description: "Computer tracking", roles: ["school_admin"] },
-            { path: "/laboratory", name: "Laboratory", icon: "🔬", description: "Lab equipment", roles: ["school_admin"] },
-            { path: "/library", name: "Library", icon: "📚", description: "Books collection", roles: ["school_admin"] },
-            { path: "/cleaning-supplies", name: "Cleaning Supplies", icon: "🧹", description: "Cleaning inventory", roles: ["school_admin"] },
-            { path: "/feeding", name: "Feeding Records", icon: "🍽️", description: "Food management", roles: ["school_admin"] },
+            { path: "/assets", name: "Assets", icon: "🏗️", description: "School assets", roles: ["school_admin"], featureKey: "assets" },
+            { path: "/tracked-assets", name: "Computer Lab", icon: "💻", description: "Computer tracking", roles: ["school_admin"], featureKey: "trackedAssets" },
+            { path: "/laboratory", name: "Laboratory", icon: "🔬", description: "Lab equipment", roles: ["school_admin"], featureKey: "laboratory" },
+            { path: "/library", name: "Library", icon: "📚", description: "Books collection", roles: ["school_admin"], featureKey: "library" },
+            { path: "/cleaning-supplies", name: "Cleaning Supplies", icon: "🧹", description: "Cleaning inventory", roles: ["school_admin"], featureKey: "cleaningSupplies" },
+            { path: "/feeding", name: "Feeding Records", icon: "🍽️", description: "Food management", roles: ["school_admin"], featureKey: "feeding" },
           ],
         },
       ];
@@ -392,8 +406,8 @@ export default function Layout({ children }) {
     
     if (isBursar) {
       return [
-        { path: "/fees", name: "Fees", icon: "💰" },
-        { path: "/transport", name: "Transport", icon: "🚌" },
+        { path: "/fees", name: "Fees", icon: "💰", featureKey: "fees" },
+        { path: "/transport", name: "Transport", icon: "🚌", featureKey: "transport" },
         { path: "/items", name: "Items", icon: "🛒" },
         { path: "/profile", name: "Profile", icon: "👤" },
       ];
@@ -411,12 +425,14 @@ export default function Layout({ children }) {
     return [
       { path: "/school-dashboard", name: "Dashboard", icon: "📊" },
       { path: "/students", name: "Students", icon: "👨‍🎓" },
-      { path: "/fees", name: "Fees", icon: "💰" },
+      { path: "/fees", name: "Fees", icon: "💰", featureKey: "fees" },
       { path: "/profile", name: "Profile", icon: "👤" },
     ];
   };
 
-  const bottomNavItems = getBottomNavItems();
+  const bottomNavItems = getBottomNavItems().filter(
+    (item) => !item.featureKey || layoutFeatures[item.featureKey] !== false
+  );
 
   const isActive = (path) => {
     if (!path) return false;
@@ -427,6 +443,11 @@ export default function Layout({ children }) {
     if (!items || !Array.isArray(items)) return [];
     return items.filter(item => {
       if (!item) return false;
+
+      // Per-school layout toggle: hide items the super admin turned off for this school.
+      // Defaults to visible unless explicitly set to false.
+      if (item.featureKey && layoutFeatures[item.featureKey] === false) return false;
+
       if (item.roles && !item.roles.includes("all")) {
         if (isSchoolAdmin && item.roles.includes("school_admin")) return true;
         if (isTeacher && item.roles.includes("teacher")) return true;

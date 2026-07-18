@@ -17,6 +17,26 @@ export default function AdminSchoolDetail() {
     const [isSharing, setIsSharing] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage] = useState(10);
+    const [layoutFeatures, setLayoutFeatures] = useState({});
+    const [togglingFeature, setTogglingFeature] = useState("");
+
+    const layoutFeaturesList = [
+        { key: "fees", label: "Fees Management", icon: "💰", group: "Finance & Transport" },
+        { key: "transport", label: "Transport Management", icon: "🚌", group: "Finance & Transport" },
+        { key: "discipline", label: "Discipline", icon: "⚠️", group: "Student Support" },
+        { key: "englishPerformance", label: "English Performance", icon: "🇬🇧", group: "Student Support" },
+        { key: "slowLearners", label: "Slow Learners", icon: "🎯", group: "Student Support" },
+        { key: "homework", label: "Homework", icon: "📚", group: "Teacher Tools" },
+        { key: "activities", label: "Activities", icon: "📝", group: "Teacher Tools" },
+        { key: "visitors", label: "Visitor Management", icon: "👥", group: "Visitors" },
+        { key: "assets", label: "Assets", icon: "🏗️", group: "Facility & Assets" },
+        { key: "trackedAssets", label: "Computer Lab", icon: "💻", group: "Facility & Assets" },
+        { key: "laboratory", label: "Laboratory", icon: "🔬", group: "Facility & Assets" },
+        { key: "library", label: "Library", icon: "📚", group: "Facility & Assets" },
+        { key: "cleaningSupplies", label: "Cleaning Supplies", icon: "🧹", group: "Facility & Assets" },
+        { key: "feeding", label: "Feeding Records", icon: "🍽️", group: "Facility & Assets" },
+        { key: "borrowed", label: "Borrowed Items", icon: "📋", group: "Facility & Assets" },
+    ];
 
     const subscriptionPlans = [
         { value: "free_trial", label: "Free Trial", price: "Free", duration: "14 days", maxUsers: 5, color: "slate", icon: "🎁" },
@@ -37,6 +57,7 @@ export default function AdminSchoolDetail() {
             setSubscription(res.data.subscription);
             setUsers(res.data.users);
             setSelectedPlan(res.data.subscription?.plan || "free_trial");
+            setLayoutFeatures(res.data.school?.layoutFeatures || {});
         } catch (error) {
             console.error("Error fetching school:", error);
             setMessage({ type: "error", text: "Failed to load school details" });
@@ -85,6 +106,30 @@ export default function AdminSchoolDetail() {
             setTimeout(() => setMessage({ type: "", text: "" }), 3000);
         } catch (error) {
             setMessage({ type: "error", text: "Failed to update subscription" });
+        }
+    };
+
+    const handleToggleLayoutFeature = async (key, label) => {
+        const currentValue = layoutFeatures[key] !== false;
+        const nextValue = !currentValue;
+        const previousFeatures = layoutFeatures;
+
+        // Optimistic update
+        setLayoutFeatures({ ...layoutFeatures, [key]: nextValue });
+        setTogglingFeature(key);
+
+        try {
+            await API.put(`/admin/schools/${id}/layout-features`, {
+                layoutFeatures: { [key]: nextValue }
+            });
+            setMessage({ type: "success", text: `${label} ${nextValue ? "shown" : "hidden"} for this school` });
+            setTimeout(() => setMessage({ type: "", text: "" }), 2500);
+        } catch (error) {
+            setLayoutFeatures(previousFeatures);
+            setMessage({ type: "error", text: "Failed to update layout setting" });
+            setTimeout(() => setMessage({ type: "", text: "" }), 3000);
+        } finally {
+            setTogglingFeature("");
         }
     };
 
@@ -407,6 +452,67 @@ export default function AdminSchoolDetail() {
                             Change Subscription Plan
                         </button>
                     </div>
+                </div>
+            </div>
+
+            {/* Layout Settings - show/hide features for this school only */}
+            <div className="bg-white rounded-xl shadow-md overflow-hidden">
+                <div className="px-4 py-3 border-b border-slate-100">
+                    <div className="flex items-center gap-2">
+                        <span className="text-lg">🧩</span>
+                        <h2 className="text-sm font-semibold text-slate-800">Layout Settings</h2>
+                    </div>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                        Hide features this school doesn't need. Changes apply only to {school.name} and take effect the next time their staff log in or refresh.
+                    </p>
+                </div>
+                <div className="p-4 space-y-4">
+                    {Object.entries(
+                        layoutFeaturesList.reduce((groups, feature) => {
+                            if (!groups[feature.group]) groups[feature.group] = [];
+                            groups[feature.group].push(feature);
+                            return groups;
+                        }, {})
+                    ).map(([groupName, features]) => (
+                        <div key={groupName}>
+                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">{groupName}</p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                                {features.map((feature) => {
+                                    const isVisible = layoutFeatures[feature.key] !== false;
+                                    const isBusy = togglingFeature === feature.key;
+                                    return (
+                                        <button
+                                            key={feature.key}
+                                            type="button"
+                                            disabled={isBusy}
+                                            onClick={() => handleToggleLayoutFeature(feature.key, feature.label)}
+                                            className={`flex items-center justify-between gap-2 px-3 py-2 rounded-lg border text-left transition-all disabled:opacity-50 ${
+                                                isVisible ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-slate-50"
+                                            }`}
+                                        >
+                                            <span className="flex items-center gap-2 min-w-0">
+                                                <span className="text-base flex-shrink-0">{feature.icon}</span>
+                                                <span className={`text-xs font-medium truncate ${isVisible ? "text-slate-800" : "text-slate-400"}`}>
+                                                    {feature.label}
+                                                </span>
+                                            </span>
+                                            <span
+                                                className={`relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors ${
+                                                    isVisible ? "bg-emerald-500" : "bg-slate-300"
+                                                }`}
+                                            >
+                                                <span
+                                                    className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                                                        isVisible ? "translate-x-4" : "translate-x-0.5"
+                                                    }`}
+                                                />
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </div>
 
