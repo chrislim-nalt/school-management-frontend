@@ -17,15 +17,15 @@ export default function Students() {
   const [itemsPerPage] = useState(25);
 
   const grades = ["Baby", "Middle", "Top", "P1", "P2", "P3", "P4", "P5", "P6", "S1", "S2", "S3", "S4", "S5", "S6"];
-  const classes = ["Elohim", "Shama"];
+  const classes = ["ELOHIM", "SHAMA"];
 
   const [form, setForm] = useState({
     name: "",
     parentName: "",
     parentPhone: "",
     parentEmail: "",
-    grade: "S1",
-    className: "A",
+    grade: "P1",
+    className: "ELOHIM",
     dateOfBirth: "",
     gender: "MALE",
     status: "ACTIVE",
@@ -85,7 +85,7 @@ export default function Students() {
       parentPhone: "",
       parentEmail: "",
       grade: "p1",
-      className: "Elohim",
+      className: "ELOHIM",
       dateOfBirth: "",
       gender: "MALE",
       status: "ACTIVE",

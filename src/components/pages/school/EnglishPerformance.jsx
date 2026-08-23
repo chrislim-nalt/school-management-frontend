@@ -28,7 +28,7 @@ export default function EnglishPerformance() {
   const [searchTerm, setSearchTerm] = useState("");
 
   const grades = ["Baby", "Middle", "Top", "P1", "P2", "P3", "P4", "P5", "P6", "S1", "S2", "S3", "S4", "S5", "S6"];
-  const classes = ["Elohim", "Shama"];
+  const classes = ["ELOHIM", "SHAMA"];
   const semesters = ["TERM1", "TERM2", "TERM3"];
   const locations = ["CLASSROOM", "HALL", "PLAYGROUND", "DORMITORY", "OTHER"];
 
