@@ -19,7 +19,7 @@ export default function Attendance() {
   
   // Student attendance states
   const [grades, setGrades] = useState(["Baby", "Middle", "Top", "P1", "P2", "P3", "P4", "P5", "P6", "S1", "S2", "S3", "S4", "S5", "S6"]);
-  const [classes, setClasses] = useState(["A", "B", "C", "D"]);
+  const [classes, setClasses] = useState(["Elohim", "Shama"]);
   const [selectedGrade, setSelectedGrade] = useState("S1");
   const [selectedClass, setSelectedClass] = useState("A");
   const [students, setStudents] = useState([]);
