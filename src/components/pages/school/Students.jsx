@@ -180,7 +180,7 @@ export default function Students() {
       parentPhone: student.parentPhone || "",
       parentEmail: student.parentEmail || "",
       grade: student.grade || "P1",
-      className: student.className || "Elohim",
+      className: student.className || "ELOHIM",
       dateOfBirth: student.dateOfBirth ? new Date(student.dateOfBirth).toISOString().split('T')[0] : "",
       gender: student.gender || "MALE",
       status: student.status || "ACTIVE",
