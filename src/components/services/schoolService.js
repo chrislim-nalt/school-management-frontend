@@ -556,6 +556,26 @@ export const getStudentFeeSummary = async (studentId) => {
   }
 };
 
+export const updateFee = async (id, data) => {
+  try {
+    const response = await API.put(`/fees/${id}`, data);
+    return response;
+  } catch (error) {
+    console.error("updateFee error:", error);
+    throw error;
+  }
+};
+
+export const deleteFee = async (id) => {
+  try {
+    const response = await API.delete(`/fees/${id}`);
+    return response;
+  } catch (error) {
+    console.error("deleteFee error:", error);
+    throw error;
+  }
+};
+
 // ==================== SLOW LEARNER AUTO DETECTION ====================
 export const autoDetectSlowLearners = async (params) => {
   try {

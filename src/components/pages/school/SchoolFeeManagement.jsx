@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useRef } from "react";
 import { 
   recordFee,
+  updateFee,
+  deleteFee,
   getFeeRecords,
   getOutstandingFees,
   getStudentFeeSummary,
@@ -17,6 +19,16 @@ export default function SchoolFeeManagement() {
   const [students, setStudents] = useState([]);
   const [filteredStudents, setFilteredStudents] = useState([]);
   const [showRecordForm, setShowRecordForm] = useState(false);
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [editingFee, setEditingFee] = useState(null);
+  const [editForm, setEditForm] = useState({
+    totalFees: 0,
+    amountPaid: 0,
+    term: "TERM1",
+    academicYear: new Date().getFullYear(),
+    notes: ""
+  });
+  const [deletingId, setDeletingId] = useState(null);
   const [showOutstanding, setShowOutstanding] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [studentSummary, setStudentSummary] = useState(null);
@@ -211,6 +223,78 @@ export default function SchoolFeeManagement() {
     }
   };
 
+  const openEditFee = (fee) => {
+    setEditingFee(fee);
+    setEditForm({
+      totalFees: fee.totalFees || 0,
+      amountPaid: fee.amountPaid || 0,
+      term: fee.term || "TERM1",
+      academicYear: fee.academicYear || new Date().getFullYear(),
+      notes: fee.notes || ""
+    });
+    setShowEditForm(true);
+  };
+
+  const handleUpdateFee = async (e) => {
+    e.preventDefault();
+    if (!editingFee) return;
+    if (editForm.totalFees <= 0) {
+      setError("Total fees must be greater than 0");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+    try {
+      await updateFee(editingFee._id, {
+        totalFees: editForm.totalFees,
+        amountPaid: editForm.amountPaid,
+        term: editForm.term,
+        academicYear: editForm.academicYear,
+        notes: editForm.notes
+      });
+      setSuccess("✅ Fee record updated successfully!");
+      setShowEditForm(false);
+      setEditingFee(null);
+      fetchData();
+      setTimeout(() => setSuccess(""), 3000);
+    } catch (err) {
+      console.error("Update fee error:", err);
+      setError(err.response?.data?.message || "Failed to update fee record");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteFee = async (fee) => {
+    if (!window.confirm(`Delete the ${fee.term.replace("TERM", "Term ")} fee record for ${fee.studentName}? This cannot be undone.`)) {
+      return;
+    }
+    setDeletingId(fee._id);
+    setError("");
+    try {
+      await deleteFee(fee._id);
+      setSuccess("🗑️ Fee record deleted");
+      fetchData();
+      setTimeout(() => setSuccess(""), 3000);
+    } catch (err) {
+      console.error("Delete fee error:", err);
+      setError(err.response?.data?.message || "Failed to delete fee record");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  // Balance > 0  -> still owed TO the school
+  // Balance < 0  -> school owes a refund/credit back to the student
+  const getBalanceInfo = (fee) => {
+    const balance = fee.balance ?? (fee.totalFees - fee.amountPaid);
+    if (balance < 0) {
+      return { label: "Credit Owed", amount: Math.abs(balance), isCredit: true };
+    }
+    return { label: "Balance", amount: balance, isCredit: false };
+  };
+
   const getStatusColor = (status) => {
     const colors = {
       PAID: "bg-emerald-100 text-emerald-700",
@@ -246,16 +330,20 @@ export default function SchoolFeeManagement() {
 
   const exportColumns = exportData.length > 0 ? Object.keys(exportData[0]).map(key => ({ key, label: key })) : [];
 
-  // Summary stats
+  // Summary stats — balance and credit are kept separate so the totals are
+  // actually meaningful: money still owed TO the school vs. money the
+  // school owes BACK to students who overpaid.
   const summaryStats = {
     total: feeRecords.length,
-    paid: feeRecords.filter(f => f.status === "PAID").length,
+    paid: feeRecords.filter(f => f.status === "PAID" && (f.balance || 0) === 0).length,
+    overpaid: feeRecords.filter(f => (f.balance || 0) < 0).length,
     partial: feeRecords.filter(f => f.status === "PARTIAL").length,
     unpaid: feeRecords.filter(f => f.status === "UNPAID").length,
     overdue: feeRecords.filter(f => f.status === "OVERDUE").length,
     totalFees: feeRecords.reduce((sum, f) => sum + (f.totalFees || 0), 0),
     totalPaid: feeRecords.reduce((sum, f) => sum + (f.amountPaid || 0), 0),
-    totalBalance: feeRecords.reduce((sum, f) => sum + (f.balance || 0), 0)
+    totalBalance: feeRecords.reduce((sum, f) => sum + ((f.balance || 0) > 0 ? f.balance : 0), 0),
+    totalCredit: feeRecords.reduce((sum, f) => sum + ((f.balance || 0) < 0 ? Math.abs(f.balance) : 0), 0)
   };
 
   return (
@@ -319,22 +407,26 @@ export default function SchoolFeeManagement() {
           </div>
 
           {/* Summary Stats - Mobile Responsive */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3 mt-4 md:mt-6">
-            <div className="bg-white/5 backdrop-blur rounded-xl p-2 md:p-3 border border-white/10">
-              <p className="text-slate-300 text-[10px] md:text-xs">Total Records</p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 md:gap-3 mt-4 md:mt-6">
+            <div className="bg-white/5 backdrop-blur rounded-xl p-2 md:p-3 border border-white/10 min-w-0">
+              <p className="text-slate-300 text-[10px] md:text-xs truncate">Total Records</p>
               <p className="text-lg md:text-2xl font-bold text-white mt-0.5">{summaryStats.total}</p>
             </div>
-            <div className="bg-white/5 backdrop-blur rounded-xl p-2 md:p-3 border border-white/10">
-              <p className="text-slate-300 text-[10px] md:text-xs">Total Fees</p>
-              <p className="text-sm md:text-2xl font-bold text-emerald-400 mt-0.5">{summaryStats.totalFees.toLocaleString()} RWF</p>
+            <div className="bg-white/5 backdrop-blur rounded-xl p-2 md:p-3 border border-white/10 min-w-0">
+              <p className="text-slate-300 text-[10px] md:text-xs truncate">Total Fees</p>
+              <p className="text-sm md:text-2xl font-bold text-emerald-400 mt-0.5 truncate">{summaryStats.totalFees.toLocaleString()} RWF</p>
             </div>
-            <div className="bg-white/5 backdrop-blur rounded-xl p-2 md:p-3 border border-white/10">
-              <p className="text-slate-300 text-[10px] md:text-xs">Total Paid</p>
-              <p className="text-sm md:text-2xl font-bold text-blue-400 mt-0.5">{summaryStats.totalPaid.toLocaleString()} RWF</p>
+            <div className="bg-white/5 backdrop-blur rounded-xl p-2 md:p-3 border border-white/10 min-w-0">
+              <p className="text-slate-300 text-[10px] md:text-xs truncate">Total Paid</p>
+              <p className="text-sm md:text-2xl font-bold text-blue-400 mt-0.5 truncate">{summaryStats.totalPaid.toLocaleString()} RWF</p>
             </div>
-            <div className="bg-white/5 backdrop-blur rounded-xl p-2 md:p-3 border border-white/10">
-              <p className="text-slate-300 text-[10px] md:text-xs">Total Balance</p>
-              <p className="text-sm md:text-2xl font-bold text-amber-400 mt-0.5">{summaryStats.totalBalance.toLocaleString()} RWF</p>
+            <div className="bg-white/5 backdrop-blur rounded-xl p-2 md:p-3 border border-white/10 min-w-0">
+              <p className="text-slate-300 text-[10px] md:text-xs truncate">Outstanding</p>
+              <p className="text-sm md:text-2xl font-bold text-amber-400 mt-0.5 truncate">{summaryStats.totalBalance.toLocaleString()} RWF</p>
+            </div>
+            <div className="bg-white/5 backdrop-blur rounded-xl p-2 md:p-3 border border-white/10 min-w-0 col-span-2 sm:col-span-1">
+              <p className="text-slate-300 text-[10px] md:text-xs truncate">Credit Owed to Students</p>
+              <p className="text-sm md:text-2xl font-bold text-cyan-400 mt-0.5 truncate">{summaryStats.totalCredit.toLocaleString()} RWF</p>
             </div>
           </div>
         </div>
@@ -444,23 +536,50 @@ export default function SchoolFeeManagement() {
                     <td className="px-3 py-2 text-sm text-slate-600">{fee.grade} {fee.className}</td>
                     <td className="px-3 py-2 text-right font-medium text-slate-800">{fee.totalFees.toLocaleString()} RWF</td>
                     <td className="px-3 py-2 text-right text-emerald-600 font-medium">{fee.amountPaid.toLocaleString()} RWF</td>
-                    <td className="px-3 py-2 text-right font-bold text-amber-600">{fee.balance.toLocaleString()} RWF</td>
+                    <td className="px-3 py-2 text-right">
+                      {getBalanceInfo(fee).isCredit ? (
+                        <span className="font-bold text-cyan-600">
+                          +{getBalanceInfo(fee).amount.toLocaleString()} RWF
+                          <span className="block text-[10px] font-normal text-cyan-500">owed to student</span>
+                        </span>
+                      ) : (
+                        <span className="font-bold text-amber-600">{getBalanceInfo(fee).amount.toLocaleString()} RWF</span>
+                      )}
+                    </td>
                     <td className="px-3 py-2 text-center">
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(fee.status)}`}>
-                        {getStatusIcon(fee.status)} {fee.status}
+                        {getStatusIcon(fee.status)} {getBalanceInfo(fee).isCredit ? "OVERPAID" : fee.status}
                       </span>
                     </td>
                     <td className="px-3 py-2 text-center text-sm text-slate-600">{fee.term}</td>
-                    <td className="px-3 py-2 text-center">
-                      <button
-                        onClick={() => {
-                          setSelectedStudent(fee.studentId);
-                          fetchStudentSummary(fee.studentId);
-                        }}
-                        className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-600 text-white rounded-lg text-xs font-medium hover:bg-indigo-700 transition"
-                      >
-                        📋 Details
-                      </button>
+                    <td className="px-3 py-2">
+                      <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                        <button
+                          onClick={() => {
+                            setSelectedStudent(fee.studentId);
+                            fetchStudentSummary(fee.studentId);
+                          }}
+                          title="View details"
+                          className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-600 text-white rounded-lg text-xs font-medium hover:bg-indigo-700 transition"
+                        >
+                          📋
+                        </button>
+                        <button
+                          onClick={() => openEditFee(fee)}
+                          title="Edit fee record"
+                          className="inline-flex items-center gap-1 px-2 py-1 bg-amber-500 text-white rounded-lg text-xs font-medium hover:bg-amber-600 transition"
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          onClick={() => handleDeleteFee(fee)}
+                          disabled={deletingId === fee._id}
+                          title="Delete fee record"
+                          className="inline-flex items-center gap-1 px-2 py-1 bg-rose-600 text-white rounded-lg text-xs font-medium hover:bg-rose-700 transition disabled:opacity-50"
+                        >
+                          {deletingId === fee._id ? "…" : "🗑️"}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -483,30 +602,47 @@ export default function SchoolFeeManagement() {
                   </span>
                 </div>
                 <div className="grid grid-cols-3 gap-2 mt-2">
-                  <div className="bg-slate-50 rounded-lg p-1.5 text-center">
+                  <div className="bg-slate-50 rounded-lg p-1.5 text-center min-w-0">
                     <p className="text-[10px] text-slate-400">Total</p>
-                    <p className="text-xs font-bold text-slate-700">{fee.totalFees.toLocaleString()} RWF</p>
+                    <p className="text-xs font-bold text-slate-700 truncate">{fee.totalFees.toLocaleString()} RWF</p>
                   </div>
-                  <div className="bg-emerald-50 rounded-lg p-1.5 text-center">
+                  <div className="bg-emerald-50 rounded-lg p-1.5 text-center min-w-0">
                     <p className="text-[10px] text-slate-400">Paid</p>
-                    <p className="text-xs font-bold text-emerald-600">{fee.amountPaid.toLocaleString()} RWF</p>
+                    <p className="text-xs font-bold text-emerald-600 truncate">{fee.amountPaid.toLocaleString()} RWF</p>
                   </div>
-                  <div className="bg-amber-50 rounded-lg p-1.5 text-center">
-                    <p className="text-[10px] text-slate-400">Balance</p>
-                    <p className="text-xs font-bold text-amber-600">{fee.balance.toLocaleString()} RWF</p>
+                  <div className={`rounded-lg p-1.5 text-center min-w-0 ${getBalanceInfo(fee).isCredit ? "bg-cyan-50" : "bg-amber-50"}`}>
+                    <p className="text-[10px] text-slate-400">{getBalanceInfo(fee).isCredit ? "Owed to them" : "Balance"}</p>
+                    <p className={`text-xs font-bold truncate ${getBalanceInfo(fee).isCredit ? "text-cyan-600" : "text-amber-600"}`}>
+                      {getBalanceInfo(fee).isCredit ? "+" : ""}{getBalanceInfo(fee).amount.toLocaleString()} RWF
+                    </p>
                   </div>
                 </div>
-                <div className="flex justify-between items-center mt-2 pt-2 border-t border-slate-100">
+                <div className="flex flex-wrap justify-between items-center gap-2 mt-2 pt-2 border-t border-slate-100">
                   <span className="text-xs text-slate-500">{fee.term}</span>
-                  <button
-                    onClick={() => {
-                      setSelectedStudent(fee.studentId);
-                      fetchStudentSummary(fee.studentId);
-                    }}
-                    className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-600 text-white rounded-lg text-xs font-medium hover:bg-indigo-700 transition"
-                  >
-                    📋 Details
-                  </button>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <button
+                      onClick={() => {
+                        setSelectedStudent(fee.studentId);
+                        fetchStudentSummary(fee.studentId);
+                      }}
+                      className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-600 text-white rounded-lg text-xs font-medium hover:bg-indigo-700 transition"
+                    >
+                      📋 Details
+                    </button>
+                    <button
+                      onClick={() => openEditFee(fee)}
+                      className="inline-flex items-center gap-1 px-2 py-1 bg-amber-500 text-white rounded-lg text-xs font-medium hover:bg-amber-600 transition"
+                    >
+                      ✏️ Edit
+                    </button>
+                    <button
+                      onClick={() => handleDeleteFee(fee)}
+                      disabled={deletingId === fee._id}
+                      className="inline-flex items-center gap-1 px-2 py-1 bg-rose-600 text-white rounded-lg text-xs font-medium hover:bg-rose-700 transition disabled:opacity-50"
+                    >
+                      {deletingId === fee._id ? "…" : "🗑️ Delete"}
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -633,12 +769,16 @@ export default function SchoolFeeManagement() {
                   <input
                     type="number"
                     min="0"
-                    max={form.totalFees || 0}
                     value={form.amountPaid}
                     onChange={(e) => setForm({...form, amountPaid: parseFloat(e.target.value)})}
                     className="w-full border border-slate-200 rounded-lg px-2 py-1.5 md:px-3 md:py-2 text-xs md:text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none"
                     placeholder="0"
                   />
+                  {form.totalFees > 0 && form.amountPaid > form.totalFees && (
+                    <p className="text-[10px] md:text-xs text-cyan-600 mt-1">
+                      💡 This is {(form.amountPaid - form.totalFees).toLocaleString()} RWF more than the fee — it will be recorded as a credit owed back to the student.
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -709,6 +849,117 @@ export default function SchoolFeeManagement() {
                   💰 {loading ? "Recording..." : "Record Fee"}
                 </button>
                 <button type="button" onClick={() => setShowRecordForm(false)} className="flex-1 bg-slate-100 text-slate-700 py-2 md:py-2.5 rounded-lg font-semibold text-xs md:text-sm hover:bg-slate-200 transition-all">
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Fee Modal - Super Responsive */}
+      {showEditForm && editingFee && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-3 md:p-4 overflow-y-auto" onClick={() => setShowEditForm(false)}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md my-4 md:my-8 max-h-[95vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-3 md:px-5 md:py-4 flex justify-between items-center rounded-t-xl z-10">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-lg md:text-xl">✏️</span>
+                <div className="min-w-0">
+                  <h2 className="text-base md:text-lg font-bold text-white">Edit Fee Record</h2>
+                  <p className="text-[10px] md:text-xs text-white/80 truncate">{editingFee.studentName} — {editingFee.studentId}</p>
+                </div>
+              </div>
+              <button onClick={() => setShowEditForm(false)} className="text-white/70 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10 text-xl flex-shrink-0">
+                ✕
+              </button>
+            </div>
+            <form onSubmit={handleUpdateFee} className="p-4 md:p-5 space-y-3 md:space-y-4">
+              <div className="grid grid-cols-2 gap-2 md:gap-3">
+                <div>
+                  <label className="block text-[10px] md:text-xs font-semibold text-slate-700 mb-1">Total Fees *</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editForm.totalFees}
+                    onChange={(e) => setEditForm({...editForm, totalFees: parseFloat(e.target.value)})}
+                    className="w-full border border-slate-200 rounded-lg px-2 py-1.5 md:px-3 md:py-2 text-xs md:text-sm focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] md:text-xs font-semibold text-slate-700 mb-1">Amount Paid</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editForm.amountPaid}
+                    onChange={(e) => setEditForm({...editForm, amountPaid: parseFloat(e.target.value)})}
+                    className="w-full border border-slate-200 rounded-lg px-2 py-1.5 md:px-3 md:py-2 text-xs md:text-sm focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none"
+                  />
+                </div>
+              </div>
+
+              {editForm.totalFees > 0 && (
+                <div className={`rounded-lg p-2 md:p-3 text-center text-xs md:text-sm font-semibold ${
+                  editForm.amountPaid > editForm.totalFees
+                    ? "bg-cyan-50 text-cyan-700"
+                    : editForm.amountPaid === editForm.totalFees
+                    ? "bg-emerald-50 text-emerald-700"
+                    : "bg-amber-50 text-amber-700"
+                }`}>
+                  {editForm.amountPaid > editForm.totalFees
+                    ? `Credit owed to student: ${(editForm.amountPaid - editForm.totalFees).toLocaleString()} RWF`
+                    : editForm.amountPaid === editForm.totalFees
+                    ? "Fully paid"
+                    : `Balance remaining: ${(editForm.totalFees - editForm.amountPaid).toLocaleString()} RWF`
+                  }
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-2 md:gap-3">
+                <div>
+                  <label className="block text-[10px] md:text-xs font-semibold text-slate-700 mb-1">Term</label>
+                  <select
+                    value={editForm.term}
+                    onChange={(e) => setEditForm({...editForm, term: e.target.value})}
+                    className="w-full border border-slate-200 rounded-lg px-2 py-1.5 md:px-3 md:py-2 text-xs md:text-sm focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none"
+                  >
+                    {terms.map(t => <option key={t} value={t}>{t.replace("TERM", "Term ")}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] md:text-xs font-semibold text-slate-700 mb-1">Academic Year</label>
+                  <input
+                    type="number"
+                    value={editForm.academicYear}
+                    onChange={(e) => setEditForm({...editForm, academicYear: parseInt(e.target.value)})}
+                    className="w-full border border-slate-200 rounded-lg px-2 py-1.5 md:px-3 md:py-2 text-xs md:text-sm focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] md:text-xs font-semibold text-slate-700 mb-1">Notes</label>
+                <textarea
+                  value={editForm.notes}
+                  onChange={(e) => setEditForm({...editForm, notes: e.target.value})}
+                  rows="2"
+                  className="w-full border border-slate-200 rounded-lg px-2 py-1.5 md:px-3 md:py-2 text-xs md:text-sm focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none"
+                  placeholder="Additional notes..."
+                />
+              </div>
+
+              {error && (
+                <div className="bg-rose-50 border-l-4 border-rose-500 text-rose-700 p-2 md:p-3 rounded-lg text-xs md:text-sm flex items-center gap-2">
+                  <span className="text-base md:text-lg">⚠️</span>
+                  <span>{error}</span>
+                </div>
+              )}
+
+              <div className="flex flex-col sm:flex-row gap-2 md:gap-3 pt-2 border-t border-slate-100">
+                <button type="submit" disabled={loading} className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white py-2 md:py-2.5 rounded-lg font-semibold text-xs md:text-sm hover:shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+                  ✏️ {loading ? "Saving..." : "Save Changes"}
+                </button>
+                <button type="button" onClick={() => setShowEditForm(false)} className="flex-1 bg-slate-100 text-slate-700 py-2 md:py-2.5 rounded-lg font-semibold text-xs md:text-sm hover:bg-slate-200 transition-all">
                   Cancel
                 </button>
               </div>
@@ -823,10 +1074,18 @@ export default function SchoolFeeManagement() {
                 </div>
               </div>
 
-              <div className="bg-amber-50 rounded-lg p-3 text-center">
-                <p className="text-[10px] md:text-xs text-amber-600">Balance</p>
-                <p className="text-xl md:text-2xl font-bold text-amber-700">{studentSummary.balance?.toLocaleString()} RWF</p>
-              </div>
+              {studentSummary.balance < 0 ? (
+                <div className="bg-cyan-50 rounded-lg p-3 text-center border border-cyan-200">
+                  <p className="text-[10px] md:text-xs text-cyan-600">Credit Owed to Student</p>
+                  <p className="text-xl md:text-2xl font-bold text-cyan-700">{Math.abs(studentSummary.balance).toLocaleString()} RWF</p>
+                  <p className="text-[10px] text-cyan-500 mt-0.5">Paid more than the fee due — refund or carry forward</p>
+                </div>
+              ) : (
+                <div className="bg-amber-50 rounded-lg p-3 text-center">
+                  <p className="text-[10px] md:text-xs text-amber-600">Balance</p>
+                  <p className="text-xl md:text-2xl font-bold text-amber-700">{studentSummary.balance?.toLocaleString()} RWF</p>
+                </div>
+              )}
 
               <div>
                 <p className="text-[10px] md:text-xs font-semibold text-slate-700 mb-2">Payment History</p>
