@@ -5,6 +5,7 @@ import {
   deleteFee,
   getFeeRecords,
   getOutstandingFees,
+  getPaymentFollowUps,
   getStudentFeeSummary,
   getStudents
 } from "../../services/schoolService";
@@ -26,10 +27,16 @@ export default function SchoolFeeManagement() {
     amountPaid: 0,
     term: "TERM1",
     academicYear: new Date().getFullYear(),
-    notes: ""
+    notes: "",
+    parentName: "",
+    parentPhone: "",
+    promiseDate: ""
   });
   const [deletingId, setDeletingId] = useState(null);
   const [showOutstanding, setShowOutstanding] = useState(false);
+  const [showFollowUps, setShowFollowUps] = useState(false);
+  const [followUps, setFollowUps] = useState([]);
+  const [followUpOverdueCount, setFollowUpOverdueCount] = useState(0);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [studentSummary, setStudentSummary] = useState(null);
   const [showStudentSummary, setShowStudentSummary] = useState(false);
@@ -62,7 +69,10 @@ export default function SchoolFeeManagement() {
     academicYear: new Date().getFullYear(),
     paymentMethod: "CASH",
     reference: "",
-    notes: ""
+    notes: "",
+    parentName: "",
+    parentPhone: "",
+    promiseDate: ""
   });
 
   const [selectedStudentForFee, setSelectedStudentForFee] = useState(null);
@@ -139,6 +149,35 @@ export default function SchoolFeeManagement() {
     }
   };
 
+  const fetchFollowUps = async (overdueOnly = false) => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await getPaymentFollowUps(overdueOnly ? { overdueOnly: "true" } : {});
+      setFollowUps(res.data?.records || []);
+      setFollowUpOverdueCount(res.data?.overdueCount || 0);
+      setShowFollowUps(true);
+    } catch (err) {
+      console.error("Fetch follow-ups error:", err);
+      setError("Failed to load payment follow-ups");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetches every active payment promise (overdue AND upcoming) so the
+  // always-visible follow-up table below stays current. Also drives the
+  // notification banner's overdue count.
+  const checkOverdueFollowUps = async () => {
+    try {
+      const res = await getPaymentFollowUps({});
+      setFollowUps(res.data?.records || []);
+      setFollowUpOverdueCount(res.data?.overdueCount || 0);
+    } catch (err) {
+      console.error("Check overdue follow-ups error:", err);
+    }
+  };
+
   const fetchStudentSummary = async (studentId) => {
     setLoading(true);
     setError("");
@@ -156,6 +195,7 @@ export default function SchoolFeeManagement() {
 
   useEffect(() => {
     fetchData();
+    checkOverdueFollowUps();
   }, [filterGrade, filterClass, filterTerm, filterStatus]);
 
   const handleSelectStudent = (student) => {
@@ -168,7 +208,10 @@ export default function SchoolFeeManagement() {
       studentClass: student.className,
       totalFees: 0,
       amountPaid: 0,
-      term: filterTerm
+      term: filterTerm,
+      parentName: "",
+      parentPhone: "",
+      promiseDate: ""
     });
     // Close student selection dropdown on mobile
     if (window.innerWidth < 768) {
@@ -182,6 +225,14 @@ export default function SchoolFeeManagement() {
       setError("Please select a student and enter valid fees");
       return;
     }
+    const willHaveBalance = (form.totalFees - (form.amountPaid || 0)) > 0;
+    if (willHaveBalance && form.promiseDate) {
+      const promise = new Date(form.promiseDate);
+      if (isNaN(promise.getTime())) {
+        setError("Please enter a valid follow-up date");
+        return;
+      }
+    }
 
     setLoading(true);
     setError("");
@@ -194,7 +245,10 @@ export default function SchoolFeeManagement() {
         academicYear: form.academicYear,
         paymentMethod: form.paymentMethod,
         reference: form.reference,
-        notes: form.notes
+        notes: form.notes,
+        parentName: form.parentName,
+        parentPhone: form.parentPhone,
+        promiseDate: form.promiseDate || undefined
       });
       setSuccess("✅ Fee recorded successfully!");
       setShowRecordForm(false);
@@ -207,13 +261,17 @@ export default function SchoolFeeManagement() {
         totalFees: 0,
         amountPaid: 0,
         reference: "",
-        notes: ""
+        notes: "",
+        parentName: "",
+        parentPhone: "",
+        promiseDate: ""
       });
       setSelectedStudentForFee(null);
       setStudentFilterGrade("ALL");
       setStudentFilterClass("ALL");
       setSearchStudentTerm("");
       fetchData();
+      checkOverdueFollowUps();
       setTimeout(() => setSuccess(""), 3000);
     } catch (err) {
       console.error("Record fee error:", err);
@@ -230,7 +288,10 @@ export default function SchoolFeeManagement() {
       amountPaid: fee.amountPaid || 0,
       term: fee.term || "TERM1",
       academicYear: fee.academicYear || new Date().getFullYear(),
-      notes: fee.notes || ""
+      notes: fee.notes || "",
+      parentName: fee.followUp?.parentName || "",
+      parentPhone: fee.followUp?.parentPhone || "",
+      promiseDate: fee.followUp?.promiseDate ? fee.followUp.promiseDate.slice(0, 10) : ""
     });
     setShowEditForm(true);
   };
@@ -251,12 +312,16 @@ export default function SchoolFeeManagement() {
         amountPaid: editForm.amountPaid,
         term: editForm.term,
         academicYear: editForm.academicYear,
-        notes: editForm.notes
+        notes: editForm.notes,
+        parentName: editForm.parentName,
+        parentPhone: editForm.parentPhone,
+        promiseDate: editForm.promiseDate || null
       });
       setSuccess("✅ Fee record updated successfully!");
       setShowEditForm(false);
       setEditingFee(null);
       fetchData();
+      checkOverdueFollowUps();
       setTimeout(() => setSuccess(""), 3000);
     } catch (err) {
       console.error("Update fee error:", err);
@@ -276,6 +341,7 @@ export default function SchoolFeeManagement() {
       await deleteFee(fee._id);
       setSuccess("🗑️ Fee record deleted");
       fetchData();
+      checkOverdueFollowUps();
       setTimeout(() => setSuccess(""), 3000);
     } catch (err) {
       console.error("Delete fee error:", err);
@@ -293,6 +359,11 @@ export default function SchoolFeeManagement() {
       return { label: "Credit Owed", amount: Math.abs(balance), isCredit: true };
     }
     return { label: "Balance", amount: balance, isCredit: false };
+  };
+
+  const formatPromiseDate = (dateStr) => {
+    if (!dateStr) return "";
+    return new Date(dateStr).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
   };
 
   const getStatusColor = (status) => {
@@ -355,6 +426,24 @@ export default function SchoolFeeManagement() {
         </div>
       )}
 
+      {/* Automatic Overdue Follow-Up Notification */}
+      {followUpOverdueCount > 0 && (
+        <div className="bg-gradient-to-r from-red-50 to-rose-50 border border-red-200 rounded-xl p-3 md:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 md:gap-3">
+          <div className="flex items-start sm:items-center gap-2 md:gap-3 min-w-0">
+            <span className="text-xl md:text-2xl flex-shrink-0">🔔</span>
+            <p className="text-xs md:text-sm text-red-700 font-medium">
+              {followUpOverdueCount} promised payment{followUpOverdueCount > 1 ? "s have" : " has"} passed its follow-up date — these need a follow-up call.
+            </p>
+          </div>
+          <button
+            onClick={() => fetchFollowUps(true)}
+            className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg text-xs md:text-sm font-semibold flex-shrink-0 w-full sm:w-auto"
+          >
+            View Overdue Follow-Ups
+          </button>
+        </div>
+      )}
+
       {/* Hero Section */}
       <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-green-900 to-slate-900 rounded-2xl shadow-xl">
         <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-emerald-500/20 to-green-500/20 rounded-full blur-3xl"></div>
@@ -402,6 +491,18 @@ export default function SchoolFeeManagement() {
               >
                 <span className="text-base md:text-lg">🔴</span>
                 <span>Debtors</span>
+              </button>
+              <button
+                onClick={() => fetchFollowUps(false)}
+                className="relative bg-white/10 backdrop-blur-md hover:bg-white/20 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-xl transition-all flex items-center gap-1.5 md:gap-2 font-semibold border border-white/20 text-xs md:text-sm flex-1 md:flex-none justify-center"
+              >
+                <span className="text-base md:text-lg">📞</span>
+                <span>Follow-Up</span>
+                {followUpOverdueCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center border-2 border-slate-900">
+                    {followUpOverdueCount > 9 ? "9+" : followUpOverdueCount}
+                  </span>
+                )}
               </button>
             </div>
           </div>
@@ -482,6 +583,132 @@ export default function SchoolFeeManagement() {
         </div>
       </div>
 
+      {/* Parent Payment Follow-Up Table - always visible, overdue first */}
+      {followUps.length > 0 && (
+        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+          <div className="px-3 py-2.5 md:px-4 md:py-3 bg-gradient-to-r from-amber-500 to-red-500 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-base md:text-lg flex-shrink-0">📞</span>
+              <h3 className="font-bold text-white text-xs md:text-sm truncate">Parent Payment Follow-Ups</h3>
+            </div>
+            {followUpOverdueCount > 0 && (
+              <span className="bg-white/20 text-white text-[10px] md:text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0">
+                {followUpOverdueCount} overdue
+              </span>
+            )}
+          </div>
+
+          {/* Desktop Table */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="min-w-full divide-y divide-slate-200 text-sm">
+              <thead className="bg-gradient-to-r from-slate-50 to-slate-100">
+                <tr>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">Student</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">Parent Name</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">Parent Number</th>
+                  <th className="px-3 py-2 text-right text-xs font-semibold text-slate-600">Balance Owed</th>
+                  <th className="px-3 py-2 text-center text-xs font-semibold text-slate-600">Promised Date</th>
+                  <th className="px-3 py-2 text-center text-xs font-semibold text-slate-600">Status</th>
+                  <th className="px-3 py-2 text-center text-xs font-semibold text-slate-600">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {[...followUps]
+                  .sort((a, b) => (b.isFollowUpOverdue === a.isFollowUpOverdue) ? 0 : b.isFollowUpOverdue ? 1 : -1)
+                  .map((fee) => (
+                  <tr key={fee._id} className={`hover:bg-slate-50 transition-colors ${fee.isFollowUpOverdue ? "bg-red-50/40" : ""}`}>
+                    <td className="px-3 py-2">
+                      <p className="font-medium text-slate-800 text-sm">{fee.studentName}</p>
+                      <p className="text-xs text-slate-400">{fee.studentId} — {fee.grade} {fee.className} — {fee.term.replace("TERM", "Term ")}</p>
+                    </td>
+                    <td className="px-3 py-2 text-sm text-slate-700">{fee.followUp?.parentName || <span className="text-slate-300 italic">Not provided</span>}</td>
+                    <td className="px-3 py-2 text-sm">
+                      {fee.followUp?.parentPhone ? (
+                        <a href={`tel:${fee.followUp.parentPhone}`} className="text-indigo-600 hover:underline font-medium">{fee.followUp.parentPhone}</a>
+                      ) : (
+                        <span className="text-slate-300 italic">Not provided</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-right font-bold text-amber-600">{fee.balance.toLocaleString()} RWF</td>
+                    <td className="px-3 py-2 text-center text-sm text-slate-600">{formatPromiseDate(fee.followUp?.promiseDate)}</td>
+                    <td className="px-3 py-2 text-center">
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
+                        fee.isFollowUpOverdue ? "bg-red-600 text-white" : "bg-emerald-100 text-emerald-700"
+                      }`}>
+                        {fee.isFollowUpOverdue ? `⏰ ${fee.daysOverdue}d overdue` : `🕒 ${fee.daysUntilDue}d remaining`}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 text-center">
+                      <button
+                        onClick={() => {
+                          setSelectedStudent(fee.studentId);
+                          fetchStudentSummary(fee.studentId);
+                        }}
+                        className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-600 text-white rounded-lg text-xs font-medium hover:bg-indigo-700 transition"
+                      >
+                        📋 Details
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile Cards */}
+          <div className="md:hidden divide-y divide-slate-100">
+            {[...followUps]
+              .sort((a, b) => (b.isFollowUpOverdue === a.isFollowUpOverdue) ? 0 : b.isFollowUpOverdue ? 1 : -1)
+              .map((fee) => (
+              <div key={fee._id} className={`p-3 ${fee.isFollowUpOverdue ? "bg-red-50/40" : ""}`}>
+                <div className="flex justify-between items-start gap-2 mb-1.5">
+                  <div className="min-w-0">
+                    <p className="font-medium text-slate-800 text-sm truncate">{fee.studentName}</p>
+                    <p className="text-[10px] text-slate-400">{fee.studentId} — {fee.term.replace("TERM", "Term ")}</p>
+                  </div>
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold flex-shrink-0 ${
+                    fee.isFollowUpOverdue ? "bg-red-600 text-white" : "bg-emerald-100 text-emerald-700"
+                  }`}>
+                    {fee.isFollowUpOverdue ? `⏰ ${fee.daysOverdue}d overdue` : `🕒 ${fee.daysUntilDue}d left`}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <p className="text-[10px] text-slate-400">Parent</p>
+                    <p className="text-slate-700 truncate">{fee.followUp?.parentName || <span className="text-slate-300 italic">Not provided</span>}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-slate-400">Number</p>
+                    {fee.followUp?.parentPhone ? (
+                      <a href={`tel:${fee.followUp.parentPhone}`} className="text-indigo-600 font-medium">{fee.followUp.parentPhone}</a>
+                    ) : (
+                      <span className="text-slate-300 italic">Not provided</span>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-slate-400">Promised Date</p>
+                    <p className="text-slate-700">{formatPromiseDate(fee.followUp?.promiseDate)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-slate-400">Balance Owed</p>
+                    <p className="font-bold text-amber-600">{fee.balance.toLocaleString()} RWF</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setSelectedStudent(fee.studentId);
+                    fetchStudentSummary(fee.studentId);
+                  }}
+                  className="mt-2 w-full inline-flex items-center justify-center gap-1 px-2 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-medium hover:bg-indigo-700 transition"
+                >
+                  📋 View Details
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Export Section */}
       {feeRecords.length > 0 && (
         <div className="bg-white rounded-xl shadow-lg p-3 md:p-4">
@@ -550,6 +777,11 @@ export default function SchoolFeeManagement() {
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(fee.status)}`}>
                         {getStatusIcon(fee.status)} {getBalanceInfo(fee).isCredit ? "OVERPAID" : fee.status}
                       </span>
+                      {fee.followUp?.promiseDate && (fee.balance || 0) > 0 && (
+                        <span className={`block mt-1 text-[10px] font-medium ${fee.isFollowUpOverdue ? "text-red-600" : "text-slate-400"}`}>
+                          {fee.isFollowUpOverdue ? `⏰ ${fee.daysOverdue}d overdue` : `📅 Due ${formatPromiseDate(fee.followUp.promiseDate)}`}
+                        </span>
+                      )}
                     </td>
                     <td className="px-3 py-2 text-center text-sm text-slate-600">{fee.term}</td>
                     <td className="px-3 py-2">
@@ -597,9 +829,16 @@ export default function SchoolFeeManagement() {
                     <p className="text-xs text-slate-400">{fee.studentId}</p>
                     <p className="text-xs text-slate-500 mt-0.5">{fee.grade} {fee.className}</p>
                   </div>
-                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${getStatusColor(fee.status)}`}>
-                    {getStatusIcon(fee.status)} {fee.status}
-                  </span>
+                  <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${getStatusColor(fee.status)}`}>
+                      {getStatusIcon(fee.status)} {fee.status}
+                    </span>
+                    {fee.followUp?.promiseDate && (fee.balance || 0) > 0 && (
+                      <span className={`text-[10px] font-medium ${fee.isFollowUpOverdue ? "text-red-600" : "text-slate-400"}`}>
+                        {fee.isFollowUpOverdue ? `⏰ ${fee.daysOverdue}d overdue` : `📅 ${formatPromiseDate(fee.followUp.promiseDate)}`}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div className="grid grid-cols-3 gap-2 mt-2">
                   <div className="bg-slate-50 rounded-lg p-1.5 text-center min-w-0">
@@ -815,6 +1054,46 @@ export default function SchoolFeeManagement() {
                 </select>
               </div>
 
+              {form.totalFees > 0 && (form.totalFees - (form.amountPaid || 0)) > 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 md:p-4 space-y-2 md:space-y-3">
+                  <p className="text-[10px] md:text-xs font-semibold text-amber-800 flex items-center gap-1.5">
+                    📞 Follow-Up for Remaining Balance <span className="font-normal text-amber-600">(optional)</span>
+                  </p>
+                  <div className="grid grid-cols-2 gap-2 md:gap-3">
+                    <div>
+                      <label className="block text-[10px] md:text-xs font-medium text-amber-700 mb-1">Parent/Guardian Name</label>
+                      <input
+                        type="text"
+                        value={form.parentName}
+                        onChange={(e) => setForm({...form, parentName: e.target.value})}
+                        className="w-full border border-amber-200 rounded-lg px-2 py-1.5 md:px-3 md:py-2 text-xs md:text-sm bg-white focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none"
+                        placeholder="e.g. Jean Mugisha"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] md:text-xs font-medium text-amber-700 mb-1">Parent/Guardian Phone</label>
+                      <input
+                        type="tel"
+                        value={form.parentPhone}
+                        onChange={(e) => setForm({...form, parentPhone: e.target.value})}
+                        className="w-full border border-amber-200 rounded-lg px-2 py-1.5 md:px-3 md:py-2 text-xs md:text-sm bg-white focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none"
+                        placeholder="07XX XXX XXX"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] md:text-xs font-medium text-amber-700 mb-1">Promised Payment Date</label>
+                    <input
+                      type="date"
+                      value={form.promiseDate}
+                      onChange={(e) => setForm({...form, promiseDate: e.target.value})}
+                      className="w-full border border-amber-200 rounded-lg px-2 py-1.5 md:px-3 md:py-2 text-xs md:text-sm bg-white focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none"
+                    />
+                    <p className="text-[10px] text-amber-600 mt-1">You'll get an automatic alert if this date passes without the balance being cleared.</p>
+                  </div>
+                </div>
+              )}
+
               <div>
                 <label className="block text-[10px] md:text-xs font-semibold text-slate-700 mb-1">Reference Number</label>
                 <input
@@ -937,6 +1216,48 @@ export default function SchoolFeeManagement() {
                 </div>
               </div>
 
+              {editForm.totalFees > 0 && (editForm.totalFees - (editForm.amountPaid || 0)) > 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 md:p-4 space-y-2 md:space-y-3">
+                  <p className="text-[10px] md:text-xs font-semibold text-amber-800 flex items-center gap-1.5">
+                    📞 Follow-Up for Remaining Balance <span className="font-normal text-amber-600">(optional)</span>
+                  </p>
+                  <div className="grid grid-cols-2 gap-2 md:gap-3">
+                    <div>
+                      <label className="block text-[10px] md:text-xs font-medium text-amber-700 mb-1">Parent/Guardian Name</label>
+                      <input
+                        type="text"
+                        value={editForm.parentName}
+                        onChange={(e) => setEditForm({...editForm, parentName: e.target.value})}
+                        className="w-full border border-amber-200 rounded-lg px-2 py-1.5 md:px-3 md:py-2 text-xs md:text-sm bg-white focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none"
+                        placeholder="e.g. Jean Mugisha"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] md:text-xs font-medium text-amber-700 mb-1">Parent/Guardian Phone</label>
+                      <input
+                        type="tel"
+                        value={editForm.parentPhone}
+                        onChange={(e) => setEditForm({...editForm, parentPhone: e.target.value})}
+                        className="w-full border border-amber-200 rounded-lg px-2 py-1.5 md:px-3 md:py-2 text-xs md:text-sm bg-white focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none"
+                        placeholder="07XX XXX XXX"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] md:text-xs font-medium text-amber-700 mb-1">Promised Payment Date</label>
+                    <input
+                      type="date"
+                      value={editForm.promiseDate}
+                      onChange={(e) => setEditForm({...editForm, promiseDate: e.target.value})}
+                      className="w-full border border-amber-200 rounded-lg px-2 py-1.5 md:px-3 md:py-2 text-xs md:text-sm bg-white focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none"
+                    />
+                    {editingFee?.isFollowUpOverdue && (
+                      <p className="text-[10px] text-red-600 mt-1 font-medium">⏰ This promise is currently overdue by {editingFee.daysOverdue} day{editingFee.daysOverdue !== 1 ? "s" : ""}. Setting a new date clears the overdue flag.</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <div>
                 <label className="block text-[10px] md:text-xs font-semibold text-slate-700 mb-1">Notes</label>
                 <textarea
@@ -1044,6 +1365,87 @@ export default function SchoolFeeManagement() {
         </div>
       )}
 
+      {/* Payment Follow-Up Modal - Super Responsive */}
+      {showFollowUps && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-3 md:p-4 overflow-y-auto" onClick={() => setShowFollowUps(false)}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl my-4 md:my-8 max-h-[95vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 bg-gradient-to-r from-amber-600 to-red-600 px-4 py-3 md:px-5 md:py-4 flex justify-between items-center text-white rounded-t-xl z-10">
+              <div className="flex items-center gap-2">
+                <span className="text-lg md:text-xl">📞</span>
+                <h2 className="text-base md:text-lg font-bold">Payment Follow-Ups</h2>
+              </div>
+              <button onClick={() => setShowFollowUps(false)} className="text-white/70 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10 text-xl">
+                ✕
+              </button>
+            </div>
+            <div className="p-4 md:p-5 space-y-4">
+              <div className="grid grid-cols-2 gap-2 md:gap-3">
+                <div className="bg-red-50 rounded-lg p-2 md:p-3 text-center">
+                  <p className="text-[10px] md:text-xs text-red-600">Overdue Follow-Ups</p>
+                  <p className="text-base md:text-xl font-bold text-red-700">{followUps.filter(f => f.isFollowUpOverdue).length}</p>
+                </div>
+                <div className="bg-slate-50 rounded-lg p-2 md:p-3 text-center">
+                  <p className="text-[10px] md:text-xs text-slate-500">Upcoming Promises</p>
+                  <p className="text-base md:text-xl font-bold text-slate-700">{followUps.filter(f => !f.isFollowUpOverdue).length}</p>
+                </div>
+              </div>
+
+              {followUps.length === 0 ? (
+                <div className="text-center py-8 text-slate-500 text-sm">
+                  <div className="text-4xl mb-2">✅</div>
+                  No pending payment promises to follow up on.
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {followUps.map((fee) => (
+                    <div
+                      key={fee._id}
+                      className={`p-3 rounded-lg border ${fee.isFollowUpOverdue ? "bg-red-50 border-red-200" : "bg-slate-50 border-slate-200"}`}
+                    >
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                        <div className="min-w-0">
+                          <p className="font-medium text-slate-800 text-sm truncate">{fee.studentName}</p>
+                          <p className="text-[10px] md:text-xs text-slate-400">{fee.studentId} — {fee.grade} {fee.className} — {fee.term.replace("TERM", "Term ")}</p>
+                          {(fee.followUp?.parentName || fee.followUp?.parentPhone) && (
+                            <p className="text-[10px] md:text-xs text-slate-500 mt-0.5">
+                              👤 {fee.followUp.parentName || "No name on file"}
+                              {fee.followUp.parentPhone && (
+                                <> — <a href={`tel:${fee.followUp.parentPhone}`} className="text-indigo-600 hover:underline">{fee.followUp.parentPhone}</a></>
+                              )}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                          <div className="text-center flex-1 sm:flex-none">
+                            <p className="text-[10px] md:text-xs text-slate-500">Balance Owed</p>
+                            <p className="text-xs md:text-sm font-bold text-amber-600">{fee.balance.toLocaleString()} RWF</p>
+                          </div>
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] md:text-xs font-semibold ${
+                            fee.isFollowUpOverdue ? "bg-red-600 text-white" : "bg-slate-200 text-slate-700"
+                          }`}>
+                            {fee.isFollowUpOverdue ? `⏰ ${fee.daysOverdue}d overdue` : `📅 Due ${formatPromiseDate(fee.followUp.promiseDate)}`}
+                          </span>
+                          <button
+                            onClick={() => {
+                              setSelectedStudent(fee.studentId);
+                              fetchStudentSummary(fee.studentId);
+                              setShowFollowUps(false);
+                            }}
+                            className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-600 text-white rounded-lg text-[10px] md:text-xs font-medium hover:bg-indigo-700 transition"
+                          >
+                            📋 Details
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Student Fee Summary Modal - Super Responsive */}
       {showStudentSummary && studentSummary && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-3 md:p-4 overflow-y-auto" onClick={() => setShowStudentSummary(false)}>
@@ -1084,6 +1486,22 @@ export default function SchoolFeeManagement() {
                 <div className="bg-amber-50 rounded-lg p-3 text-center">
                   <p className="text-[10px] md:text-xs text-amber-600">Balance</p>
                   <p className="text-xl md:text-2xl font-bold text-amber-700">{studentSummary.balance?.toLocaleString()} RWF</p>
+                </div>
+              )}
+
+              {studentSummary.balance > 0 && studentSummary.records?.[0]?.followUp?.promiseDate && (
+                <div className={`rounded-lg p-3 border ${studentSummary.records[0].isFollowUpOverdue ? "bg-red-50 border-red-200" : "bg-slate-50 border-slate-200"}`}>
+                  <p className={`text-[10px] md:text-xs font-semibold mb-1 ${studentSummary.records[0].isFollowUpOverdue ? "text-red-700" : "text-slate-600"}`}>
+                    {studentSummary.records[0].isFollowUpOverdue ? `⏰ Follow-up overdue by ${studentSummary.records[0].daysOverdue} day${studentSummary.records[0].daysOverdue !== 1 ? "s" : ""}` : `📅 Payment promised for ${formatPromiseDate(studentSummary.records[0].followUp.promiseDate)}`}
+                  </p>
+                  {(studentSummary.records[0].followUp.parentName || studentSummary.records[0].followUp.parentPhone) && (
+                    <p className="text-xs text-slate-600">
+                      👤 {studentSummary.records[0].followUp.parentName || "No name on file"}
+                      {studentSummary.records[0].followUp.parentPhone && (
+                        <> — <a href={`tel:${studentSummary.records[0].followUp.parentPhone}`} className="text-indigo-600 hover:underline font-medium">{studentSummary.records[0].followUp.parentPhone}</a></>
+                      )}
+                    </p>
+                  )}
                 </div>
               )}
 

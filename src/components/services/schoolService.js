@@ -546,6 +546,16 @@ export const getOutstandingFees = async (params) => {
   }
 };
 
+export const getPaymentFollowUps = async (params) => {
+  try {
+    const response = await API.get("/fees/follow-ups", { params: params || {} });
+    return response;
+  } catch (error) {
+    console.error("getPaymentFollowUps error:", error);
+    return { data: { records: [], overdueCount: 0 } };
+  }
+};
+
 export const getStudentFeeSummary = async (studentId) => {
   try {
     const response = await API.get(`/fees/student/${studentId}`);
