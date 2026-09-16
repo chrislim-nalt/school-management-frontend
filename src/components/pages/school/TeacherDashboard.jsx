@@ -2,10 +2,10 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { 
   getMyPermissions, 
-  getHomeworks, 
+  // getHomeworks, 
   getCourses, 
   getStudents, 
-  getHomeworkSummary,
+  // getHomeworkSummary,
   getRecentActivities,
   getSlowLearnerCases,
   getStudentActivities
@@ -15,17 +15,17 @@ export default function TeacherDashboard() {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     pendingRequests: 0,
-    totalHomeworks: 0,
+    // totalHomeworks: 0,
     myCourses: 0,
     myStudents: 0,
-    homeworkPending: 0,
-    homeworkOverdue: 0,
+    // homeworkPending: 0,
+    // homeworkOverdue: 0,
     recentActivities: 0,
     slowLearners: 0,
     recentActivityCount: 0
   });
   const [recentPermissions, setRecentPermissions] = useState([]);
-  const [recentHomeworks, setRecentHomeworks] = useState([]);
+  // const [recentHomeworks, setRecentHomeworks] = useState([]);
   const [recentActivities, setRecentActivities] = useState([]);
   const [slowLearnerCases, setSlowLearnerCases] = useState([]);
   const [error, setError] = useState("");
@@ -67,10 +67,10 @@ export default function TeacherDashboard() {
           console.warn("Permissions API not available yet:", err.message);
           return { data: [] };
         }),
-        getHomeworks().catch(err => {
-          console.warn("Homeworks API not available yet:", err.message);
-          return { data: [] };
-        }),
+        // getHomeworks().catch(err => {
+        //   console.warn("Homeworks API not available yet:", err.message);
+        //   return { data: [] };
+        // }),
         getCourses().catch(err => {
           console.warn("Courses API not available yet:", err.message);
           return { data: [] };
@@ -79,10 +79,10 @@ export default function TeacherDashboard() {
           console.warn("Students API not available yet:", err.message);
           return { data: [] };
         }),
-        getHomeworkSummary().catch(err => {
-          console.warn("Homework summary API not available yet:", err.message);
-          return { data: { summary: {} } };
-        }),
+        // getHomeworkSummary().catch(err => {
+        //   console.warn("Homework summary API not available yet:", err.message);
+        //   return { data: { summary: {} } };
+        // }),
         getRecentActivities({ term: "TERM1", limit: 60, teacherId: localStorage.getItem("userId") }).catch(err => {
           console.warn("Activities API not available yet:", err.message);
           return { data: { activities: [] } };
@@ -94,7 +94,7 @@ export default function TeacherDashboard() {
       ]);
 
       const permissions = results[0].status === "fulfilled" ? (results[0].value?.data?.permissions || results[0].value?.data || []) : [];
-      const homeworks = results[1].status === "fulfilled" ? (results[1].value?.data?.homeworks || results[1].value?.data || []) : [];
+      // const homeworks = results[1].status === "fulfilled" ? (results[1].value?.data?.homeworks || results[1].value?.data || []) : [];
       const courses = results[2].status === "fulfilled" ? (results[2].value?.data || []) : [];
       const students = results[3].status === "fulfilled" ? (results[3].value?.data || []) : [];
       const summary = results[4].status === "fulfilled" ? (results[4].value?.data?.summary || {}) : {};
@@ -194,18 +194,18 @@ export default function TeacherDashboard() {
 
       setStats({
         pendingRequests: permissions.filter(p => p.status === "PENDING").length,
-        totalHomeworks: homeworks.length,
+        // totalHomeworks: homeworks.length,
         myCourses: courses.length,
         myStudents: students.length,
-        homeworkPending: summary.pending || 0,
-        homeworkOverdue: summary.overdue || 0,
+        // homeworkPending: summary.pending || 0,
+        // homeworkOverdue: summary.overdue || 0,
         recentActivities: myActivities.length,
         slowLearners: mySlowLearners.length,
         recentActivityCount: myActivities.length
       });
 
       setRecentPermissions(permissions.slice(0, 5));
-      setRecentHomeworks(homeworks.slice(0, 5));
+      // setRecentHomeworks(homeworks.slice(0, 5));
       setRecentActivities(recentActivitiesList);
       setSlowLearnerCases(mySlowLearners.slice(0, 5));
     } catch (error) {
@@ -220,7 +220,7 @@ export default function TeacherDashboard() {
     { path: "/attendance", label: "Mark Attendance", icon: "✅", color: "from-emerald-500 to-emerald-600" },
     { path: "/marks", label: "Record Marks", icon: "📝", color: "from-blue-500 to-blue-600" },
     { path: "/discipline", label: "Record Offense", icon: "⚠️", color: "from-amber-500 to-amber-600" },
-    { path: "/homework", label: "Assign Homework", icon: "📚", color: "from-purple-500 to-purple-600" },
+    // { path: "/homework", label: "Assign Homework", icon: "📚", color: "from-purple-500 to-purple-600" },
     { path: "/permissions", label: "Request Leave", icon: "📋", color: "from-indigo-500 to-indigo-600" },
     { path: "/activities", label: "Student Activities", icon: "✏️", color: "from-orange-500 to-orange-600" },
     { path: "/english-performance", label: "English Violation", icon: "🔴", color: "from-rose-500 to-rose-600" },
@@ -306,13 +306,13 @@ export default function TeacherDashboard() {
               </div>
               <p className="text-2xl font-bold text-emerald-300 mt-1">{stats.myStudents}</p>
             </div>
-            <div className="bg-white/5 backdrop-blur rounded-xl p-3 border border-white/10 hover:bg-white/10 transition-all">
+            {/* <div className="bg-white/5 backdrop-blur rounded-xl p-3 border border-white/10 hover:bg-white/10 transition-all">
               <div className="flex items-center gap-2">
                 <span className="text-lg">⏳</span>
                 <p className="text-slate-300 text-xs">Homework Pending</p>
               </div>
               <p className="text-2xl font-bold text-amber-300 mt-1">{stats.homeworkPending}</p>
-            </div>
+            </div> */}
             <div className="bg-white/5 backdrop-blur rounded-xl p-3 border border-white/10 hover:bg-white/10 transition-all">
               <div className="flex items-center gap-2">
                 <span className="text-lg">✏️</span>
@@ -404,7 +404,7 @@ export default function TeacherDashboard() {
           )}
         </div>
 
-        {/* Recent Homework */}
+        {/* Recent Homework
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
           <div className="px-4 py-3 border-b bg-gradient-to-r from-slate-50 to-slate-100 flex justify-between items-center">
             <div className="flex items-center gap-2">
@@ -446,7 +446,7 @@ export default function TeacherDashboard() {
               })}
             </div>
           )}
-        </div>
+        </div> */}
 
         {/* Recent Slow Learners */}
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
@@ -669,10 +669,10 @@ export default function TeacherDashboard() {
           <h3 className="font-semibold text-slate-800 text-sm">Teaching Overview</h3>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          <div className="bg-blue-50 rounded-lg p-3 text-center hover:bg-blue-100 transition">
+          {/* <div className="bg-blue-50 rounded-lg p-3 text-center hover:bg-blue-100 transition">
             <p className="text-2xl font-bold text-blue-600">{stats.totalHomeworks}</p>
             <p className="text-xs text-slate-500 flex items-center justify-center gap-1">📚 Total Homework</p>
-          </div>
+          </div> */}
           <div className="bg-emerald-50 rounded-lg p-3 text-center hover:bg-emerald-100 transition">
             <p className="text-2xl font-bold text-emerald-600">{stats.myCourses}</p>
             <p className="text-xs text-slate-500 flex items-center justify-center gap-1">📖 Courses</p>

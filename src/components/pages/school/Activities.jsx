@@ -2,10 +2,13 @@ import React, { useEffect, useState, useCallback } from "react";
 import { 
   assignActivityToClass,
   getClassActivities,
+  getActivityDates,
+  updateActivityBatch,
+  deleteActivityBatch,
+  bulkUpdateBatchScores,
   getClassPerformanceDashboard,
   getActivityTrends,
   getStudentActivities,
-  updateStudentScore,
   getStudents,
   getCourses,
   getSlowLearnerCases,
@@ -58,6 +61,7 @@ function ActivitiesComponent() {
   const [activities, setActivities] = useState([]);
   const [groupedBatches, setGroupedBatches] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [batchesLoading, setBatchesLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [showAssignForm, setShowAssignForm] = useState(false);
@@ -65,14 +69,33 @@ function ActivitiesComponent() {
   const [dashboardData, setDashboardData] = useState(null);
   const [showTrends, setShowTrends] = useState(false);
   const [trendData, setTrendData] = useState(null);
-  const [editingScore, setEditingScore] = useState(null);
   const [showSlowLearnerDetect, setShowSlowLearnerDetect] = useState(false);
   const [slowLearnerData, setSlowLearnerData] = useState(null);
-  
+
+  // Edit / Delete assigned activity
+  const [editingBatch, setEditingBatch] = useState(null);
+  const [editBatchForm, setEditBatchForm] = useState({
+    title: "", description: "", activityType: "EXERCISE", maxScore: 100, date: ""
+  });
+  const [deletingBatchId, setDeletingBatchId] = useState(null);
+
+  // Bulk score entry
+  const [bulkScoreBatch, setBulkScoreBatch] = useState(null);
+  const [bulkScores, setBulkScores] = useState({});
+  const [savingBulkScores, setSavingBulkScores] = useState(false);
+
   // Filters
   const [filterGrade, setFilterGrade] = useState("P1");
   const [filterClass, setFilterClass] = useState("A");
   const [filterTerm, setFilterTerm] = useState("TERM1");
+
+  // Course + Date scoping (new) — the user must pick a course, then a date,
+  // before any activities are shown. This keeps the page to one course/one
+  // day at a time instead of dumping every course and every date together.
+  const [selectedCourseId, setSelectedCourseId] = useState("");
+  const [availableDates, setAvailableDates] = useState([]);
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
+  const [datesLoading, setDatesLoading] = useState(false);
 
   const grades = ["Baby", "Middle", "Top", "P1", "P2", "P3", "P4", "P5", "P6", "S1", "S2", "S3", "S4", "S5", "S6"];
   const classes = ["ELOHIM", "SHAMA"];
@@ -104,7 +127,26 @@ function ActivitiesComponent() {
     term: "TERM1"
   });
 
-  const fetchData = useCallback(async () => {
+  const todayISO = new Date().toISOString().split("T")[0];
+
+  // Turns "2026-09-14" into "Last Monday, 14 Sep 2026" (or "Today"/"Yesterday")
+  // so teachers scan dates by day-of-week instead of parsing raw numbers.
+  const formatDateLabel = (dateStr) => {
+    const d = new Date(dateStr + "T00:00:00");
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const diffDays = Math.round((today - d) / 86400000);
+    const dateFmt = d.toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" });
+    const weekday = d.toLocaleDateString(undefined, { weekday: "long" });
+
+    if (diffDays === 0) return `Today, ${dateFmt}`;
+    if (diffDays === 1) return `Yesterday, ${dateFmt}`;
+    if (diffDays > 1 && diffDays <= 7) return `Last ${weekday}, ${dateFmt}`;
+    return `${weekday}, ${dateFmt}`;
+  };
+
+  // ==================== BASE DATA (courses + students) ====================
+  const fetchBaseData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -118,40 +160,113 @@ function ActivitiesComponent() {
       setCourses(coursesData);
 
       if (filterGrade !== "ALL" && filterClass !== "ALL") {
-        const [studentsRes, activitiesRes] = await Promise.all([
-          getStudents(),
-          getClassActivities({ 
-            grade: filterGrade,
-            className: filterClass,
-            term: filterTerm
-          })
-        ]);
-        
+        const studentsRes = await getStudents();
         const studentsData = Array.isArray(studentsRes.data) ? studentsRes.data : [];
-        const activitiesData = activitiesRes.data || {};
-        
         setStudents(studentsData.filter(s => s?.grade === filterGrade && s?.className === filterClass));
-        setActivities(activitiesData.activities || []);
-        setGroupedBatches(activitiesData.groupedByBatch || []);
       } else {
-        setActivities([]);
-        setGroupedBatches([]);
         setStudents([]);
       }
     } catch (err) {
-      console.error("Fetch data error:", err);
+      console.error("Fetch base data error:", err);
       setError("Failed to load data");
-      setActivities([]);
-      setGroupedBatches([]);
       setCourses([]);
+      setStudents([]);
     } finally {
       setLoading(false);
     }
-  }, [filterGrade, filterClass, filterTerm]);
+  }, [filterGrade, filterClass]);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    fetchBaseData();
+  }, [fetchBaseData]);
+
+  // Reset everything downstream whenever grade/class changes — a course
+  // chosen for P1 shouldn't silently carry over to S3.
+  useEffect(() => {
+    setSelectedCourseId("");
+    setAvailableDates([]);
+    setGroupedBatches([]);
+    setActivities([]);
+  }, [filterGrade, filterClass]);
+
+  // ==================== DATES FOR THE SELECTED COURSE ====================
+  const fetchDates = useCallback(async () => {
+    if (!selectedCourseId || filterGrade === "ALL" || filterClass === "ALL") {
+      setAvailableDates([]);
+      return;
+    }
+    setDatesLoading(true);
+    try {
+      const res = await getActivityDates({
+        grade: filterGrade,
+        className: filterClass,
+        courseId: selectedCourseId,
+        term: filterTerm
+      });
+      const dates = res.data?.dates || [];
+      setAvailableDates(dates);
+
+      // Default to today if it already has activities; otherwise fall back
+      // to the most recent date on record so the teacher sees real data
+      // immediately instead of an empty screen.
+      if (dates.some(d => d.date === todayISO)) {
+        setSelectedDate(todayISO);
+      } else if (dates.length > 0) {
+        setSelectedDate(dates[0].date);
+      } else {
+        setSelectedDate(todayISO);
+      }
+    } catch (err) {
+      console.error("Fetch dates error:", err);
+      setAvailableDates([]);
+    } finally {
+      setDatesLoading(false);
+    }
+  }, [selectedCourseId, filterGrade, filterClass, filterTerm, todayISO]);
+
+  useEffect(() => {
+    fetchDates();
+  }, [fetchDates]);
+
+  // ==================== BATCHES FOR THE SELECTED COURSE + DATE ====================
+  const fetchBatchesForDate = useCallback(async () => {
+    if (!selectedCourseId || !selectedDate || filterGrade === "ALL" || filterClass === "ALL") {
+      setGroupedBatches([]);
+      setActivities([]);
+      return;
+    }
+    setBatchesLoading(true);
+    setError(null);
+    try {
+      const res = await getClassActivities({
+        grade: filterGrade,
+        className: filterClass,
+        term: filterTerm,
+        courseId: selectedCourseId,
+        startDate: selectedDate,
+        endDate: selectedDate
+      });
+      const activitiesData = res.data || {};
+      setActivities(activitiesData.activities || []);
+      setGroupedBatches(activitiesData.groupedByBatch || []);
+    } catch (err) {
+      console.error("Fetch batches error:", err);
+      setError("Failed to load activities for this date");
+      setGroupedBatches([]);
+      setActivities([]);
+    } finally {
+      setBatchesLoading(false);
+    }
+  }, [selectedCourseId, selectedDate, filterGrade, filterClass, filterTerm]);
+
+  useEffect(() => {
+    fetchBatchesForDate();
+  }, [fetchBatchesForDate]);
+
+  const refreshAfterChange = async () => {
+    await fetchDates();
+    await fetchBatchesForDate();
+  };
 
   const fetchDashboard = async () => {
     if (filterGrade === "ALL" || filterClass === "ALL") {
@@ -235,7 +350,7 @@ function ActivitiesComponent() {
       });
       setSuccess(`✅ ${res.data.message || `${res.data.summary?.created || 0} slow learner cases created`}`);
       setShowSlowLearnerDetect(false);
-      await fetchData();
+      await refreshAfterChange();
       setTimeout(() => setSuccess(null), 4000);
     } catch (err) {
       console.error("Create slow learner cases error:", err);
@@ -260,6 +375,8 @@ function ActivitiesComponent() {
       await assignActivityToClass(form);
       setSuccess(`✅ Activity assigned to ${form.grade} ${form.className} successfully!`);
       setShowAssignForm(false);
+      const assignedCourseId = form.courseId;
+      const assignedDate = form.date;
       setForm({
         grade: form.grade,
         className: form.className,
@@ -271,7 +388,11 @@ function ActivitiesComponent() {
         date: new Date().toISOString().split('T')[0],
         term: filterTerm
       });
-      await fetchData();
+      // Jump straight to the course + date that was just assigned, so the
+      // teacher immediately sees what they created instead of an empty view.
+      setSelectedCourseId(assignedCourseId);
+      setSelectedDate(assignedDate);
+      await fetchBaseData();
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       console.error("Assign activity error:", err);
@@ -281,27 +402,86 @@ function ActivitiesComponent() {
     }
   };
 
-  const handleUpdateScore = async (e) => {
+  // ==================== EDIT ASSIGNED ACTIVITY ====================
+  const openEditBatch = (batch) => {
+    setEditingBatch(batch);
+    setEditBatchForm({
+      title: batch.title || "",
+      description: batch.description || "",
+      activityType: batch.activityType || "EXERCISE",
+      maxScore: batch.maxScore || 100,
+      date: batch.date ? new Date(batch.date).toISOString().split("T")[0] : todayISO
+    });
+  };
+
+  const handleUpdateBatch = async (e) => {
     e.preventDefault();
-    if (!editingScore) return;
-    
+    if (!editingBatch) return;
     setLoading(true);
     setError(null);
     try {
-      await updateStudentScore({
-        activityId: editingScore.activityId,
-        studentId: editingScore.studentId,
-        score: parseFloat(editingScore.score)
-      });
-      setSuccess("✅ Score updated successfully!");
-      setEditingScore(null);
-      await fetchData();
-      setTimeout(() => setSuccess(null), 3000);
+      const res = await updateActivityBatch(editingBatch.batchId, editBatchForm);
+      setSuccess(`✅ ${res.data?.message || "Assigned activity updated"}`);
+      setEditingBatch(null);
+      await refreshAfterChange();
+      setTimeout(() => setSuccess(null), 4000);
     } catch (err) {
-      console.error("Update score error:", err);
-      setError(err.response?.data?.message || "Failed to update score");
+      console.error("Update batch error:", err);
+      setError(err.response?.data?.message || "Failed to update assigned activity");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteBatch = async (batch) => {
+    if (!window.confirm(`Delete "${batch.title}" (${batch.courseName})? This removes it for all ${batch.students?.length || 0} students and cannot be undone.`)) {
+      return;
+    }
+    setDeletingBatchId(batch.batchId);
+    setError(null);
+    try {
+      await deleteActivityBatch(batch.batchId);
+      setSuccess("🗑️ Assigned activity deleted");
+      await refreshAfterChange();
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      console.error("Delete batch error:", err);
+      setError(err.response?.data?.message || "Failed to delete assigned activity");
+    } finally {
+      setDeletingBatchId(null);
+    }
+  };
+
+  // ==================== BULK SCORE ENTRY ====================
+  const openBulkScore = (batch) => {
+    setBulkScoreBatch(batch);
+    const initial = {};
+    (batch.students || []).forEach(s => {
+      initial[s.activityId] = s.marksObtained ?? s.score ?? 0;
+    });
+    setBulkScores(initial);
+  };
+
+  const handleBulkScoreChange = (activityId, value) => {
+    setBulkScores(prev => ({ ...prev, [activityId]: value }));
+  };
+
+  const handleSaveBulkScores = async () => {
+    if (!bulkScoreBatch) return;
+    setSavingBulkScores(true);
+    setError(null);
+    try {
+      const res = await bulkUpdateBatchScores(bulkScoreBatch.batchId, bulkScores);
+      setSuccess(`✅ ${res.data?.message || "Scores saved"}`);
+      setBulkScoreBatch(null);
+      setBulkScores({});
+      await fetchBatchesForDate();
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      console.error("Bulk save scores error:", err);
+      setError(err.response?.data?.message || "Failed to save scores");
+    } finally {
+      setSavingBulkScores(false);
     }
   };
 
@@ -325,6 +505,9 @@ function ActivitiesComponent() {
     return "bg-rose-100 text-rose-700";
   };
 
+  // Export is now naturally scoped to one course + one date at a time (since
+  // that's all that's ever loaded on screen), which is what actually fixes
+  // the "dates getting mixed" problem — there's only ever one date in view.
   const exportData = activities.map(a => ({
     studentName: a?.studentName || "-",
     studentId: a?.studentId || "-",
@@ -335,7 +518,7 @@ function ActivitiesComponent() {
     marksTotal: a?.marksTotal || 100,
     percentage: a?.percentage || 0,
     performanceLevel: a?.performanceLevel || "-",
-    date: a?.date ? new Date(a.date).toLocaleDateString() : "-"
+    date: a?.date || null
   }));
 
   const exportColumns = [
@@ -350,6 +533,20 @@ function ActivitiesComponent() {
     { key: "performanceLevel", label: "Performance" },
     { key: "date", label: "Date" }
   ];
+
+  const selectedCourse = courses.find(c => c._id === selectedCourseId);
+  const coursesForGrade = Array.isArray(courses) ? courses.filter(c => c.grade === filterGrade) : [];
+
+  // Merge today into the dropdown even if it has no activities yet, so the
+  // teacher can always jump to "Today" to assign something new.
+  const dateOptions = (() => {
+    const map = new Map();
+    availableDates.forEach(d => map.set(d.date, d.batchCount));
+    if (!map.has(todayISO)) map.set(todayISO, 0);
+    return Array.from(map.entries())
+      .sort((a, b) => new Date(b[0]) - new Date(a[0]))
+      .map(([date, batchCount]) => ({ date, batchCount }));
+  })();
 
   return (
     <div className="space-y-4">
@@ -390,6 +587,8 @@ function ActivitiesComponent() {
                     ...form,
                     grade: filterGrade !== "ALL" ? filterGrade : "P1",
                     className: filterClass !== "ALL" ? filterClass : "A",
+                    courseId: selectedCourseId || "",
+                    date: selectedDate || new Date().toISOString().split('T')[0],
                     term: filterTerm
                   });
                   setShowAssignForm(true);
@@ -425,7 +624,7 @@ function ActivitiesComponent() {
         </div>
       </div>
 
-      {/* Filters */}
+      {/* Filters: Grade / Class / Term */}
       <div className="bg-white rounded-xl shadow-lg p-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <select 
@@ -452,6 +651,47 @@ function ActivitiesComponent() {
             {terms.map(t => <option key={t} value={t}>{t.replace("TERM", "Term ")}</option>)}
           </select>
         </div>
+
+        {/* Course + Date scoping — only appears once a real grade/class is picked */}
+        {filterGrade !== "ALL" && filterClass !== "ALL" && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3 pt-3 border-t border-slate-100">
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 mb-1">📘 Course</label>
+              <select
+                value={selectedCourseId}
+                onChange={(e) => setSelectedCourseId(e.target.value)}
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none"
+              >
+                <option value="">Select a course...</option>
+                {coursesForGrade.map(c => (
+                  <option key={c._id} value={c._id}>{c.courseName}</option>
+                ))}
+              </select>
+              {coursesForGrade.length === 0 && (
+                <p className="text-[11px] text-amber-600 mt-1">No courses found for {filterGrade}. Add one in Courses & Subjects first.</p>
+              )}
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 mb-1">📅 Date</label>
+              <select
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                disabled={!selectedCourseId || datesLoading}
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none disabled:bg-slate-50 disabled:text-slate-400"
+              >
+                {!selectedCourseId ? (
+                  <option value="">Select a course first</option>
+                ) : (
+                  dateOptions.map(d => (
+                    <option key={d.date} value={d.date}>
+                      {formatDateLabel(d.date)}{d.batchCount > 0 ? ` — ${d.batchCount} assigned` : " — nothing assigned"}
+                    </option>
+                  ))
+                )}
+              </select>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Export Section */}
@@ -461,20 +701,22 @@ function ActivitiesComponent() {
             <div className="flex items-center gap-2">
               <span className="text-lg">📥</span>
               <h3 className="font-semibold text-slate-800 text-sm">Export Activities</h3>
+              <span className="text-xs text-slate-400">{selectedCourse?.courseName} — {formatDateLabel(selectedDate)}</span>
             </div>
             <DownloadButton 
               data={exportData} 
               columns={exportColumns} 
               title="Class Activities Report" 
-              filename={`activities_${filterGrade}_${filterClass}_${filterTerm}`} 
+              subtitle={`${filterGrade} ${filterClass} — ${selectedCourse?.courseName || ""} — ${formatDateLabel(selectedDate)}`}
+              filename={`activities_${filterGrade}_${filterClass}_${selectedCourse?.courseName || "course"}_${selectedDate}`} 
               variant="primary" 
             />
           </div>
         </div>
       )}
 
-      {/* Activity Batches - Grouped by Assignment */}
-      {loading && activities.length === 0 ? (
+      {/* Activity Batches - Grouped by Assignment, scoped to course + date */}
+      {(loading || batchesLoading) && groupedBatches.length === 0 ? (
         <div className="flex items-center justify-center py-12">
           <div className="w-12 h-12 border-3 border-slate-200 rounded-full animate-spin border-t-indigo-500"></div>
         </div>
@@ -484,11 +726,17 @@ function ActivitiesComponent() {
           <h3 className="text-lg font-bold text-slate-800 mb-1">Select a Grade and Class</h3>
           <p className="text-slate-500 text-sm">Use the filters above to view activities for a specific class</p>
         </div>
+      ) : !selectedCourseId ? (
+        <div className="bg-white rounded-xl shadow-lg p-8 text-center">
+          <div className="text-6xl mb-3">📘</div>
+          <h3 className="text-lg font-bold text-slate-800 mb-1">Select a Course</h3>
+          <p className="text-slate-500 text-sm">Choose which subject's activities you want to view</p>
+        </div>
       ) : groupedBatches.length === 0 ? (
         <div className="bg-white rounded-xl shadow-lg p-8 text-center">
           <div className="text-6xl mb-3">📝</div>
-          <h3 className="text-lg font-bold text-slate-800 mb-1">No activities assigned</h3>
-          <p className="text-slate-500 text-sm">Click "Assign Activity" to get started</p>
+          <h3 className="text-lg font-bold text-slate-800 mb-1">Nothing assigned for {formatDateLabel(selectedDate)}</h3>
+          <p className="text-slate-500 text-sm">Click "Assign Activity" to add one, or pick a different date above</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -498,11 +746,11 @@ function ActivitiesComponent() {
               <div key={batch.batchId} className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all">
                 {/* Batch Header */}
                 <div className="bg-gradient-to-r from-slate-50 to-slate-100 px-4 py-3 border-b border-slate-200 flex flex-wrap justify-between items-center gap-2">
-                  <div className="flex items-center gap-3 flex-wrap">
+                  <div className="flex items-center gap-3 flex-wrap min-w-0">
                     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${typeInfo.color}`}>
                       {typeInfo.icon} {typeInfo.label}
                     </span>
-                    <h3 className="font-semibold text-slate-800 text-sm">{batch.title}</h3>
+                    <h3 className="font-semibold text-slate-800 text-sm truncate">{batch.title}</h3>
                     <span className="text-xs text-slate-400">{batch.courseName}</span>
                   </div>
                   <div className="flex items-center gap-3 text-xs flex-wrap">
@@ -520,6 +768,32 @@ function ActivitiesComponent() {
                     </span>
                   </div>
                 </div>
+
+                {/* Batch Actions */}
+                <div className="px-4 py-2 bg-white border-b border-slate-100 flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={() => openBulkScore(batch)}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-lg text-xs font-semibold hover:shadow-md transition"
+                  >
+                    📝 Update Marks
+                  </button>
+                  <button
+                    onClick={() => openEditBatch(batch)}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-amber-500 text-white rounded-lg text-xs font-semibold hover:bg-amber-600 transition"
+                  >
+                    ✏️ Edit Details
+                  </button>
+                  <button
+                    onClick={() => handleDeleteBatch(batch)}
+                    disabled={deletingBatchId === batch.batchId}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-rose-600 text-white rounded-lg text-xs font-semibold hover:bg-rose-700 transition disabled:opacity-50"
+                  >
+                    {deletingBatchId === batch.batchId ? "Deleting..." : "🗑️ Delete"}
+                  </button>
+                  {batch.description && (
+                    <span className="text-xs text-slate-400 italic truncate">— {batch.description}</span>
+                  )}
+                </div>
                 
                 {/* Student Scores - Desktop Table */}
                 <div className="hidden md:block overflow-x-auto">
@@ -531,7 +805,6 @@ function ActivitiesComponent() {
                         <th className="px-3 py-2 text-center text-xs font-semibold text-slate-600">Score</th>
                         <th className="px-3 py-2 text-center text-xs font-semibold text-slate-600">Percentage</th>
                         <th className="px-3 py-2 text-center text-xs font-semibold text-slate-600">Performance</th>
-                        <th className="px-3 py-2 text-center text-xs font-semibold text-slate-600">Action</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -564,23 +837,6 @@ function ActivitiesComponent() {
                                 {performance.icon} {performance.label}
                               </span>
                             </td>
-                            <td className="px-3 py-2 text-center">
-                              <button
-                                onClick={() => {
-                                  setEditingScore({
-                                    activityId: student.activityId || batch.batchId,
-                                    studentId: student.studentId,
-                                    studentName: student.studentName,
-                                    score: marksObtained,
-                                    maxScore: marksTotal,
-                                    isSlowLearner: isSlowLearner
-                                  });
-                                }}
-                                className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-600 text-white rounded-lg text-xs font-medium hover:bg-indigo-700 transition"
-                              >
-                                ✏️ Update Score
-                              </button>
-                            </td>
                           </tr>
                         );
                       })}
@@ -598,7 +854,7 @@ function ActivitiesComponent() {
                     const isSlowLearner = student.isSlowLearner || false;
                     
                     return (
-                      <div key={student.studentId} className={`p-3 hover:bg-slate-50 transition ${isSlowLearner ? 'bg-amber-50' : ''}`}>
+                      <div key={student.studentId} className={`p-3 ${isSlowLearner ? 'bg-amber-50' : ''}`}>
                         <div className="flex justify-between items-start mb-2">
                           <div>
                             <p className="font-medium text-slate-800 text-sm">
@@ -613,32 +869,15 @@ function ActivitiesComponent() {
                             {performance.icon} {performance.label}
                           </span>
                         </div>
-                        <div className="flex justify-between items-center">
-                          <div className="flex gap-3">
-                            <div>
-                              <p className="text-[10px] text-slate-400">Score</p>
-                              <p className="text-sm font-medium text-slate-800">{marksObtained} / {marksTotal}</p>
-                            </div>
-                            <div>
-                              <p className="text-[10px] text-slate-400">Percentage</p>
-                              <p className="text-sm font-bold text-slate-800">{Math.round(percentage)}%</p>
-                            </div>
+                        <div className="flex gap-3">
+                          <div>
+                            <p className="text-[10px] text-slate-400">Score</p>
+                            <p className="text-sm font-medium text-slate-800">{marksObtained} / {marksTotal}</p>
                           </div>
-                          <button
-                            onClick={() => {
-                              setEditingScore({
-                                activityId: student.activityId || batch.batchId,
-                                studentId: student.studentId,
-                                studentName: student.studentName,
-                                score: marksObtained,
-                                maxScore: marksTotal,
-                                isSlowLearner: isSlowLearner
-                              });
-                            }}
-                            className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-600 text-white rounded-lg text-xs font-medium hover:bg-indigo-700 transition"
-                          >
-                            ✏️ Update
-                          </button>
+                          <div>
+                            <p className="text-[10px] text-slate-400">Percentage</p>
+                            <p className="text-sm font-bold text-slate-800">{Math.round(percentage)}%</p>
+                          </div>
                         </div>
                       </div>
                     );
@@ -678,7 +917,7 @@ function ActivitiesComponent() {
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Grade *</label>
                   <select
                     value={form.grade}
-                    onChange={(e) => setForm({...form, grade: e.target.value})}
+                    onChange={(e) => setForm({...form, grade: e.target.value, courseId: ""})}
                     className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none"
                     required
                   >
@@ -813,56 +1052,164 @@ function ActivitiesComponent() {
         </div>
       )}
 
-      {/* Update Score Modal */}
-      {editingScore && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setEditingScore(null)}>
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
-            <div className="sticky top-0 bg-gradient-to-r from-indigo-500 to-purple-500 px-5 py-4 flex justify-between items-center rounded-t-xl">
-              <div className="flex items-center gap-2">
+      {/* Edit Assigned Activity Modal */}
+      {editingBatch && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto" onClick={() => setEditingBatch(null)}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md my-8 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 bg-gradient-to-r from-amber-500 to-orange-500 px-5 py-4 flex justify-between items-center rounded-t-xl">
+              <div className="flex items-center gap-2 min-w-0">
                 <span className="text-xl">✏️</span>
-                <h2 className="text-lg font-bold text-white">Update Score</h2>
+                <div className="min-w-0">
+                  <h2 className="text-lg font-bold text-white">Edit Assigned Activity</h2>
+                  <p className="text-xs text-white/80 truncate">{editingBatch.courseName}</p>
+                </div>
               </div>
-              <button onClick={() => setEditingScore(null)} className="text-white/70 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10 text-xl">
+              <button onClick={() => setEditingBatch(null)} className="text-white/70 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10 text-xl flex-shrink-0">
                 ✕
               </button>
             </div>
-            <form onSubmit={handleUpdateScore} className="p-5 space-y-4">
+            <form onSubmit={handleUpdateBatch} className="p-5 space-y-4">
               <div>
-                <p className="text-xs font-semibold text-slate-700">Student</p>
-                <p className="text-base font-bold text-slate-800">
-                  {editingScore.studentName}
-                  {editingScore.isSlowLearner && (
-                    <span className="ml-2 text-xs text-amber-600">🎯 Slow Learner</span>
-                  )}
-                </p>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Score (0 - {editingScore.maxScore})</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Title *</label>
                 <input
-                  type="number"
-                  min="0"
-                  max={editingScore.maxScore}
-                  value={editingScore.score}
-                  onChange={(e) => setEditingScore({...editingScore, score: parseFloat(e.target.value)})}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none"
+                  type="text"
+                  value={editBatchForm.title}
+                  onChange={(e) => setEditBatchForm({...editBatchForm, title: e.target.value})}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none"
                   required
                 />
               </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Activity Type</label>
+                  <select
+                    value={editBatchForm.activityType}
+                    onChange={(e) => setEditBatchForm({...editBatchForm, activityType: e.target.value})}
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none"
+                  >
+                    {activityTypes.map(a => (
+                      <option key={a.value} value={a.value}>{a.icon} {a.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Max Score</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={editBatchForm.maxScore}
+                    onChange={(e) => setEditBatchForm({...editBatchForm, maxScore: parseInt(e.target.value)})}
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none"
+                  />
+                  <p className="text-[10px] text-amber-600 mt-1">Lowering this will cap any scores currently above it.</p>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Description / Instructions</label>
+                <textarea
+                  value={editBatchForm.description}
+                  onChange={(e) => setEditBatchForm({...editBatchForm, description: e.target.value})}
+                  rows="2"
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Date</label>
+                <input
+                  type="date"
+                  value={editBatchForm.date}
+                  onChange={(e) => setEditBatchForm({...editBatchForm, date: e.target.value})}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none"
+                />
+              </div>
+
               {error && (
                 <div className="bg-rose-50 border-l-4 border-rose-500 text-rose-700 p-3 rounded-lg text-sm flex items-center gap-2">
                   <span className="text-lg">⚠️</span>
                   <span>{error}</span>
                 </div>
               )}
+
               <div className="flex gap-3 pt-2 border-t border-slate-100">
-                <button type="submit" disabled={loading} className="flex-1 bg-gradient-to-r from-indigo-500 to-purple-500 text-white py-2.5 rounded-lg font-semibold text-sm hover:shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2">
-                  💾 {loading ? "Saving..." : "Update Score"}
+                <button type="submit" disabled={loading} className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white py-2.5 rounded-lg font-semibold text-sm hover:shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+                  💾 {loading ? "Saving..." : "Save Changes"}
                 </button>
-                <button type="button" onClick={() => setEditingScore(null)} className="flex-1 bg-slate-100 text-slate-700 py-2.5 rounded-lg font-semibold text-sm hover:bg-slate-200 transition-all">
+                <button type="button" onClick={() => setEditingBatch(null)} className="flex-1 bg-slate-100 text-slate-700 py-2.5 rounded-lg font-semibold text-sm hover:bg-slate-200 transition-all">
                   Cancel
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Update Marks Modal */}
+      {bulkScoreBatch && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto" onClick={() => setBulkScoreBatch(null)}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl my-8 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 bg-gradient-to-r from-indigo-500 to-purple-500 px-5 py-4 flex justify-between items-center rounded-t-xl z-10">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-xl">📝</span>
+                <div className="min-w-0">
+                  <h2 className="text-lg font-bold text-white">Update Marks</h2>
+                  <p className="text-xs text-white/80 truncate">{bulkScoreBatch.title} — {bulkScoreBatch.courseName} (out of {bulkScoreBatch.maxScore})</p>
+                </div>
+              </div>
+              <button onClick={() => setBulkScoreBatch(null)} className="text-white/70 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10 text-xl flex-shrink-0">
+                ✕
+              </button>
+            </div>
+            <div className="p-5">
+              <p className="text-xs text-slate-500 mb-3">Enter marks for each student below, then save everyone at once.</p>
+              <div className="space-y-1.5 max-h-[55vh] overflow-y-auto">
+                {bulkScoreBatch.students?.map((student) => (
+                  <div key={student.activityId} className="flex items-center justify-between gap-3 p-2 rounded-lg hover:bg-slate-50">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-slate-800 truncate">{student.studentName}</p>
+                      <p className="text-[10px] text-slate-400 font-mono">{student.studentId}</p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <input
+                        type="number"
+                        min="0"
+                        max={bulkScoreBatch.maxScore}
+                        value={bulkScores[student.activityId] ?? ""}
+                        onChange={(e) => handleBulkScoreChange(student.activityId, e.target.value)}
+                        className="w-20 border border-slate-200 rounded-lg px-2 py-1.5 text-sm text-center focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none"
+                      />
+                      <span className="text-xs text-slate-400">/ {bulkScoreBatch.maxScore}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {error && (
+                <div className="bg-rose-50 border-l-4 border-rose-500 text-rose-700 p-3 rounded-lg text-sm flex items-center gap-2 mt-3">
+                  <span className="text-lg">⚠️</span>
+                  <span>{error}</span>
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-4 mt-2 border-t border-slate-100">
+                <button
+                  onClick={handleSaveBulkScores}
+                  disabled={savingBulkScores}
+                  className="flex-1 bg-gradient-to-r from-indigo-500 to-purple-500 text-white py-2.5 rounded-lg font-semibold text-sm hover:shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  💾 {savingBulkScores ? "Saving all..." : `Save All (${bulkScoreBatch.students?.length || 0} students)`}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBulkScoreBatch(null)}
+                  className="flex-1 bg-slate-100 text-slate-700 py-2.5 rounded-lg font-semibold text-sm hover:bg-slate-200 transition-all"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

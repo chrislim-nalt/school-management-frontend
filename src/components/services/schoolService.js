@@ -638,6 +638,46 @@ export const getClassActivities = async (params) => {
   }
 };
 
+export const getActivityDates = async (params) => {
+  try {
+    const response = await API.get("/activities/dates", { params: params || {} });
+    return response;
+  } catch (error) {
+    console.error("getActivityDates error:", error);
+    return { data: { dates: [] } };
+  }
+};
+
+export const updateActivityBatch = async (batchId, data) => {
+  try {
+    const response = await API.put(`/activities/batch/${batchId}`, data);
+    return response;
+  } catch (error) {
+    console.error("updateActivityBatch error:", error);
+    throw error;
+  }
+};
+
+export const deleteActivityBatch = async (batchId) => {
+  try {
+    const response = await API.delete(`/activities/batch/${batchId}`);
+    return response;
+  } catch (error) {
+    console.error("deleteActivityBatch error:", error);
+    throw error;
+  }
+};
+
+export const bulkUpdateBatchScores = async (batchId, scores) => {
+  try {
+    const response = await API.put(`/activities/batch/${batchId}/scores`, { scores });
+    return response;
+  } catch (error) {
+    console.error("bulkUpdateBatchScores error:", error);
+    throw error;
+  }
+};
+
 export const getRecentActivities = async (params) => {
   try {
     const response = await API.get("/activities/recent", { params: params || {} });

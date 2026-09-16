@@ -5,6 +5,7 @@ export default function DownloadButton({
   items = [],
   columns = [],
   title = "Report",
+  subtitle = "",
   filename = "export",
   variant = "primary",
   useItemsPDF = false,
@@ -35,12 +36,12 @@ export default function DownloadButton({
         } else {
           if (!data.length) throw new Error("No data to export");
           const { exportToPDF } = await import("../services/exportService");
-          exportToPDF(data, columns, title, filename);
+          exportToPDF(data, columns, title, filename, subtitle);
         }
       } else if (type === "excel") {
         if (!data.length) throw new Error("No data to export");
         const { exportToExcel } = await import("../services/exportService");
-        exportToExcel(data, columns, filename);
+        exportToExcel(data, columns, filename, subtitle);
       } else if (type === "csv") {
         if (!data.length) throw new Error("No data to export");
         const { exportToCSV } = await import("../services/exportService");
