@@ -87,6 +87,28 @@ export default function SchoolDashboard() {
     }
   }, [userRole, userType, navigate]);
 
+  // The recent-activities API's field for "who created/assigned this" has
+  // varied across shapes (createdBy as a populated object, createdByName
+  // as a flat string, teacher, assignedBy, etc). Check every shape we've
+  // seen so the name shows up regardless of which one the backend sends.
+  const getCreatorName = (obj) => {
+    if (!obj) return "Unknown";
+    return (
+      obj.createdByName ||
+      obj.recordedByName ||
+      obj.teacherName ||
+      obj.assignedByName ||
+      (obj.createdBy && typeof obj.createdBy === "object" ? obj.createdBy.name : null) ||
+      (obj.recordedBy && typeof obj.recordedBy === "object" ? obj.recordedBy.name : null) ||
+      (obj.assignedBy && typeof obj.assignedBy === "object" ? obj.assignedBy.name : null) ||
+      (obj.teacher && typeof obj.teacher === "object" ? obj.teacher.name : null) ||
+      (typeof obj.createdBy === "string" ? obj.createdBy : null) ||
+      (typeof obj.assignedBy === "string" ? obj.assignedBy : null) ||
+      (typeof obj.teacher === "string" ? obj.teacher : null) ||
+      "Unknown"
+    );
+  };
+
   const safeGetArray = (data, defaultValue = []) => {
     if (Array.isArray(data)) return data;
     if (data && typeof data === 'object') {
@@ -372,6 +394,7 @@ export default function SchoolDashboard() {
             className: a.className || "-",
             date: a.date ? new Date(a.date) : new Date(0),
             marksTotal: marksTotal,
+            createdBy: getCreatorName(a),
             students: []
           };
         }
@@ -1243,6 +1266,7 @@ export default function SchoolDashboard() {
               <thead>
                 <tr className="border-b border-slate-200 text-[11px] uppercase tracking-wide text-slate-400">
                   <th className="text-left font-semibold px-2 py-2">Activity</th>
+                  <th className="text-left font-semibold px-2 py-2">Created By</th>
                   <th className="text-left font-semibold px-2 py-2">Class</th>
                   <th className="text-left font-semibold px-2 py-2">Date</th>
                   <th className="text-center font-semibold px-2 py-2">Submitted</th>
@@ -1276,6 +1300,9 @@ export default function SchoolDashboard() {
                               {activity.courseName}
                             </span>
                           </div>
+                        </td>
+                        <td className="px-2 py-3 text-slate-600 text-xs whitespace-nowrap">
+                          👤 {activity.createdBy}
                         </td>
                         <td className="px-2 py-3 text-slate-600 text-xs whitespace-nowrap">
                           {activity.grade} {activity.className}

@@ -497,6 +497,28 @@ function ActivitiesComponent() {
     return performanceLevels[4];
   };
 
+  // The API's field name for "who created/assigned this" has varied
+  // (createdBy as a populated object, createdByName as a flat string,
+  // teacher, assignedBy, etc). Check every shape we've seen so the name
+  // shows up regardless of which one the backend is currently sending.
+  const getCreatorName = (obj) => {
+    if (!obj) return "Unknown";
+    return (
+      obj.createdByName ||
+      obj.recordedByName ||
+      obj.teacherName ||
+      obj.assignedByName ||
+      (obj.createdBy && typeof obj.createdBy === "object" ? obj.createdBy.name : null) ||
+      (obj.recordedBy && typeof obj.recordedBy === "object" ? obj.recordedBy.name : null) ||
+      (obj.assignedBy && typeof obj.assignedBy === "object" ? obj.assignedBy.name : null) ||
+      (obj.teacher && typeof obj.teacher === "object" ? obj.teacher.name : null) ||
+      (typeof obj.createdBy === "string" ? obj.createdBy : null) ||
+      (typeof obj.assignedBy === "string" ? obj.assignedBy : null) ||
+      (typeof obj.teacher === "string" ? obj.teacher : null) ||
+      "Unknown"
+    );
+  };
+
   const getScoreColor = (percentage) => {
     if (percentage >= 80) return "bg-emerald-100 text-emerald-700";
     if (percentage >= 70) return "bg-blue-100 text-blue-700";
@@ -518,7 +540,8 @@ function ActivitiesComponent() {
     marksTotal: a?.marksTotal || 100,
     percentage: a?.percentage || 0,
     performanceLevel: a?.performanceLevel || "-",
-    date: a?.date || null
+    date: a?.date || null,
+    createdBy: getCreatorName(a)
   }));
 
   const exportColumns = [
@@ -531,7 +554,8 @@ function ActivitiesComponent() {
     { key: "marksTotal", label: "Max" },
     { key: "percentage", label: "Percentage" },
     { key: "performanceLevel", label: "Performance" },
-    { key: "date", label: "Date" }
+    { key: "date", label: "Date" },
+    { key: "createdBy", label: "Created By" }
   ];
 
   const selectedCourse = courses.find(c => c._id === selectedCourseId);
@@ -754,6 +778,9 @@ function ActivitiesComponent() {
                     <span className="text-xs text-slate-400">{batch.courseName}</span>
                   </div>
                   <div className="flex items-center gap-3 text-xs flex-wrap">
+                    <span className="text-slate-500 flex items-center gap-1">
+                      👤 {getCreatorName(batch)}
+                    </span>
                     <span className="text-slate-500 flex items-center gap-1">
                       📅 {new Date(batch.date).toLocaleDateString()}
                     </span>
