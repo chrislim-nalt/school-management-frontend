@@ -69,7 +69,7 @@ export default function Login() {
         } else if (userType === "school_admin" || userType === "admin") {
           navigate("/school-dashboard");
         } else if (userType === "bursar") {
-          navigate("/transport");
+          navigate("/dashboard");
         } else if (userType === "customer_care") {
           navigate("/visitors");
         } else if (userType === "stock_keeper") {
