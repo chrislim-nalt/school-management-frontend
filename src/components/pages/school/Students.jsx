@@ -62,13 +62,19 @@ export default function Students() {
     fetchStudents();
   }, []);
 
+  // Normalize before comparing: stray casing/whitespace differences between
+  // how a student's grade/className was originally saved (bulk import, older
+  // form version, manual DB edit) and the dropdown's exact option strings
+  // would otherwise cause a strict === match to silently filter them out.
+  const normalize = (val) => (val || "").toString().trim().toLowerCase();
+
   const filteredStudents = students.filter(student => {
     const matchesSearch = !searchTerm || 
       student.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       student.studentId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       student.parentPhone?.includes(searchTerm);
-    const matchesGrade = filterGrade === "ALL" || student.grade === filterGrade;
-    const matchesClass = filterClass === "ALL" || student.className === filterClass;
+    const matchesGrade = filterGrade === "ALL" || normalize(student.grade) === normalize(filterGrade);
+    const matchesClass = filterClass === "ALL" || normalize(student.className) === normalize(filterClass);
     const matchesStatus = filterStatus === "ALL" || student.status === filterStatus;
     return matchesSearch && matchesGrade && matchesClass && matchesStatus;
   });
@@ -84,7 +90,7 @@ export default function Students() {
       parentName: "",
       parentPhone: "",
       parentEmail: "",
-      grade: "p1",
+      grade: "P1",
       className: "ELOHIM",
       dateOfBirth: "",
       gender: "MALE",
