@@ -98,7 +98,7 @@ function ActivitiesComponent() {
   const [datesLoading, setDatesLoading] = useState(false);
 
   const grades = ["Baby", "Middle", "Top", "P1", "P2", "P3", "P4", "P5", "P6", "S1", "S2", "S3", "S4", "S5", "S6"];
-  const classes = ["ELOHIM", "SHAMA"];
+  const classes = ["A", "B","C","D","E"];
   const terms = ["TERM1", "TERM2", "TERM3"];
   const activityTypes = [
     { value: "EXERCISE", label: "Exercise", icon: "✏️", color: "bg-blue-100 text-blue-700" },
@@ -117,7 +117,7 @@ function ActivitiesComponent() {
 
   const [form, setForm] = useState({
     grade: "P1",
-    className: "ELOHIM",
+    className: "A",
     courseId: "",
     activityType: "EXERCISE",
     title: "",

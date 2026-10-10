@@ -17,7 +17,7 @@ export default function Students() {
   const [itemsPerPage] = useState(25);
 
   const grades = ["Baby", "Middle", "Top", "P1", "P2", "P3", "P4", "P5", "P6", "S1", "S2", "S3", "S4", "S5", "S6"];
-  const classes = ["ELOHIM", "SHAMA"];
+  const classes = ["A", "B","C","D","E"];
 
   const [form, setForm] = useState({
     name: "",
@@ -25,7 +25,7 @@ export default function Students() {
     parentPhone: "",
     parentEmail: "",
     grade: "P1",
-    className: "ELOHIM",
+    className: "A",
     dateOfBirth: "",
     gender: "MALE",
     status: "ACTIVE",
@@ -91,7 +91,7 @@ export default function Students() {
       parentPhone: "",
       parentEmail: "",
       grade: "P1",
-      className: "ELOHIM",
+      className: "A",
       dateOfBirth: "",
       gender: "MALE",
       status: "ACTIVE",
@@ -186,7 +186,7 @@ export default function Students() {
       parentPhone: student.parentPhone || "",
       parentEmail: student.parentEmail || "",
       grade: student.grade || "P1",
-      className: student.className || "ELOHIM",
+      className: student.className || "A",
       dateOfBirth: student.dateOfBirth ? new Date(student.dateOfBirth).toISOString().split('T')[0] : "",
       gender: student.gender || "MALE",
       status: student.status || "ACTIVE",

@@ -66,12 +66,12 @@ function HomeworkComponent() {
   const [userType] = useState(localStorage.getItem("userType") || "staff");
 
   const grades = ["Baby", "Middle", "Top", "P1", "P2", "P3", "P4", "P5", "P6", "S1", "S2", "S3", "S4", "S5", "S6"];
-  const classes = ["ELOHIM", "SHAMA"];
+  const classes = ["A", "B","C","D","E"];
 
   const [form, setForm] = useState({
     courseId: "",
     grade: "P1",
-    className: "ELOHIM",
+    className: "A",
     title: "",
     description: "",
     dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],

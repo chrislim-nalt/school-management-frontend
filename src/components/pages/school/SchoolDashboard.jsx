@@ -488,37 +488,81 @@ export default function SchoolDashboard() {
           bestScore: Math.round(Math.max(...course.scores)),
           worstScore: Math.round(Math.min(...course.scores))
         })).sort((a, b) => b.average - a.average);
-      } else {
-        coursePerformance = courses.slice(0, 5).map(c => ({
-          name: c.courseName || "Course",
-          average: Math.floor(Math.random() * 30) + 60,
-          students: Math.floor(Math.random() * 10) + 5,
-          passRate: Math.floor(Math.random() * 30) + 60,
-          failRate: 100 - Math.floor(Math.random() * 30) - 60,
-          passCount: Math.floor(Math.random() * 8) + 2,
-          failCount: Math.floor(Math.random() * 3) + 1,
-          bestScore: Math.floor(Math.random() * 15) + 85,
-          worstScore: Math.floor(Math.random() * 20) + 30
-        }));
+      } else if (rawActivities.length > 0) {
+        // No formal marks recorded yet — fall back to real activity scores
+        // (assigned activities/quizzes) rather than inventing numbers.
+        const courseMap = {};
+        rawActivities.forEach(a => {
+          const marksTotal = a.marksTotal ?? 100;
+          const marksObtained = a.marksObtained ?? 0;
+          const percentage = marksTotal > 0 ? (marksObtained / marksTotal) * 100 : (a.percentage || 0);
+          const courseName = a.courseName || "Unknown Course";
+
+          if (!courseMap[courseName]) {
+            courseMap[courseName] = { courseName, scores: [], passCount: 0, failCount: 0 };
+          }
+          courseMap[courseName].scores.push(percentage);
+          if (percentage >= 50) courseMap[courseName].passCount++;
+          else courseMap[courseName].failCount++;
+        });
+
+        coursePerformance = Object.values(courseMap).map(course => {
+          const total = course.scores.length;
+          return {
+            name: course.courseName,
+            average: Math.round(course.scores.reduce((s, v) => s + v, 0) / total),
+            students: total,
+            passRate: Math.round((course.passCount / total) * 100),
+            failRate: Math.round((course.failCount / total) * 100),
+            passCount: course.passCount,
+            failCount: course.failCount,
+            bestScore: Math.round(Math.max(...course.scores)),
+            worstScore: Math.round(Math.min(...course.scores))
+          };
+        }).sort((a, b) => b.average - a.average);
       }
+      // If neither marks nor activities exist yet, coursePerformance stays
+      // an empty array — the UI should show an honest "no data yet" state
+      // instead of fabricated numbers.
 
-      const topPerformers = analytics.topPerformers || students.slice(0, 5).map(s => ({
-        name: s.name || "Student",
-        average: Math.floor(Math.random() * 10) + 85,
-        grade: "A",
-        studentId: s.studentId || "STD-001",
-        className: s.className || "A",
-        gradeLevel: s.grade || "S1"
-      }));
+      // Real per-student averages from recorded activities, used only when
+      // the backend analytics endpoint doesn't already supply ranked
+      // performers. Never invented — computed from actual recorded scores.
+      const studentAverages = {};
+      rawActivities.forEach(a => {
+        const marksTotal = a.marksTotal ?? 100;
+        const marksObtained = a.marksObtained ?? 0;
+        const percentage = marksTotal > 0 ? (marksObtained / marksTotal) * 100 : (a.percentage || 0);
+        const key = a.studentId || a.studentName;
+        if (!key) return;
+        if (!studentAverages[key]) {
+          studentAverages[key] = {
+            name: a.studentName || "Student",
+            studentId: a.studentId || "-",
+            className: a.className || "-",
+            gradeLevel: a.grade || "-",
+            scores: []
+          };
+        }
+        studentAverages[key].scores.push(percentage);
+      });
+      const rankedStudents = Object.values(studentAverages)
+        .map(s => ({
+          name: s.name,
+          studentId: s.studentId,
+          className: s.className,
+          gradeLevel: s.gradeLevel,
+          average: Math.round(s.scores.reduce((sum, v) => sum + v, 0) / s.scores.length)
+        }))
+        .sort((a, b) => b.average - a.average);
 
-      const lowPerformers = analytics.lowPerformers || students.slice(5, 10).map(s => ({
-        name: s.name || "Student",
-        average: Math.floor(Math.random() * 15) + 35,
-        grade: "F",
-        studentId: s.studentId || "STD-002",
-        className: s.className || "A",
-        gradeLevel: s.grade || "S1"
-      }));
+      const topPerformers = analytics.topPerformers?.length > 0
+        ? analytics.topPerformers
+        : rankedStudents.slice(0, 5);
+
+      const lowPerformers = analytics.lowPerformers?.length > 0
+        ? analytics.lowPerformers
+        : [...rankedStudents].reverse().filter(s => s.average < 50).slice(0, 5);
 
       setStats({
         students: {
@@ -550,20 +594,8 @@ export default function SchoolDashboard() {
           absent: studentTotalAbsent || 0,
           late: studentTotalLate || 0,
           dailyBreakdown: studentDailyBreakdown,
-          topPresentStudents: studentAttendance.topPresentStudents || students.slice(0, 3).map(s => ({
-            name: s.name || "Student",
-            presentDays: Math.floor(Math.random() * 10) + 20,
-            studentId: s.studentId || "STD-001",
-            className: s.className || "A",
-            gradeLevel: s.grade || "S1"
-          })),
-          topAbsentStudents: studentAttendance.topAbsentStudents || students.slice(5, 8).map(s => ({
-            name: s.name || "Student",
-            absentDays: Math.floor(Math.random() * 3) + 5,
-            studentId: s.studentId || "STD-002",
-            className: s.className || "A",
-            gradeLevel: s.grade || "S1"
-          })),
+          topPresentStudents: studentAttendance.topPresentStudents || [],
+          topAbsentStudents: studentAttendance.topAbsentStudents || [],
           totalRecords: studentTotalPresent + studentTotalAbsent + studentTotalLate
         },
         teacherAttendance: {
@@ -572,18 +604,8 @@ export default function SchoolDashboard() {
           absent: teacherTotalAbsent || 0,
           late: teacherTotalLate || 0,
           dailyBreakdown: teacherDailyBreakdown,
-          topPresentTeachers: teacherAttendance.topPresentTeachers || teachers.slice(0, 3).map(t => ({
-            name: t.name || "Teacher",
-            presentDays: Math.floor(Math.random() * 10) + 20,
-            teacherId: t.teacherId || "TCH-001",
-            department: t.department || "General"
-          })),
-          topAbsentTeachers: teacherAttendance.topAbsentTeachers || teachers.slice(5, 8).map(t => ({
-            name: t.name || "Teacher",
-            absentDays: Math.floor(Math.random() * 3) + 5,
-            teacherId: t.teacherId || "TCH-002",
-            department: t.department || "General"
-          })),
+          topPresentTeachers: teacherAttendance.topPresentTeachers || [],
+          topAbsentTeachers: teacherAttendance.topAbsentTeachers || [],
           totalRecords: teacherTotalPresent + teacherTotalAbsent + teacherTotalLate
         },
         transport: {
