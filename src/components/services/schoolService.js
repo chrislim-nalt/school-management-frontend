@@ -71,6 +71,7 @@ export const getStudentById = (id) => API.get(`/students/${id}`);
 export const createStudent = (data) => API.post("/students", data);
 export const updateStudent = (id, data) => API.put(`/students/${id}`, data);
 export const deleteStudent = (id) => API.delete(`/students/${id}`);
+export const importStudents = (data) => API.post("/students/import", data);
 export const getStudentPerformance = (id, params) => API.get(`/students/${id}/performance`, { params: params || {} });
 export const getStudentAttendance = (id, params) => API.get(`/students/${id}/attendance`, { params: params || {} });
 export const getStudentsByGrade = (grade) => API.get("/students", { params: { grade } });

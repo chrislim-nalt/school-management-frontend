@@ -1,10 +1,12 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { getStudents, createStudent, updateStudent, deleteStudent } from "../../services/schoolService";
 import DownloadButton from "../../DownloadButton";
+import ImportStudentsModal from "./ImportStudentsModal";
 
 export default function Students() {
   const [students, setStudents] = useState([]);
   const [showForm, setShowForm] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -68,16 +70,28 @@ export default function Students() {
   // would otherwise cause a strict === match to silently filter them out.
   const normalize = (val) => (val || "").toString().trim().toLowerCase();
 
-  const filteredStudents = students.filter(student => {
-    const matchesSearch = !searchTerm || 
-      student.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.studentId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.parentPhone?.includes(searchTerm);
-    const matchesGrade = filterGrade === "ALL" || normalize(student.grade) === normalize(filterGrade);
-    const matchesClass = filterClass === "ALL" || normalize(student.className) === normalize(filterClass);
-    const matchesStatus = filterStatus === "ALL" || student.status === filterStatus;
-    return matchesSearch && matchesGrade && matchesClass && matchesStatus;
-  });
+  // Search: every word typed must appear somewhere in the name, ID or parent
+  // phone — in any order — so "kevine uwase" finds "UWASE KEVINE ...".
+  const filteredStudents = useMemo(() => {
+    const words = searchTerm.toLowerCase().split(/\s+/).filter(Boolean);
+    return students.filter(student => {
+      let matchesSearch = true;
+      if (words.length > 0) {
+        const haystack = `${student.name || ""} ${student.studentId || ""} ${student.parentPhone || ""}`.toLowerCase();
+        matchesSearch = words.every(w => haystack.includes(w));
+      }
+      const matchesGrade = filterGrade === "ALL" || normalize(student.grade) === normalize(filterGrade);
+      const matchesClass = filterClass === "ALL" || normalize(student.className) === normalize(filterClass);
+      const matchesStatus = filterStatus === "ALL" || student.status === filterStatus;
+      return matchesSearch && matchesGrade && matchesClass && matchesStatus;
+    });
+  }, [students, searchTerm, filterGrade, filterClass, filterStatus]);
+
+  // Always go back to page 1 when the search or a filter changes, otherwise
+  // you can end up on an empty page 5 of a 2-page result.
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterGrade, filterClass, filterStatus]);
 
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
@@ -209,6 +223,18 @@ export default function Students() {
     setShowForm(true);
   };
 
+  const handleImported = async (grade, className, data) => {
+    setSearchTerm("");
+    setFilterStatus("ALL");
+    setFilterGrade(grade);
+    setFilterClass(className);
+    await fetchStudents();
+    if (data && data.added > 0) {
+      setSuccess(`${data.added} student(s) imported into ${grade} ${className}`);
+      setTimeout(() => setSuccess(""), 4000);
+    }
+  };
+
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this student?")) {
       setLoading(true);
@@ -253,7 +279,7 @@ export default function Students() {
     class: student.className,
     parentName: student.parentName || "-",
     parentPhone: student.parentPhone || "-",
-    gender: student.gender === "MALE" ? "Boy" : "Girl",
+    gender: student.gender === "MALE" ? "Male" : "Female",
     status: student.status,
     transport: student.transportSubscribed ? "Yes" : "No",
     enrollmentDate: student.enrollmentDate ? new Date(student.enrollmentDate).toLocaleDateString() : "-"
@@ -273,8 +299,8 @@ export default function Students() {
   ];
 
   const totalStudents = students.length;
-  const boys = students.filter(s => s.gender === "MALE").length;
-  const girls = students.filter(s => s.gender === "FEMALE").length;
+  const Males = students.filter(s => s.gender === "MALE").length;
+  const Females = students.filter(s => s.gender === "FEMALE").length;
   const transportSubscribed = students.filter(s => s.transportSubscribed).length;
   const activeStudents = students.filter(s => s.status === "ACTIVE").length;
 
@@ -335,13 +361,22 @@ export default function Students() {
                 </div>
               </div>
             </div>
-            <button
-              onClick={() => { resetForm(); setShowForm(true); }}
-              className="group bg-white/10 backdrop-blur-md hover:bg-white/20 text-white px-4 py-2 rounded-xl transition-all duration-300 flex items-center gap-2 font-semibold border border-white/20 hover:scale-105 shadow-lg text-sm"
-            >
-              <span className="text-xl group-hover:rotate-90 transition-transform duration-300">➕</span>
-              Add Student
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => setShowImport(true)}
+                className="group bg-white/10 backdrop-blur-md hover:bg-white/20 text-white px-4 py-2 rounded-xl transition-all duration-300 flex items-center gap-2 font-semibold border border-white/20 hover:scale-105 shadow-lg text-sm"
+              >
+                <span className="text-xl">📥</span>
+                Import Excel
+              </button>
+              <button
+                onClick={() => { resetForm(); setShowForm(true); }}
+                className="group bg-white/10 backdrop-blur-md hover:bg-white/20 text-white px-4 py-2 rounded-xl transition-all duration-300 flex items-center gap-2 font-semibold border border-white/20 hover:scale-105 shadow-lg text-sm"
+              >
+                <span className="text-xl group-hover:rotate-90 transition-transform duration-300">➕</span>
+                Add Student
+              </button>
+            </div>
           </div>
 
           {/* Stats Cards */}
@@ -355,12 +390,13 @@ export default function Students() {
               <p className="text-2xl md:text-3xl font-bold text-emerald-400 mt-1">{activeStudents}</p>
             </div>
             <div className="bg-white/5 backdrop-blur rounded-xl p-3 border border-white/10 hover:bg-white/10 transition-all">
-              <p className="text-slate-300 text-xs flex items-center gap-1">👦 Boys</p>
-              <p className="text-2xl md:text-3xl font-bold text-blue-400 mt-1">{boys}</p>
+              <p className="text-slate-300 text-xs flex items-center gap-1">👦 Males</p>
+              <p className="text-2xl md:text-3xl font-bold text-blue-400 mt-1">{Males}</p>
             </div>
             <div className="bg-white/5 backdrop-blur rounded-xl p-3 border border-white/10 hover:bg-white/10 transition-all">
-              <p className="text-slate-300 text-xs flex items-center gap-1">👧 Girls</p>
-              <p className="text-2xl md:text-3xl font-bold text-pink-400 mt-1">{girls}</p>
+              <p className="text-slate-300 text-xs flex items-center gap-1">👧 Females</p>
+              <p className="text-2xl md:text-3xl font-bold text-pink-400 mt-1">{Females}</p>
+
             </div>
             <div className="bg-white/5 backdrop-blur rounded-xl p-3 border border-white/10 hover:bg-white/10 transition-all">
               <p className="text-slate-300 text-xs flex items-center gap-1">🚌 Transport</p>
@@ -505,7 +541,7 @@ export default function Students() {
                       ) : "-"}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-slate-600 text-sm">
-                      {student.gender === "MALE" ? "👦 Boy" : "👧 Girl"}
+                      {student.gender === "MALE" ? "👦 Male" : "👧 Female"}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(student.status)}`}>
@@ -642,8 +678,8 @@ export default function Students() {
                     onChange={(e) => setForm({...form, gender: e.target.value})}
                     className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none transition-all"
                   >
-                    <option value="MALE">👦 Boy</option>
-                    <option value="FEMALE">👧 Girl</option>
+                    <option value="MALE">👦 Male</option>
+                    <option value="FEMALE">👧 Female</option>
                   </select>
                 </div>
                 <div>
@@ -768,6 +804,18 @@ export default function Students() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Import from Excel Modal */}
+      {showImport && (
+        <ImportStudentsModal
+          grades={grades}
+          classes={classes}
+          defaultGrade={filterGrade !== "ALL" ? filterGrade : "P1"}
+          defaultClass={filterClass !== "ALL" ? filterClass : "A"}
+          onClose={() => setShowImport(false)}
+          onImported={handleImported}
+        />
       )}
 
       <style>{`
