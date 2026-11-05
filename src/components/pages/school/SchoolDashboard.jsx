@@ -14,6 +14,7 @@ import {
   getRecentActivities
 } from "../../services/schoolService";
 import { useNavigate, Link } from "react-router-dom";
+import { PerformanceCharts, AttendanceCharts } from "./DashboardCharts";
 
 export default function SchoolDashboard() {
   const [loading, setLoading] = useState(false);
@@ -710,8 +711,6 @@ export default function SchoolDashboard() {
     return { label: "Failing", icon: "🔴", color: "bg-rose-500" };
   };
 
-  const totalStudents = stats.students.total || 0;
-
   return (
     <div className="space-y-4">
       {error && (
@@ -879,105 +878,11 @@ export default function SchoolDashboard() {
           </div>
         </div>
         
-        {/* Average Score & Pass Rate */}
-        <div className="flex flex-col md:flex-row items-center gap-4 md:gap-6 mb-4">
-          <div className="relative w-28 h-28 md:w-32 md:h-32 flex-shrink-0">
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-center">
-                <p className="text-2xl md:text-3xl font-bold text-indigo-600">{stats.performance.averageScore}%</p>
-                <p className="text-[10px] md:text-xs text-slate-500">Avg Score</p>
-              </div>
-            </div>
-            <svg className="w-28 h-28 md:w-32 md:h-32 transform -rotate-90">
-              <circle cx="56" cy="56" r="48" fill="none" stroke="#e2e8f0" strokeWidth="10" />
-              <circle 
-                cx="56" cy="56" r="48" fill="none" 
-                stroke="#6366f1" strokeWidth="10" 
-                strokeDasharray={`${(stats.performance.averageScore / 100) * 301.6} 301.6`}
-                strokeLinecap="round"
-                className="transition-all duration-1000"
-              />
-            </svg>
-          </div>
-          <div className="flex-1 grid grid-cols-3 gap-2 w-full">
-            <div className="bg-emerald-50 rounded-lg p-2 text-center">
-              <p className="text-xs text-slate-500">Pass Rate</p>
-              <p className="text-lg font-bold text-emerald-600">{stats.performance.passRate}%</p>
-            </div>
-            <div className="bg-indigo-50 rounded-lg p-2 text-center">
-              <p className="text-xs text-slate-500">Marks Recorded</p>
-              <p className="text-lg font-bold text-indigo-600">{stats.performance.marksCount}</p>
-            </div>
-            <div className="bg-amber-50 rounded-lg p-2 text-center">
-              <p className="text-xs text-slate-500">Slow Learners</p>
-              <p className="text-lg font-bold text-amber-600">{stats.slowLearners.total}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Grade Distribution */}
-        <div className="space-y-2 mb-4">
-          <p className="text-xs font-semibold text-slate-600 mb-2">📈 Grade Distribution</p>
-          {Object.entries(stats.performance.gradeDistribution || {}).map(([grade, count]) => (
-            <div key={grade} className="flex items-center gap-2">
-              <div className={`w-6 h-6 rounded-md bg-gradient-to-r ${getGradeGradient(grade)} flex items-center justify-center text-xs font-bold text-white`}>
-                {grade}
-              </div>
-              <div className="flex-1 h-4 bg-slate-100 rounded-full overflow-hidden">
-                <div 
-                  className={`h-full bg-gradient-to-r ${getGradeGradient(grade)} rounded-full transition-all duration-700 ease-out`}
-                  style={{ width: `${totalStudents > 0 ? (count / totalStudents * 100) : 0}%` }}
-                />
-              </div>
-              <div className="w-10 text-xs font-semibold text-slate-600 text-right">{count}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Course Performance Breakdown */}
-        <div className="mb-4 pt-3 border-t border-slate-100">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-semibold text-slate-600">📚 Course Performance Breakdown</p>
-            <span className="text-[10px] text-slate-400">{stats.performance.coursePerformance?.length || 0} courses</span>
-          </div>
-          <div className="space-y-2 max-h-60 overflow-y-auto">
-            {stats.performance.coursePerformance?.map((course, idx) => (
-              <div key={idx} className="bg-slate-50 rounded-lg p-2.5 hover:bg-slate-100 transition">
-                <div className="flex justify-between items-center mb-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-slate-700">{course.name}</span>
-                    <span className="text-[10px] text-slate-400">({course.students} students)</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className={`text-xs font-bold ${getPerformanceColor(course.average)}`}>
-                      {course.average}%
-                    </span>
-                    <span className="text-[10px] text-emerald-600">✅ {course.passRate}%</span>
-                    <span className="text-[10px] text-rose-600">❌ {course.failRate}%</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                    <div 
-                      className={`h-full ${getPerformanceBarColor(course.average)} rounded-full transition-all duration-700`}
-                      style={{ width: `${course.average}%` }}
-                    />
-                  </div>
-                  <span className="text-[10px] text-slate-400 whitespace-nowrap">
-                    Best: {course.bestScore}% | Worst: {course.worstScore}%
-                  </span>
-                </div>
-                <div className="flex gap-3 mt-1 text-[10px] text-slate-400">
-                  <span>✅ Passed: {course.passCount}</span>
-                  <span>❌ Failed: {course.failCount}</span>
-                </div>
-              </div>
-            ))}
-            {(!stats.performance.coursePerformance || stats.performance.coursePerformance.length === 0) && (
-              <p className="text-xs text-slate-400 italic text-center py-2">No course performance data available</p>
-            )}
-          </div>
-        </div>
+        {/* Charts: course performance, grade distribution + full course table */}
+        <PerformanceCharts
+          performance={stats.performance}
+          slowLearnersTotal={stats.slowLearners.total}
+        />
 
         {/* Top & Low Performers with Classes */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-slate-100">
@@ -1044,61 +949,8 @@ export default function SchoolDashboard() {
           <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">Last 30 Days</span>
         </div>
 
-        <div className="flex flex-col md:flex-row items-center gap-4 md:gap-6 mb-4">
-          <div className="relative w-28 h-28 md:w-32 md:h-32 flex-shrink-0">
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-center">
-                <p className="text-2xl md:text-3xl font-bold text-emerald-600">{stats.studentAttendance.rate}%</p>
-                <p className="text-[10px] md:text-xs text-slate-500">Rate</p>
-              </div>
-            </div>
-            <svg className="w-28 h-28 md:w-32 md:h-32 transform -rotate-90">
-              <circle cx="56" cy="56" r="48" fill="none" stroke="#e2e8f0" strokeWidth="10" />
-              <circle 
-                cx="56" cy="56" r="48" fill="none" 
-                stroke="#10b981" strokeWidth="10" 
-                strokeDasharray={`${(stats.studentAttendance.rate / 100) * 301.6} 301.6`}
-                strokeLinecap="round"
-                className="transition-all duration-1000"
-              />
-            </svg>
-          </div>
-          <div className="flex-1 grid grid-cols-3 gap-2 w-full">
-            <div className="bg-emerald-50 rounded-lg p-2 text-center">
-              <p className="text-lg font-bold text-emerald-600">{stats.studentAttendance.present}</p>
-              <p className="text-[10px] text-slate-500">Present</p>
-            </div>
-            <div className="bg-amber-50 rounded-lg p-2 text-center">
-              <p className="text-lg font-bold text-amber-600">{stats.studentAttendance.late}</p>
-              <p className="text-[10px] text-slate-500">Late</p>
-            </div>
-            <div className="bg-rose-50 rounded-lg p-2 text-center">
-              <p className="text-lg font-bold text-rose-600">{stats.studentAttendance.absent}</p>
-              <p className="text-[10px] text-slate-500">Absent</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Student Daily Breakdown */}
-        <div className="mb-4">
-          <p className="text-xs font-semibold text-slate-600 mb-2">📅 Daily Student Attendance (Last 7 Days)</p>
-          <div className="space-y-1.5">
-            {stats.studentAttendance.dailyBreakdown?.slice(0, 7).map((day, idx) => (
-              <div key={idx} className="flex items-center gap-2 text-xs">
-                <span className="w-24 text-slate-500 truncate">{day.date}</span>
-                <div className="flex-1 h-4 bg-slate-100 rounded-full overflow-hidden flex">
-                  <div className="h-full bg-emerald-500" style={{ width: `${day.total > 0 ? (day.present / day.total * 100) : 0}%` }} />
-                  <div className="h-full bg-amber-500" style={{ width: `${day.total > 0 ? (day.late / day.total * 100) : 0}%` }} />
-                  <div className="h-full bg-rose-500" style={{ width: `${day.total > 0 ? (day.absent / day.total * 100) : 0}%` }} />
-                </div>
-                <span className="w-12 text-right font-medium text-slate-600">{day.total}</span>
-              </div>
-            ))}
-            {(!stats.studentAttendance.dailyBreakdown || stats.studentAttendance.dailyBreakdown.length === 0) && (
-              <p className="text-xs text-slate-400 italic">No attendance data available</p>
-            )}
-          </div>
-        </div>
+        {/* Charts: rate trend + daily present/late/absent + daily numbers */}
+        <AttendanceCharts data={stats.studentAttendance} accent="emerald" who="Student" />
 
         {/* Student Attendance Details */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-slate-100">
@@ -1157,61 +1009,8 @@ export default function SchoolDashboard() {
           <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">Last 30 Days</span>
         </div>
 
-        <div className="flex flex-col md:flex-row items-center gap-4 md:gap-6 mb-4">
-          <div className="relative w-28 h-28 md:w-32 md:h-32 flex-shrink-0">
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-center">
-                <p className="text-2xl md:text-3xl font-bold text-purple-600">{stats.teacherAttendance.rate}%</p>
-                <p className="text-[10px] md:text-xs text-slate-500">Rate</p>
-              </div>
-            </div>
-            <svg className="w-28 h-28 md:w-32 md:h-32 transform -rotate-90">
-              <circle cx="56" cy="56" r="48" fill="none" stroke="#e2e8f0" strokeWidth="10" />
-              <circle 
-                cx="56" cy="56" r="48" fill="none" 
-                stroke="#8b5cf6" strokeWidth="10" 
-                strokeDasharray={`${(stats.teacherAttendance.rate / 100) * 301.6} 301.6`}
-                strokeLinecap="round"
-                className="transition-all duration-1000"
-              />
-            </svg>
-          </div>
-          <div className="flex-1 grid grid-cols-3 gap-2 w-full">
-            <div className="bg-emerald-50 rounded-lg p-2 text-center">
-              <p className="text-lg font-bold text-emerald-600">{stats.teacherAttendance.present}</p>
-              <p className="text-[10px] text-slate-500">Present</p>
-            </div>
-            <div className="bg-amber-50 rounded-lg p-2 text-center">
-              <p className="text-lg font-bold text-amber-600">{stats.teacherAttendance.late}</p>
-              <p className="text-[10px] text-slate-500">Late</p>
-            </div>
-            <div className="bg-rose-50 rounded-lg p-2 text-center">
-              <p className="text-lg font-bold text-rose-600">{stats.teacherAttendance.absent}</p>
-              <p className="text-[10px] text-slate-500">Absent</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Teacher Daily Breakdown */}
-        <div className="mb-4">
-          <p className="text-xs font-semibold text-slate-600 mb-2">📅 Daily Teacher Attendance (Last 7 Days)</p>
-          <div className="space-y-1.5">
-            {stats.teacherAttendance.dailyBreakdown?.slice(0, 7).map((day, idx) => (
-              <div key={idx} className="flex items-center gap-2 text-xs">
-                <span className="w-24 text-slate-500 truncate">{day.date}</span>
-                <div className="flex-1 h-4 bg-slate-100 rounded-full overflow-hidden flex">
-                  <div className="h-full bg-emerald-500" style={{ width: `${day.total > 0 ? (day.present / day.total * 100) : 0}%` }} />
-                  <div className="h-full bg-amber-500" style={{ width: `${day.total > 0 ? (day.late / day.total * 100) : 0}%` }} />
-                  <div className="h-full bg-rose-500" style={{ width: `${day.total > 0 ? (day.absent / day.total * 100) : 0}%` }} />
-                </div>
-                <span className="w-12 text-right font-medium text-slate-600">{day.total}</span>
-              </div>
-            ))}
-            {(!stats.teacherAttendance.dailyBreakdown || stats.teacherAttendance.dailyBreakdown.length === 0) && (
-              <p className="text-xs text-slate-400 italic">No attendance data available</p>
-            )}
-          </div>
-        </div>
+        {/* Charts: rate trend + daily present/late/absent + daily numbers */}
+        <AttendanceCharts data={stats.teacherAttendance} accent="purple" who="Teacher" />
 
         {/* Teacher Attendance Details */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-slate-100">
