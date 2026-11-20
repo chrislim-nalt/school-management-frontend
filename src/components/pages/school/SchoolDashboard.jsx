@@ -17,7 +17,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { PerformanceCharts, AttendanceCharts } from "./DashboardCharts";
 
 export default function SchoolDashboard() {
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     students: { total: 0, active: 0, boys: 0, girls: 0 },
     teachers: { total: 0, active: 0 },
@@ -131,6 +131,12 @@ export default function SchoolDashboard() {
   const fetchData = async () => {
     setLoading(true);
     setError(null);
+    const failed = []; // names of the requests that did not load
+    const guard = (name, request) =>
+      request.then(
+        (r) => { if (r && r.success === false) failed.push(name); return r; },
+        (e) => { failed.push(name); throw e; }
+      );
     try {
       const currentYear = new Date().getFullYear();
       const currentDate = new Date().toISOString().split('T')[0];
@@ -149,10 +155,10 @@ export default function SchoolDashboard() {
         slowLearnersRes,
         recentActivitiesRes
       ] = await Promise.all([
-        getStudents().catch(() => ({ data: [] })),
-        getTeachers().catch(() => ({ data: [] })),
-        getCourses().catch(() => ({ data: [] })),
-        getMarksAnalytics("TERM1", currentYear).catch(() => ({ 
+        guard("students", getStudents()).catch(() => ({ data: [] })),
+        guard("teachers", getTeachers()).catch(() => ({ data: [] })),
+        guard("courses", getCourses()).catch(() => ({ data: [] })),
+        guard("performance", getMarksAnalytics("TERM1", currentYear)).catch(() => ({ 
           data: { 
             totalStudents: 0, 
             totalMarks: 0, 
@@ -166,7 +172,7 @@ export default function SchoolDashboard() {
             marksCount: 0
           } 
         })),
-        getTransportFinancialSummary(currentYear).catch(() => ({ 
+        guard("transport", getTransportFinancialSummary(currentYear)).catch(() => ({ 
           data: { 
             totalExpected: 0, 
             totalPaid: 0, 
@@ -175,10 +181,10 @@ export default function SchoolDashboard() {
             studentsSummary: { paid: 0, partial: 0, unpaid: 0, total: 0 } 
           } 
         })),
-        getStudentAttendanceReport({ 
+        guard("student attendance", getStudentAttendanceReport({ 
           startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
           endDate: currentDate
-        }).catch(() => ({ 
+        })).catch(() => ({ 
           data: { 
             summary: { 
               averageAttendance: 0, 
@@ -192,10 +198,10 @@ export default function SchoolDashboard() {
             topAbsentStudents: []
           } 
         })),
-        getTeacherAttendanceReport({ 
+        guard("teacher attendance", getTeacherAttendanceReport({ 
           startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
           endDate: currentDate
-        }).catch(() => ({ 
+        })).catch(() => ({ 
           data: { 
             summary: { 
               averageAttendance: 0, 
@@ -209,20 +215,24 @@ export default function SchoolDashboard() {
             topAbsentTeachers: []
           } 
         })),
-        getMarks().catch(() => ({ data: [] })),
-        getStudentAttendanceByClass({ 
+        guard("marks", getMarks()).catch(() => ({ data: [] })),
+        guard("attendance by class", getStudentAttendanceByClass({ 
           grade: "ALL",
           className: "ALL",
           date: currentDate,
           period: "DAILY"
-        }).catch(() => ({ data: { attendance: [] } })),
-        getTeacherAttendanceByDate({ 
+        })).catch(() => ({ data: { attendance: [] } })),
+        guard("teacher attendance by date", getTeacherAttendanceByDate({ 
           date: currentDate,
           period: "DAILY"
-        }).catch(() => ({ data: { attendance: [] } })),
-        getSlowLearnerCases({ semester: "TERM1" }).catch(() => ({ data: { cases: [] } })),
-        getRecentActivities({ term: "TERM1", limit: 100 }).catch(() => ({ data: { activities: [] } }))
+        })).catch(() => ({ data: { attendance: [] } })),
+        guard("slow learners", getSlowLearnerCases({ semester: "TERM1" })).catch(() => ({ data: { cases: [] } })),
+        guard("recent activities", getRecentActivities({ term: "TERM1", limit: 100 })).catch(() => ({ data: { activities: [] } }))
       ]);
+
+      if (failed.length) {
+        setError(`Could not load: ${[...new Set(failed)].join(", ")}. Figures for these may be missing or incomplete.`);
+      }
 
       const students = safeGetArray(studentsRes.data);
       const teachers = safeGetArray(teachersRes.data);
@@ -652,8 +662,8 @@ export default function SchoolDashboard() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <div className="w-12 h-12 border-3 border-slate-200 rounded-full animate-spin border-t-indigo-500 mx-auto mb-4"></div>
-          <p className="text-slate-500">Redirecting to your dashboard...</p>
+          <div className="w-10 h-10 border-[3px] border-slate-200 rounded-full animate-spin border-t-indigo-500 mx-auto mb-3"></div>
+          <p className="text-sm text-slate-500">Redirecting to your dashboard...</p>
         </div>
       </div>
     );
@@ -661,33 +671,12 @@ export default function SchoolDashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="w-12 h-12 border-3 border-slate-200 rounded-full animate-spin border-t-indigo-500"></div>
+      <div role="status" className="flex flex-col items-center justify-center h-64 gap-3">
+        <div className="w-10 h-10 border-[3px] border-slate-200 rounded-full animate-spin border-t-indigo-500"></div>
+        <p className="text-sm text-slate-500">Loading dashboard…</p>
       </div>
     );
   }
-
-  const getGradeColor = (grade) => {
-    const colors = {
-      A: "bg-emerald-500",
-      B: "bg-blue-500",
-      C: "bg-amber-500",
-      D: "bg-orange-500",
-      F: "bg-rose-500"
-    };
-    return colors[grade] || "bg-gray-500";
-  };
-
-  const getGradeGradient = (grade) => {
-    const gradients = {
-      A: "from-emerald-400 to-emerald-600",
-      B: "from-blue-400 to-blue-600",
-      C: "from-amber-400 to-amber-600",
-      D: "from-orange-400 to-orange-600",
-      F: "from-rose-400 to-rose-600"
-    };
-    return gradients[grade] || "from-gray-400 to-gray-600";
-  };
 
   const getPerformanceColor = (percentage) => {
     if (percentage >= 80) return "text-emerald-600";
@@ -712,16 +701,21 @@ export default function SchoolDashboard() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 antialiased">
       {error && (
-        <div className="bg-amber-50 border-l-4 border-amber-500 text-amber-700 px-4 py-3 rounded-lg flex items-center gap-2">
-          <span>⚠️</span>
-          <span>{error}</span>
+        <div role="alert" className="bg-amber-50 border-l-4 border-amber-500 text-amber-800 px-4 py-3 rounded-lg text-sm flex flex-wrap items-center justify-between gap-2">
+          <span className="flex items-center gap-2">
+            <span>⚠️</span>
+            <span>{error}</span>
+          </span>
+          <button onClick={fetchData} className="shrink-0 rounded-md bg-amber-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-700 transition">
+            Retry
+          </button>
         </div>
       )}
 
       {/* Hero Section */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl shadow-xl">
+      <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-xl shadow-md">
         <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-full blur-3xl"></div>
         <div className="absolute bottom-0 left-0 w-64 h-64 bg-gradient-to-tr from-emerald-500/10 to-teal-500/10 rounded-full blur-3xl"></div>
         
@@ -729,9 +723,9 @@ export default function SchoolDashboard() {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-white/10 backdrop-blur rounded-xl text-2xl">🎓</div>
+                <div className="p-2 bg-white/10 backdrop-blur rounded-xl text-xl">🎓</div>
                 <div>
-                  <h1 className="text-2xl md:text-3xl font-bold text-white mb-1 tracking-tight">
+                  <h1 className="text-xl md:text-2xl font-semibold text-white mb-0.5 tracking-tight">
                     School Management Dashboard
                   </h1>
                   <p className="text-slate-300 text-sm">
@@ -771,14 +765,14 @@ export default function SchoolDashboard() {
 
       {/* Stats Cards Row 1 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl shadow-lg p-4 hover:shadow-xl transition-all group border border-slate-100">
+        <div className="bg-white rounded-xl shadow-sm p-4 hover:shadow-md transition-all group border border-slate-100">
           <div className="flex items-center justify-between mb-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <span className="text-2xl">👨‍🎓</span>
+            <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+              <span className="text-xl">👨‍🎓</span>
             </div>
             <span className="text-xs text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Active</span>
           </div>
-          <p className="text-2xl font-bold text-slate-800">{stats.students.total}</p>
+          <p className="text-xl sm:text-2xl font-semibold tracking-tight tabular-nums text-slate-800">{stats.students.total}</p>
           <p className="text-xs text-slate-500 mt-1">Total Students</p>
           <div className="mt-3 flex gap-3 text-xs">
             <span className="text-emerald-600 flex items-center gap-1">👦 {stats.students.boys}</span>
@@ -786,35 +780,35 @@ export default function SchoolDashboard() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-lg p-4 hover:shadow-xl transition-all group border border-slate-100">
+        <div className="bg-white rounded-xl shadow-sm p-4 hover:shadow-md transition-all group border border-slate-100">
           <div className="flex items-center justify-between mb-3">
-            <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <span className="text-2xl">👨‍🏫</span>
+            <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center">
+              <span className="text-xl">👨‍🏫</span>
             </div>
             <span className="text-xs text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Active</span>
           </div>
-          <p className="text-2xl font-bold text-slate-800">{stats.teachers.active} / {stats.teachers.total}</p>
+          <p className="text-xl sm:text-2xl font-semibold tracking-tight tabular-nums text-slate-800">{stats.teachers.active} / {stats.teachers.total}</p>
           <p className="text-xs text-slate-500 mt-1">Teachers (Active/Total)</p>
         </div>
 
-        <div className="bg-white rounded-xl shadow-lg p-4 hover:shadow-xl transition-all group border border-slate-100">
+        <div className="bg-white rounded-xl shadow-sm p-4 hover:shadow-md transition-all group border border-slate-100">
           <div className="flex items-center justify-between mb-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <span className="text-2xl">📚</span>
+            <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center">
+              <span className="text-xl">📚</span>
             </div>
           </div>
-          <p className="text-2xl font-bold text-slate-800">{stats.courses.total}</p>
+          <p className="text-xl sm:text-2xl font-semibold tracking-tight tabular-nums text-slate-800">{stats.courses.total}</p>
           <p className="text-xs text-slate-500 mt-1">Courses Offered</p>
         </div>
 
-        <div className="bg-white rounded-xl shadow-lg p-4 hover:shadow-xl transition-all group border border-slate-100">
+        <div className="bg-white rounded-xl shadow-sm p-4 hover:shadow-md transition-all group border border-slate-100">
           <div className="flex items-center justify-between mb-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <span className="text-2xl">💰</span>
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
+              <span className="text-xl">💰</span>
             </div>
             <span className="text-xs text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">{stats.transport.collectionRate}%</span>
           </div>
-          <p className="text-xl font-bold text-slate-800">{stats.transport.revenue.toLocaleString()} RWF</p>
+          <p className="text-lg font-semibold tabular-nums text-slate-800">{stats.transport.revenue.toLocaleString()} RWF</p>
           <p className="text-xs text-slate-500 mt-1">Transport Revenue</p>
           {stats.transport.totalExpected > 0 && (
             <p className="text-xs text-slate-400 mt-1">Expected: {stats.transport.totalExpected.toLocaleString()} RWF</p>
@@ -824,51 +818,51 @@ export default function SchoolDashboard() {
 
       {/* Slow Learners Stats Card */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-        <div className="bg-white rounded-xl shadow-lg p-3 hover:shadow-xl transition-all border border-slate-100">
+        <div className="bg-white rounded-xl shadow-sm p-3 hover:shadow-md transition-all border border-slate-100">
           <div className="flex items-center gap-2">
             <span className="text-lg">🎯</span>
             <p className="text-xs text-slate-500">Total Cases</p>
           </div>
-          <p className="text-xl font-bold text-slate-800">{stats.slowLearners.total}</p>
+          <p className="text-lg font-semibold tabular-nums text-slate-800">{stats.slowLearners.total}</p>
         </div>
-        <div className="bg-white rounded-xl shadow-lg p-3 hover:shadow-xl transition-all border border-slate-100">
+        <div className="bg-white rounded-xl shadow-sm p-3 hover:shadow-md transition-all border border-slate-100">
           <div className="flex items-center gap-2">
             <span className="text-lg">🔍</span>
             <p className="text-xs text-slate-500">Identified</p>
           </div>
-          <p className="text-xl font-bold text-amber-600">{stats.slowLearners.identified}</p>
+          <p className="text-lg font-semibold tabular-nums text-amber-600">{stats.slowLearners.identified}</p>
         </div>
-        <div className="bg-white rounded-xl shadow-lg p-3 hover:shadow-xl transition-all border border-slate-100">
+        <div className="bg-white rounded-xl shadow-sm p-3 hover:shadow-md transition-all border border-slate-100">
           <div className="flex items-center gap-2">
             <span className="text-lg">🔄</span>
             <p className="text-xs text-slate-500">In Progress</p>
           </div>
-          <p className="text-xl font-bold text-blue-600">{stats.slowLearners.inProgress}</p>
+          <p className="text-lg font-semibold tabular-nums text-blue-600">{stats.slowLearners.inProgress}</p>
         </div>
-        <div className="bg-white rounded-xl shadow-lg p-3 hover:shadow-xl transition-all border border-slate-100">
+        <div className="bg-white rounded-xl shadow-sm p-3 hover:shadow-md transition-all border border-slate-100">
           <div className="flex items-center gap-2">
             <span className="text-lg">📈</span>
             <p className="text-xs text-slate-500">Improving</p>
           </div>
-          <p className="text-xl font-bold text-emerald-600">{stats.slowLearners.improving}</p>
+          <p className="text-lg font-semibold tabular-nums text-emerald-600">{stats.slowLearners.improving}</p>
         </div>
-        <div className="bg-white rounded-xl shadow-lg p-3 hover:shadow-xl transition-all border border-slate-100">
+        <div className="bg-white rounded-xl shadow-sm p-3 hover:shadow-md transition-all border border-slate-100">
           <div className="flex items-center gap-2">
             <span className="text-lg">✅</span>
             <p className="text-xs text-slate-500">Resolved</p>
           </div>
-          <p className="text-xl font-bold text-green-600">{stats.slowLearners.resolved}</p>
+          <p className="text-lg font-semibold tabular-nums text-green-600">{stats.slowLearners.resolved}</p>
         </div>
       </div>
 
       {/* Academic Performance - Enhanced with Course Breakdown */}
-      <div className="bg-white rounded-xl shadow-lg p-5 hover:shadow-xl transition-all border border-slate-100">
+      <div className="bg-white rounded-xl shadow-sm p-5 hover:shadow-md transition-all border border-slate-100">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">
               <span className="text-indigo-600 text-sm">📊</span>
             </div>
-            <h2 className="font-bold text-slate-800">Academic Performance</h2>
+            <h2 className="font-semibold text-slate-800">Academic Performance</h2>
           </div>
           <div className="flex items-center gap-3">
             <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">Current Term</span>
@@ -894,9 +888,9 @@ export default function SchoolDashboard() {
                 <div key={idx} className="flex justify-between items-center text-xs bg-emerald-50 p-1.5 rounded">
                   <div className="flex-1 min-w-0">
                     <span className="font-medium text-slate-700 truncate">{student.name}</span>
-                    <span className="text-[10px] text-slate-400 ml-1">({student.gradeLevel} {student.className})</span>
+                    <span className="text-[11px] text-slate-400 ml-1">({student.gradeLevel} {student.className})</span>
                   </div>
-                  <span className="font-bold text-emerald-600 ml-2">{student.average}%</span>
+                  <span className="font-semibold text-emerald-600 ml-2">{student.average}%</span>
                 </div>
               ))}
               {(!stats.performance.topPerformers || stats.performance.topPerformers.length === 0) && (
@@ -912,9 +906,9 @@ export default function SchoolDashboard() {
                 <div key={idx} className="flex justify-between items-center text-xs bg-rose-50 p-1.5 rounded">
                   <div className="flex-1 min-w-0">
                     <span className="font-medium text-slate-700 truncate">{student.name}</span>
-                    <span className="text-[10px] text-slate-400 ml-1">({student.gradeLevel} {student.className})</span>
+                    <span className="text-[11px] text-slate-400 ml-1">({student.gradeLevel} {student.className})</span>
                   </div>
-                  <span className="font-bold text-rose-600 ml-2">{student.average}%</span>
+                  <span className="font-semibold text-rose-600 ml-2">{student.average}%</span>
                 </div>
               ))}
               {(!stats.performance.lowPerformers || stats.performance.lowPerformers.length === 0) && (
@@ -938,13 +932,13 @@ export default function SchoolDashboard() {
       </div>
 
       {/* Student Attendance - Enhanced */}
-      <div className="bg-white rounded-xl shadow-lg p-5 hover:shadow-xl transition-all border border-slate-100">
+      <div className="bg-white rounded-xl shadow-sm p-5 hover:shadow-md transition-all border border-slate-100">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
               <span className="text-emerald-600 text-sm">👨‍🎓</span>
             </div>
-            <h2 className="font-bold text-slate-800">Student Attendance</h2>
+            <h2 className="font-semibold text-slate-800">Student Attendance</h2>
           </div>
           <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">Last 30 Days</span>
         </div>
@@ -961,9 +955,9 @@ export default function SchoolDashboard() {
                 <div key={idx} className="flex justify-between items-center text-xs bg-emerald-50 p-1.5 rounded">
                   <div className="flex-1 min-w-0">
                     <span className="font-medium text-slate-700 truncate">{student.name}</span>
-                    <span className="text-[10px] text-slate-400 ml-1">({student.gradeLevel} {student.className})</span>
+                    <span className="text-[11px] text-slate-400 ml-1">({student.gradeLevel} {student.className})</span>
                   </div>
-                  <span className="font-bold text-emerald-600 ml-2">{student.presentDays} days</span>
+                  <span className="font-semibold text-emerald-600 ml-2">{student.presentDays} days</span>
                 </div>
               ))}
               {(!stats.studentAttendance.topPresentStudents || stats.studentAttendance.topPresentStudents.length === 0) && (
@@ -978,9 +972,9 @@ export default function SchoolDashboard() {
                 <div key={idx} className="flex justify-between items-center text-xs bg-rose-50 p-1.5 rounded">
                   <div className="flex-1 min-w-0">
                     <span className="font-medium text-slate-700 truncate">{student.name}</span>
-                    <span className="text-[10px] text-slate-400 ml-1">({student.gradeLevel} {student.className})</span>
+                    <span className="text-[11px] text-slate-400 ml-1">({student.gradeLevel} {student.className})</span>
                   </div>
-                  <span className="font-bold text-rose-600 ml-2">{student.absentDays} days</span>
+                  <span className="font-semibold text-rose-600 ml-2">{student.absentDays} days</span>
                 </div>
               ))}
               {(!stats.studentAttendance.topAbsentStudents || stats.studentAttendance.topAbsentStudents.length === 0) && (
@@ -998,13 +992,13 @@ export default function SchoolDashboard() {
       </div>
 
       {/* Teacher Attendance - Enhanced */}
-      <div className="bg-white rounded-xl shadow-lg p-5 hover:shadow-xl transition-all border border-slate-100">
+      <div className="bg-white rounded-xl shadow-sm p-5 hover:shadow-md transition-all border border-slate-100">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
               <span className="text-purple-600 text-sm">👨‍🏫</span>
             </div>
-            <h2 className="font-bold text-slate-800">Teacher Attendance</h2>
+            <h2 className="font-semibold text-slate-800">Teacher Attendance</h2>
           </div>
           <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">Last 30 Days</span>
         </div>
@@ -1021,9 +1015,9 @@ export default function SchoolDashboard() {
                 <div key={idx} className="flex justify-between items-center text-xs bg-emerald-50 p-1.5 rounded">
                   <div className="flex-1 min-w-0">
                     <span className="font-medium text-slate-700 truncate">{teacher.name}</span>
-                    <span className="text-[10px] text-slate-400 ml-1">({teacher.department || "General"})</span>
+                    <span className="text-[11px] text-slate-400 ml-1">({teacher.department || "General"})</span>
                   </div>
-                  <span className="font-bold text-emerald-600 ml-2">{teacher.presentDays} days</span>
+                  <span className="font-semibold text-emerald-600 ml-2">{teacher.presentDays} days</span>
                 </div>
               ))}
               {(!stats.teacherAttendance.topPresentTeachers || stats.teacherAttendance.topPresentTeachers.length === 0) && (
@@ -1038,9 +1032,9 @@ export default function SchoolDashboard() {
                 <div key={idx} className="flex justify-between items-center text-xs bg-rose-50 p-1.5 rounded">
                   <div className="flex-1 min-w-0">
                     <span className="font-medium text-slate-700 truncate">{teacher.name}</span>
-                    <span className="text-[10px] text-slate-400 ml-1">({teacher.department || "General"})</span>
+                    <span className="text-[11px] text-slate-400 ml-1">({teacher.department || "General"})</span>
                   </div>
-                  <span className="font-bold text-rose-600 ml-2">{teacher.absentDays} days</span>
+                  <span className="font-semibold text-rose-600 ml-2">{teacher.absentDays} days</span>
                 </div>
               ))}
               {(!stats.teacherAttendance.topAbsentTeachers || stats.teacherAttendance.topAbsentTeachers.length === 0) && (
@@ -1058,14 +1052,14 @@ export default function SchoolDashboard() {
       </div>
 
       {/* Recent Activities Section - Analyst-grade batch summary with drill-down */}
-      <div className="bg-white rounded-xl shadow-lg p-5 hover:shadow-xl transition-all border border-slate-100">
+      <div className="bg-white rounded-xl shadow-sm p-5 hover:shadow-md transition-all border border-slate-100">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center">
               <span className="text-orange-600 text-sm">✏️</span>
             </div>
             <div>
-              <h2 className="font-bold text-slate-800">Recent Activities</h2>
+              <h2 className="font-semibold text-slate-800">Recent Activities</h2>
               <p className="text-[11px] text-slate-400">Class-level performance per assignment, most recent first</p>
             </div>
             {stats.recentActivities.length > 0 && (
@@ -1114,10 +1108,10 @@ export default function SchoolDashboard() {
                         <td className="px-2 py-3">
                           <p className="font-medium text-slate-800 text-sm">{activity.title}</p>
                           <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                            <span className="text-[10px] text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded-full font-medium">
+                            <span className="text-[11px] text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded-full font-medium">
                               {activity.activityType}
                             </span>
-                            <span className="text-[10px] text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded-full font-medium">
+                            <span className="text-[11px] text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded-full font-medium">
                               {activity.courseName}
                             </span>
                           </div>
@@ -1136,7 +1130,7 @@ export default function SchoolDashboard() {
                         </td>
                         <td className="px-2 py-3">
                           <div className="flex items-center gap-2">
-                            <span className={`text-sm font-bold ${getPerformanceColor(activity.average)}`}>{activity.average}%</span>
+                            <span className={`text-sm font-semibold ${getPerformanceColor(activity.average)}`}>{activity.average}%</span>
                           </div>
                           <div className="w-full bg-slate-100 rounded-full h-1.5 mt-1">
                             <div
@@ -1146,7 +1140,7 @@ export default function SchoolDashboard() {
                           </div>
                         </td>
                         <td className="px-2 py-3 text-center whitespace-nowrap">
-                          <span className={`text-xs font-bold ${activity.passRate >= 50 ? "text-emerald-600" : "text-rose-600"}`}>
+                          <span className={`text-xs font-semibold ${activity.passRate >= 50 ? "text-emerald-600" : "text-rose-600"}`}>
                             {activity.passRate}%
                           </span>
                         </td>
@@ -1166,7 +1160,7 @@ export default function SchoolDashboard() {
                               />
                             ))}
                           </div>
-                          <p className="text-[10px] text-slate-400 mt-1">
+                          <p className="text-[11px] text-slate-400 mt-1">
                             {activity.distribution.EXCELLENT + activity.distribution.GOOD} strong · {activity.distribution.POOR + activity.distribution.FAILING} at risk
                           </p>
                         </td>
@@ -1184,29 +1178,29 @@ export default function SchoolDashboard() {
                           <td colSpan={9} className="bg-slate-50 px-4 py-3">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
                               <div className="bg-white rounded-lg p-3 border border-slate-100">
-                                <p className="text-[10px] text-slate-400 uppercase tracking-wide mb-1">Top Performer</p>
+                                <p className="text-[11px] text-slate-400 uppercase tracking-wide mb-1">Top Performer</p>
                                 {activity.topPerformer ? (
                                   <div className="flex justify-between items-center">
                                     <span className="text-sm font-medium text-slate-700">{activity.topPerformer.studentName}</span>
-                                    <span className="text-sm font-bold text-emerald-600">
+                                    <span className="text-sm font-semibold text-emerald-600">
                                       {activity.topPerformer.marksObtained}/{activity.topPerformer.marksTotal} · {activity.topPerformer.percentage}%
                                     </span>
                                   </div>
                                 ) : <span className="text-xs text-slate-400">-</span>}
                               </div>
                               <div className="bg-white rounded-lg p-3 border border-slate-100">
-                                <p className="text-[10px] text-slate-400 uppercase tracking-wide mb-1">Needs Support</p>
+                                <p className="text-[11px] text-slate-400 uppercase tracking-wide mb-1">Needs Support</p>
                                 {activity.weakestPerformer ? (
                                   <div className="flex justify-between items-center">
                                     <span className="text-sm font-medium text-slate-700">{activity.weakestPerformer.studentName}</span>
-                                    <span className="text-sm font-bold text-rose-600">
+                                    <span className="text-sm font-semibold text-rose-600">
                                       {activity.weakestPerformer.marksObtained}/{activity.weakestPerformer.marksTotal} · {activity.weakestPerformer.percentage}%
                                     </span>
                                   </div>
                                 ) : <span className="text-xs text-slate-400">-</span>}
                               </div>
                             </div>
-                            <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-2">
+                            <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-2">
                               Full Roster ({activity.totalStudents} students, max {activity.marksTotal} pts)
                             </p>
                             <div className="max-h-52 overflow-y-auto rounded-lg border border-slate-100">
@@ -1230,9 +1224,9 @@ export default function SchoolDashboard() {
                                           <td className="px-3 py-1.5 font-medium text-slate-700">{s.studentName}</td>
                                           <td className="px-3 py-1.5 text-slate-400">{s.studentId}</td>
                                           <td className="px-3 py-1.5 text-center text-slate-600">{s.marksObtained}/{s.marksTotal}</td>
-                                          <td className={`px-3 py-1.5 text-center font-bold ${getPerformanceColor(s.percentage)}`}>{s.percentage}%</td>
+                                          <td className={`px-3 py-1.5 text-center font-semibold ${getPerformanceColor(s.percentage)}`}>{s.percentage}%</td>
                                           <td className="px-3 py-1.5">
-                                            <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium text-white ${perf.color}`}>
+                                            <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[11px] font-medium text-white ${perf.color}`}>
                                               {perf.icon} {perf.label}
                                             </span>
                                           </td>
@@ -1258,7 +1252,7 @@ export default function SchoolDashboard() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <button 
           onClick={() => window.location.href = "/students"}
-          className="bg-gradient-to-r from-slate-800 to-slate-700 text-white p-3 rounded-xl text-sm font-semibold hover:shadow-lg transition-all flex items-center justify-center gap-2 hover:scale-105 hover:from-slate-700 hover:to-slate-600"
+          className="bg-gradient-to-r from-slate-800 to-slate-700 text-white p-3 rounded-xl text-sm font-semibold hover:shadow-md transition-all flex items-center justify-center gap-2 hover:scale-105 hover:from-slate-700 hover:to-slate-600"
         >
           <span>👨‍🎓</span>
           <span className="hidden xs:inline">Manage Students</span>
@@ -1266,7 +1260,7 @@ export default function SchoolDashboard() {
         </button>
         <button 
           onClick={() => window.location.href = "/teachers"}
-          className="bg-gradient-to-r from-slate-800 to-slate-700 text-white p-3 rounded-xl text-sm font-semibold hover:shadow-lg transition-all flex items-center justify-center gap-2 hover:scale-105 hover:from-slate-700 hover:to-slate-600"
+          className="bg-gradient-to-r from-slate-800 to-slate-700 text-white p-3 rounded-xl text-sm font-semibold hover:shadow-md transition-all flex items-center justify-center gap-2 hover:scale-105 hover:from-slate-700 hover:to-slate-600"
         >
           <span>👨‍🏫</span>
           <span className="hidden xs:inline">Manage Teachers</span>
@@ -1274,7 +1268,7 @@ export default function SchoolDashboard() {
         </button>
         <button 
           onClick={() => window.location.href = "/marks"}
-          className="bg-gradient-to-r from-slate-800 to-slate-700 text-white p-3 rounded-xl text-sm font-semibold hover:shadow-lg transition-all flex items-center justify-center gap-2 hover:scale-105 hover:from-slate-700 hover:to-slate-600"
+          className="bg-gradient-to-r from-slate-800 to-slate-700 text-white p-3 rounded-xl text-sm font-semibold hover:shadow-md transition-all flex items-center justify-center gap-2 hover:scale-105 hover:from-slate-700 hover:to-slate-600"
         >
           <span>📝</span>
           <span className="hidden xs:inline">Record Marks</span>
@@ -1282,7 +1276,7 @@ export default function SchoolDashboard() {
         </button>
         <button 
           onClick={() => window.location.href = "/activities"}
-          className="bg-gradient-to-r from-slate-800 to-slate-700 text-white p-3 rounded-xl text-sm font-semibold hover:shadow-lg transition-all flex items-center justify-center gap-2 hover:scale-105 hover:from-slate-700 hover:to-slate-600"
+          className="bg-gradient-to-r from-slate-800 to-slate-700 text-white p-3 rounded-xl text-sm font-semibold hover:shadow-md transition-all flex items-center justify-center gap-2 hover:scale-105 hover:from-slate-700 hover:to-slate-600"
         >
           <span>✏️</span>
           <span className="hidden xs:inline">Manage Activities</span>
@@ -1297,7 +1291,7 @@ export default function SchoolDashboard() {
             <div className="sticky top-0 bg-gradient-to-r from-amber-600 to-orange-600 px-5 py-4 flex justify-between items-center text-white rounded-t-xl">
               <div className="flex items-center gap-2">
                 <span className="text-xl">🎯</span>
-                <h2 className="text-lg font-bold">Slow Learner Cases</h2>
+                <h2 className="text-base font-semibold">Slow Learner Cases</h2>
               </div>
               <button onClick={() => setShowSlowLearnerDetails(false)} className="text-white/70 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10 text-xl">
                 ✕
@@ -1307,23 +1301,23 @@ export default function SchoolDashboard() {
               <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                 <div className="bg-blue-50 rounded-lg p-3 text-center">
                   <p className="text-xs text-blue-600">Total</p>
-                  <p className="text-xl font-bold text-blue-700">{slowLearnerData.summary.total}</p>
+                  <p className="text-lg font-semibold tabular-nums text-blue-700">{slowLearnerData.summary.total}</p>
                 </div>
                 <div className="bg-amber-50 rounded-lg p-3 text-center">
                   <p className="text-xs text-amber-600">Identified</p>
-                  <p className="text-xl font-bold text-amber-700">{slowLearnerData.summary.identified}</p>
+                  <p className="text-lg font-semibold tabular-nums text-amber-700">{slowLearnerData.summary.identified}</p>
                 </div>
                 <div className="bg-indigo-50 rounded-lg p-3 text-center">
                   <p className="text-xs text-indigo-600">In Progress</p>
-                  <p className="text-xl font-bold text-indigo-700">{slowLearnerData.summary.inProgress}</p>
+                  <p className="text-lg font-semibold tabular-nums text-indigo-700">{slowLearnerData.summary.inProgress}</p>
                 </div>
                 <div className="bg-emerald-50 rounded-lg p-3 text-center">
                   <p className="text-xs text-emerald-600">Improving</p>
-                  <p className="text-xl font-bold text-emerald-700">{slowLearnerData.summary.improving}</p>
+                  <p className="text-lg font-semibold tabular-nums text-emerald-700">{slowLearnerData.summary.improving}</p>
                 </div>
                 <div className="bg-green-50 rounded-lg p-3 text-center">
                   <p className="text-xs text-green-600">Resolved</p>
-                  <p className="text-xl font-bold text-green-700">{slowLearnerData.summary.resolved}</p>
+                  <p className="text-lg font-semibold tabular-nums text-green-700">{slowLearnerData.summary.resolved}</p>
                 </div>
               </div>
 
@@ -1345,7 +1339,7 @@ export default function SchoolDashboard() {
                         }`}>
                           {student.status}
                         </span>
-                        <span className="text-xs font-bold text-rose-600">{student.averageScore}%</span>
+                        <span className="text-xs font-semibold text-rose-600">{student.averageScore}%</span>
                       </div>
                     </div>
                   ))}
@@ -1353,7 +1347,7 @@ export default function SchoolDashboard() {
               </div>
 
               <div className="flex gap-3 pt-2 border-t border-slate-100">
-                <Link to="/slow-learners" className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white py-2.5 rounded-lg font-semibold text-sm hover:shadow-lg transition-all flex items-center justify-center gap-2 text-center">
+                <Link to="/slow-learners" className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white py-2.5 rounded-lg font-semibold text-sm hover:shadow-md transition-all flex items-center justify-center gap-2 text-center">
                   🎯 Manage Slow Learners
                 </Link>
                 <button
